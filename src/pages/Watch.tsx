@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, X } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -51,6 +51,8 @@ const Watch = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen] = useState(false);
+  const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
+  const serverButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -153,6 +155,24 @@ const Watch = () => {
   });
 
   const currentServerName = [...ANIME_SERVERS, ...MOVIE_TV_SERVERS].find(s => s.id === selectedServer)?.name || 'Unknown';
+
+  // Smart open direction detection
+  const handleServerToggle = () => {
+    if (!serverOpen && serverButtonRef.current) {
+      const rect = serverButtonRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // If more space above or less than 300px below, open upward
+      if (spaceBelow < 350 && spaceAbove > spaceBelow) {
+        setOpenDirection('up');
+      } else {
+        setOpenDirection('down');
+      }
+    }
+    setServerOpen(!serverOpen);
+  };
 
   if (isLoading) {
     return (
@@ -315,6 +335,7 @@ const Watch = () => {
                   {/* Server selector */}
                   <div className="relative inline-block">
                     <Button
+                      ref={serverButtonRef}
                       variant="outline"
                       size="sm"
                       className={cn(
@@ -322,7 +343,7 @@ const Watch = () => {
                         "min-w-[140px] sm:min-w-[160px]",
                         "flex items-center gap-2"
                       )}
-                      onClick={() => setServerOpen(!serverOpen)}
+                      onClick={handleServerToggle}
                     >
                       <Server className="w-4 h-4" />
                       <span className="font-medium truncate max-w-[100px]">
@@ -336,83 +357,175 @@ const Watch = () => {
 
                     {serverOpen && (
                       <>
-                        {/* Backdrop to close on click outside */}
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={() => setServerOpen(false)}
-                        />
-                        <div
-                          className={cn(
-                            "absolute z-50 w-[320px] sm:w-[420px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
-                            "right-0 mt-2",
-                            "animate-in fade-in-60 zoom-in-95 duration-150",
-                            "max-h-[70vh] overflow-y-auto"
-                          )}
-                        >
-                          {/* Anime Servers Section */}
-                          <div className="p-3 border-b border-zinc-800">
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
-                                Anime + Movies + TV
-                              </span>
+                        {/* Mobile: Full screen modal */}
+                        <div className="sm:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                          <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl max-h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+                              <div className="flex items-center gap-2">
+                                <Server className="w-5 h-5 text-primary" />
+                                <span className="font-semibold text-white">Select Server</span>
+                              </div>
+                              <button
+                                onClick={() => setServerOpen(false)}
+                                className="p-1.5 rounded-lg hover:bg-zinc-800 transition-colors"
+                              >
+                                <X className="w-5 h-5 text-zinc-400" />
+                              </button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {animeServers.map((server) => {
-                                const isSelected = selectedServer === server.id;
-                                return (
-                                  <button
-                                    key={server.id}
-                                    onClick={() => {
-                                      setSelectedServer(server.id);
-                                      setServerOpen(false);
-                                    }}
-                                    className={cn(
-                                      "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
-                                      "flex flex-col items-start gap-0.5",
-                                      isSelected
-                                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
-                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 hover:text-emerald-200"
-                                    )}
-                                  >
-                                    <span className="font-semibold">{server.name}</span>
-                                    <span className="text-[10px] text-emerald-500/80">All content</span>
-                                  </button>
-                                );
-                              })}
+                            
+                            {/* Scrollable content */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                              {/* Anime Servers */}
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                                    Anime + Movies + TV
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {animeServers.map((server) => {
+                                    const isSelected = selectedServer === server.id;
+                                    return (
+                                      <button
+                                        key={server.id}
+                                        onClick={() => {
+                                          setSelectedServer(server.id);
+                                          setServerOpen(false);
+                                        }}
+                                        className={cn(
+                                          "px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 border",
+                                          "flex flex-col items-start gap-0.5",
+                                          isSelected
+                                            ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                                            : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 active:scale-95"
+                                        )}
+                                      >
+                                        <span className="font-semibold">{server.name}</span>
+                                        <span className="text-[10px] text-emerald-500/80">All content</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Movie & TV Servers */}
+                              <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
+                                    Movies + TV Only
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {movieTvServers.map((server) => {
+                                    const isSelected = selectedServer === server.id;
+                                    return (
+                                      <button
+                                        key={server.id}
+                                        onClick={() => {
+                                          setSelectedServer(server.id);
+                                          setServerOpen(false);
+                                        }}
+                                        className={cn(
+                                          "px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 border",
+                                          "flex flex-col items-start gap-0.5",
+                                          isSelected
+                                            ? "bg-blue-500/20 border-blue-500 text-blue-300"
+                                            : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 active:scale-95"
+                                        )}
+                                      >
+                                        <span className="font-semibold">{server.name}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             </div>
                           </div>
+                        </div>
 
-                          {/* Movie & TV Servers Section */}
-                          <div className="p-3">
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-2 h-2 rounded-full bg-blue-500" />
-                              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
-                                Movies + TV Only
-                              </span>
+                        {/* Desktop: Dropdown with smart positioning */}
+                        <div className="hidden sm:block">
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setServerOpen(false)}
+                          />
+                          <div
+                            className={cn(
+                              "absolute z-50 w-[380px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
+                              "right-0",
+                              openDirection === 'up' ? "bottom-full mb-2" : "top-full mt-2",
+                              "animate-in fade-in-60 zoom-in-95 duration-150",
+                              "max-h-[60vh] overflow-y-auto"
+                            )}
+                          >
+                            {/* Anime Servers Section */}
+                            <div className="p-3 border-b border-zinc-800 sticky top-0 bg-zinc-950/95 backdrop-blur-xl z-10">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                                  Anime + Movies + TV
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                {animeServers.map((server) => {
+                                  const isSelected = selectedServer === server.id;
+                                  return (
+                                    <button
+                                      key={server.id}
+                                      onClick={() => {
+                                        setSelectedServer(server.id);
+                                        setServerOpen(false);
+                                      }}
+                                      className={cn(
+                                        "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
+                                        "flex flex-col items-start gap-0.5",
+                                        isSelected
+                                          ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                                          : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 hover:text-emerald-200"
+                                      )}
+                                    >
+                                      <span className="font-semibold">{server.name}</span>
+                                      <span className="text-[10px] text-emerald-500/80">All content</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              {movieTvServers.map((server) => {
-                                const isSelected = selectedServer === server.id;
-                                return (
-                                  <button
-                                    key={server.id}
-                                    onClick={() => {
-                                      setSelectedServer(server.id);
-                                      setServerOpen(false);
-                                    }}
-                                    className={cn(
-                                      "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
-                                      "flex flex-col items-start gap-0.5",
-                                      isSelected
-                                        ? "bg-blue-500/20 border-blue-500 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.3)]"
-                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 hover:text-blue-200"
-                                    )}
-                                  >
-                                    <span className="font-semibold">{server.name}</span>
-                                  </button>
-                                );
-                              })}
+
+                            {/* Movie & TV Servers Section */}
+                            <div className="p-3">
+                              <div className="flex items-center gap-2 mb-3">
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
+                                  Movies + TV Only
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                {movieTvServers.map((server) => {
+                                  const isSelected = selectedServer === server.id;
+                                  return (
+                                    <button
+                                      key={server.id}
+                                      onClick={() => {
+                                        setSelectedServer(server.id);
+                                        setServerOpen(false);
+                                      }}
+                                      className={cn(
+                                        "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
+                                        "flex flex-col items-start gap-0.5",
+                                        isSelected
+                                          ? "bg-blue-500/20 border-blue-500 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                                          : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 hover:text-blue-200"
+                                      )}
+                                    >
+                                      <span className="font-semibold">{server.name}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>

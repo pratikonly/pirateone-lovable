@@ -1,20 +1,28 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import emailjs from '@emailjs/browser';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Star, Send, MessageSquare, HelpCircle, Lightbulb, CheckCircle, Sparkles, Circle } from 'lucide-react';
+import { Star, Send, MessageSquare, HelpCircle, Lightbulb, CheckCircle, Sparkles, Circle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+// EmailJS configuration - these are public keys, safe to expose
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || '';
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '';
+
 const Help = () => {
   const { toast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmitFeedback = async () => {
@@ -46,27 +54,74 @@ const Help = () => {
     }
 
     setIsSubmitting(true);
-    
-    // Store feedback locally (localStorage version)
+
+    // Check if EmailJS is configured
+    if (EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+      try {
+        const ratingText = ['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'][rating];
+        
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            from_name: name || 'Anonymous',
+            from_email: email,
+            rating: `${rating}/5 (${ratingText})`,
+            message: feedback,
+            to_name: 'PirateOne Team',
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+
+        toast({
+          title: "Thank You! ✨",
+          description: "Your feedback has been sent successfully!",
+        });
+
+        // Reset form
+        setRating(0);
+        setFeedback('');
+        setEmail('');
+        setName('');
+      } catch (error) {
+        console.error('EmailJS error:', error);
+        toast({
+          title: "Sending Failed",
+          description: "Could not send feedback. Saved locally instead.",
+          variant: "destructive"
+        });
+        
+        // Fallback to localStorage
+        saveToLocalStorage();
+      }
+    } else {
+      // Fallback to localStorage if EmailJS not configured
+      saveToLocalStorage();
+      toast({
+        title: "Thank You!",
+        description: "Your feedback has been saved locally.",
+      });
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const saveToLocalStorage = () => {
     const storedFeedback = JSON.parse(localStorage.getItem('pirateone_feedback') || '[]');
     storedFeedback.push({
+      name: name || 'Anonymous',
       rating,
       feedback: feedback.trim(),
       email: email.trim(),
       createdAt: new Date().toISOString()
     });
     localStorage.setItem('pirateone_feedback', JSON.stringify(storedFeedback));
-
-    toast({
-      title: "Thank You!",
-      description: "Your feedback has been saved locally.",
-    });
-
+    
     // Reset form
     setRating(0);
     setFeedback('');
     setEmail('');
-    setIsSubmitting(false);
+    setName('');
   };
 
   const faqs = [
@@ -125,7 +180,7 @@ const Help = () => {
             Rate & Share Feedback
           </CardTitle>
           <CardDescription>
-            Your feedback helps us improve PirateOne (saved locally)
+            Your feedback helps us improve PirateOne
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -165,6 +220,19 @@ const Help = () => {
             </div>
           </div>
 
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="name">Name (optional)</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-background/50"
+            />
+          </div>
+
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email">
@@ -180,7 +248,7 @@ const Help = () => {
               required
             />
             <p className="text-xs text-muted-foreground">
-              Please provide your email for reference
+              We'll use this to follow up if needed
             </p>
           </div>
 
@@ -204,7 +272,10 @@ const Help = () => {
             className="w-full"
           >
             {isSubmitting ? (
-              "Submitting..."
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending...
+              </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
