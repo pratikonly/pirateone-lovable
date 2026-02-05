@@ -17,11 +17,14 @@ const AdBlockWrapper: React.FC<AdBlockWrapperProps> = ({
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showTapHint, setShowTapHint] = useState(false);
   const [blockedCount, setBlockedCount] = useState(0);
+  const [showBlockedAnimation, setShowBlockedAnimation] = useState(false);
   const lastClickTime = useRef<number>(0);
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const handleAdBlocked = useCallback((type: string) => {
     setBlockedCount((prev) => prev + 1);
+    setShowBlockedAnimation(true);
+    setTimeout(() => setShowBlockedAnimation(false), 300);
   }, []);
 
   // Enable ad blocking protections
@@ -74,12 +77,19 @@ const AdBlockWrapper: React.FC<AdBlockWrapperProps> = ({
     <div className={cn('relative', className)}>
       {/* Protection badge */}
       {showProtectionBadge && (
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm text-xs text-white/80">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Protected</span>
-          {blockedCount > 0 && (
-            <span className="text-red-400">({blockedCount} blocked)</span>
-          )}
+        <div className="absolute top-2 right-2 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-black/70 backdrop-blur-sm text-xs text-white shadow-lg">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span className="font-medium">Protected</span>
+          <span className="mx-1 text-white/40">|</span>
+          <span 
+            className={cn(
+              "font-semibold transition-all duration-200",
+              blockedCount > 0 ? "text-red-400" : "text-white/60",
+              showBlockedAnimation && "scale-125 text-red-300"
+            )}
+          >
+            {blockedCount} blocked
+          </span>
         </div>
       )}
 
