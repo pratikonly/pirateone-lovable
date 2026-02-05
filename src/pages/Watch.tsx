@@ -142,8 +142,8 @@ const Watch = () => {
   };
 
   const filteredServers = SERVER_LIST.filter((server) => {
-    if (mediaType === 'anime') return server.supportsAnime;
-    return server.supportsMovies || server.supportsTV;
+    if (mediaType === 'tv') return server.supportsTV;
+    return server.supportsMovies;
   });
 
   if (isLoading) {
@@ -179,7 +179,7 @@ const Watch = () => {
   const cast = details.credits?.cast?.slice(0, 10) || [];
   const director = details.credits?.crew?.find(c => c.job === 'Director');
 
-  const isAnimePage = mediaType === 'anime';
+  // Note: Anime content uses the /anime route, not /watch
 
   return (
     <div className="min-h-screen text-white bg-transparent">
