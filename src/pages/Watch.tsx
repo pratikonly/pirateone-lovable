@@ -14,7 +14,8 @@ import {
   getImageUrl,
   getBackdropUrl,
   ServerType,
-  SERVER_LIST,
+  ANIME_SERVERS,
+  MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -141,10 +142,17 @@ const Watch = () => {
     }
   };
 
-  const filteredServers = SERVER_LIST.filter((server) => {
+  const animeServers = ANIME_SERVERS.filter((server) => {
     if (mediaType === 'tv') return server.supportsTV;
     return server.supportsMovies;
   });
+
+  const movieTvServers = MOVIE_TV_SERVERS.filter((server) => {
+    if (mediaType === 'tv') return server.supportsTV;
+    return server.supportsMovies;
+  });
+
+  const currentServerName = [...ANIME_SERVERS, ...MOVIE_TV_SERVERS].find(s => s.id === selectedServer)?.name || 'Unknown';
 
   if (isLoading) {
     return (
@@ -304,100 +312,111 @@ const Watch = () => {
                     )}
                   </Button>
 
-                  {/* Server selector - mobile: slightly right + smaller, pc: right-aligned like before */}
+                  {/* Server selector */}
                   <div className="relative inline-block">
                     <Button
                       variant="outline"
                       size="sm"
                       className={cn(
                         "h-9 px-4 text-sm font-medium border-zinc-700 hover:bg-zinc-800 transition-colors",
-                        "min-w-[120px] sm:min-w-[140px]",
+                        "min-w-[140px] sm:min-w-[160px]",
                         "flex items-center gap-2"
                       )}
                       onClick={() => setServerOpen(!serverOpen)}
                     >
                       <Server className="w-4 h-4" />
-                      <span className="font-medium">
-                        Server {filteredServers.findIndex(s => s.id === selectedServer) + 1 || '?'}
+                      <span className="font-medium truncate max-w-[100px]">
+                        {currentServerName}
                       </span>
                       <ChevronDown className={cn(
-                        "w-4 h-4 ml-1 transition-transform duration-200",
+                        "w-4 h-4 ml-auto transition-transform duration-200",
                         serverOpen && "rotate-180"
                       )} />
                     </Button>
 
                     {serverOpen && (
-                      <div
-                        className={cn(
-                          // Width: smaller on mobile, normal on pc
-                          "absolute z-50 w-[260px] sm:w-[360px] bg-black/45 backdrop-blur-xl border border-white/10 rounded-lg shadow-2xl",
-                          "text-sm",
-
-                          // Mobile: slightly shifted to the right + downward
-                          "left-[20%] -translate-x-1/2 mt-1.5",
-                          // PC/Tablet: right-aligned + upward (more to the right side)
-                          "sm:left-auto sm:right-[-180px] sm:bottom-full sm:mt-0",
-
-                          "animate-in fade-in-60 zoom-in-95 duration-150"
-                        )}
-                      >
-                        <div className="p-2.5 sm:p-4">
-                          <div className="text-xs text-zinc-400 mb-2 font-medium flex items-center gap-2 px-1">
-                            <Server className="w-4 h-4" />
-                            Select Server
+                      <>
+                        {/* Backdrop to close on click outside */}
+                        <div 
+                          className="fixed inset-0 z-40" 
+                          onClick={() => setServerOpen(false)}
+                        />
+                        <div
+                          className={cn(
+                            "absolute z-50 w-[320px] sm:w-[420px] bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
+                            "right-0 mt-2",
+                            "animate-in fade-in-60 zoom-in-95 duration-150",
+                            "max-h-[70vh] overflow-y-auto"
+                          )}
+                        >
+                          {/* Anime Servers Section */}
+                          <div className="p-3 border-b border-zinc-800">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wide">
+                                Anime + Movies + TV
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {animeServers.map((server) => {
+                                const isSelected = selectedServer === server.id;
+                                return (
+                                  <button
+                                    key={server.id}
+                                    onClick={() => {
+                                      setSelectedServer(server.id);
+                                      setServerOpen(false);
+                                    }}
+                                    className={cn(
+                                      "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
+                                      "flex flex-col items-start gap-0.5",
+                                      isSelected
+                                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 hover:text-emerald-200"
+                                    )}
+                                  >
+                                    <span className="font-semibold">{server.name}</span>
+                                    <span className="text-[10px] text-emerald-500/80">All content</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-3 gap-2">
-                            {filteredServers.map((server, idx) => {
-                              const isSelected = selectedServer === server.id;
-                              const isAnimeServer = server.supportsAnime;
-
-                              let classes = cn(
-                                "relative px-2.5 py-2 rounded-md text-sm font-medium transition-all duration-200 border min-h-[46px] sm:min-h-[52px]",
-                                "flex items-center justify-center",
-                                "bg-zinc-950/70 text-zinc-300 border-zinc-700/60",
-                                "hover:border-zinc-500 hover:text-zinc-100 hover:bg-zinc-900/80 active:scale-[0.98]"
-                              );
-
-                              if (isAnimeServer && !isSelected) {
-                                classes = cn(
-                                  classes,
-                                  "border-emerald-600/80 text-emerald-400 bg-zinc-950/60",
-                                  "hover:border-emerald-500 hover:text-emerald-300 hover:bg-emerald-950/45"
+                          {/* Movie & TV Servers Section */}
+                          <div className="p-3">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
+                                Movies + TV Only
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {movieTvServers.map((server) => {
+                                const isSelected = selectedServer === server.id;
+                                return (
+                                  <button
+                                    key={server.id}
+                                    onClick={() => {
+                                      setSelectedServer(server.id);
+                                      setServerOpen(false);
+                                    }}
+                                    className={cn(
+                                      "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 border",
+                                      "flex flex-col items-start gap-0.5",
+                                      isSelected
+                                        ? "bg-blue-500/20 border-blue-500 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 hover:text-blue-200"
+                                    )}
+                                  >
+                                    <span className="font-semibold">{server.name}</span>
+                                  </button>
                                 );
-                              }
-
-                              if (isSelected) {
-                                classes = cn(
-                                  "relative px-2.5 py-2 rounded-md text-sm font-medium transition-all duration-200 border min-h-[46px] sm:min-h-[52px]",
-                                  "flex items-center justify-center",
-                                  "border-red-600/90 text-red-400 bg-zinc-950/75 font-semibold",
-                                  "shadow-[0_0_10px_rgba(239,68,68,0.3)]"
-                                );
-                              }
-
-                              return (
-                                <button
-                                  key={server.id}
-                                  onClick={() => {
-                                    setSelectedServer(server.id);
-                                    setServerOpen(false);
-                                  }}
-                                  className={classes}
-                                >
-                                  <span className="font-medium">Server {idx + 1}</span>
-
-                                  {isAnimeServer && (
-                                    <span className="absolute -top-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 leading-none rounded bg-emerald-700/90 text-white border border-emerald-500/60 shadow-sm">
-                                      +Anime
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
+                              })}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 </div>
