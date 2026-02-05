@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
+import AdBlockWrapper from '@/components/AdBlockWrapper';
 
 interface VideoPlayerProps {
   id: number;
@@ -16,18 +17,21 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const playerUrl = getPlayerUrl(id, type, server, season, episode, isDub);
 
     return (
-      <div className="relative w-full" style={{ paddingBottom: '56.25%', height: 0 }}>
-        <iframe
-          ref={ref}
-          src={playerUrl}
-          title={title || 'PirateOne player'}
-          className="absolute top-0 left-0 w-full h-full rounded-lg"
-          allowFullScreen
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-          referrerPolicy="no-referrer-when-downgrade"
-          style={{ border: 'none' }}
-        />
-      </div>
+      <AdBlockWrapper>
+        <div className="relative w-full" style={{ paddingBottom: '56.25%', height: 0 }}>
+          <iframe
+            ref={ref}
+            src={playerUrl}
+            title={title || 'PirateOne player'}
+            className="absolute top-0 left-0 w-full h-full rounded-lg"
+            allowFullScreen
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            referrerPolicy="no-referrer-when-downgrade"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            style={{ border: 'none' }}
+          />
+        </div>
+      </AdBlockWrapper>
     );
   }
 );
