@@ -277,7 +277,7 @@ export const getYouTubeEmbedUrl = (key: string) => {
   return `https://www.youtube.com/embed/${key}?autoplay=1&rel=0`;
 };
 
-export type ServerType = 'videasy' | 'autoembed' | 'vidsrc' | 'vidify' | 'movies111' | 'vidapi' | 'twoembed' | 'embed2' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'moviesapi' | 'vidup' | 'vidsrccc' | 'vidzee';
+export type ServerType = 'videasy' | 'autoembed' | 'vidsrc' | 'vidify' | 'movies111' | 'vidapi' | 'twoembed' | 'embed2' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'moviesapi' | 'vidup' | 'vidsrccc' | 'vidzee' | 'vidking';
 
 export interface ServerInfo {
   id: ServerType;
@@ -287,25 +287,34 @@ export interface ServerInfo {
   supportsAnime: boolean;
 }
 
-export const SERVER_LIST: ServerInfo[] = [
-  { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
+// Movie & TV servers (no anime support)
+export const MOVIE_TV_SERVERS: ServerInfo[] = [
   { id: 'autoembed', name: 'AutoEmbed', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidsrc', name: 'VidSrc', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'movies111', name: '111Movies', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidapi', name: 'VidAPI', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'twoembed', name: '2Embed', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'embed2', name: 'Embed2 (Backup)', supportsMovies: true, supportsTV: true, supportsAnime: false },
+  { id: 'embed2', name: 'Embed2', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidrock', name: 'VidRock', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidfast', name: 'VidFast', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidlink', name: 'VidLink', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidsrcsu', name: 'VidSrc.su', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'vidnest', name: 'VidNest', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'moviesapi', name: 'MoviesAPI', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidup', name: 'VidUp', supportsMovies: true, supportsTV: true, supportsAnime: false },
+  { id: 'vidking', name: 'VidKing', supportsMovies: true, supportsTV: true, supportsAnime: false },
+];
+
+// Anime servers (also support movies & TV)
+export const ANIME_SERVERS: ServerInfo[] = [
+  { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
+  { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
+  { id: 'vidnest', name: 'VidNest', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidsrccc', name: 'VidSrc.cc', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidzee', name: 'VidZee', supportsMovies: true, supportsTV: true, supportsAnime: true },
 ];
+
+// Combined list for backward compatibility
+export const SERVER_LIST: ServerInfo[] = [...ANIME_SERVERS, ...MOVIE_TV_SERVERS];
 
 export const getPlayerUrl = (
   id: number,
@@ -316,6 +325,12 @@ export const getPlayerUrl = (
   isDub: boolean = false
 ) => {
   const accent = 'FD105E';
+
+  // VidKing (movies & TV only)
+  if (server === 'vidking') {
+    if (type === 'movie') return `https://www.vidking.net/embed/movie/${id}`;
+    return `https://www.vidking.net/embed/tv/${id}`;
+  }
 
   // VidZee
   if (server === 'vidzee') {
