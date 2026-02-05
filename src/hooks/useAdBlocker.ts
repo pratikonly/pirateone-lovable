@@ -8,6 +8,7 @@ interface UseAdBlockerOptions {
 export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOptions = {}) => {
   const originalHistoryPushState = useRef<typeof history.pushState | null>(null);
   const originalHistoryReplaceState = useRef<typeof history.replaceState | null>(null);
+  const originalWindowOpen = useRef<typeof window.open | null>(null);
   const originalAlert = useRef<typeof window.alert | null>(null);
   const originalConfirm = useRef<typeof window.confirm | null>(null);
   const originalPrompt = useRef<typeof window.prompt | null>(null);
@@ -18,6 +19,32 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOption
     console.log(`[AdBlocker] Blocked: ${type}`);
     onAdBlocked?.(type);
   }, [onAdBlocked]);
+
+  // Block window.open popups
+  useEffect(() => {
+    if (!enabled) return;
+
+    originalWindowOpen.current = window.open.bind(window);
+
+    window.open = function(url?: string | URL, target?: string, features?: string) {
+      const urlStr = url?.toString() || '';
+      
+      // Allow same-origin popups and blank targets for legitimate use
+      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
+        return originalWindowOpen.current?.(url, target, features) ?? null;
+      }
+      
+      // Block all external popups
+      logBlock(`window.open popup to ${urlStr}`);
+      return null;
+    };
+
+    return () => {
+      if (originalWindowOpen.current) {
+        window.open = originalWindowOpen.current;
+      }
+    };
+  }, [enabled, logBlock]);
 
   // History manipulation protection
   useEffect(() => {
