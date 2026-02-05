@@ -1,88 +1,46 @@
 
-# Ad Blocker Implementation for Video Player
 
-## Overview
-Create a protective wrapper around the VideoPlayer iframe that intercepts and blocks common ad redirect techniques used by third-party video embed services.
+# Fix Video Player Sandbox Issue & Improve Ad Block Counter
 
-## Technical Implementation
+## Problem
+The iframe `sandbox` attribute is too restrictive. The video player embed service detects sandbox restrictions and shows an error:
+> "Iframe Sandbox Detected - This iframe has sandbox restrictions that prevent proper functionality."
 
-### 1. Create New AdBlockWrapper Component
-**File:** `src/components/AdBlockWrapper.tsx`
+## Solution
 
-A wrapper component that will contain all ad-blocking logic:
+### 1. Remove Iframe Sandbox Restrictions
+**File:** `src/components/VideoPlayer.tsx`
 
-```text
-┌─────────────────────────────────────────┐
-│          AdBlockWrapper                 │
-│  ┌───────────────────────────────────┐  │
-│  │    Click Shield Overlay           │  │
-│  │    (captures first click)         │  │
-│  └───────────────────────────────────┘  │
-│  ┌───────────────────────────────────┐  │
-│  │    VideoPlayer (iframe)           │  │
-│  │    with sandbox restrictions      │  │
-│  └───────────────────────────────────┘  │
-└─────────────────────────────────────────┘
+The sandbox attribute needs to be removed entirely. Many video player services require full browser capabilities to function (popups for quality settings, navigation for certain features, etc.).
+
+**Before:**
+```tsx
+sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
 ```
 
-### 2. Protection Features
+**After:**
+Remove the sandbox attribute completely. The other protections (click shield, history blocking, mutation observer) will still provide security without breaking the player.
 
-#### Click Shield
-- Overlay div that requires 2 rapid clicks (within 500ms) to "unlock" the player
-- After unlock, the overlay becomes transparent and allows pointer events to pass through
-- Blocks sneaky first-click hijacks that open new tabs
-- Shows visual feedback (pulse animation) on first click
+### 2. Improve the Ad Blocked Counter Display
+**File:** `src/components/AdBlockWrapper.tsx`
 
-#### Iframe Sandbox Restrictions
-- Current sandbox allows too much; will restrict to only essential permissions:
-  - `allow-scripts` - Required for player functionality
-  - `allow-same-origin` - Required for player to work
-  - Remove `allow-popups` - Prevents popup windows
-  - Remove `allow-top-navigation` - Prevents navigating the parent page
+Make the blocked count more prominent and always visible:
+- Show "0 blocked" when nothing is blocked (so users know protection is active)
+- Add a subtle animation when the count increases
+- Improve styling for better visibility
 
-#### History Protection
-- Override `history.pushState` and `history.replaceState` to filter malicious URL changes
-- Block `popstate` events that try to redirect via history manipulation
-- Prevent hash changes that aren't initiated by the user
-
-#### Focus/Visibility Monitoring
-- Detect when focus is stolen from the page
-- Catch tab-stealing attempts
-- Return focus to the main window when ad attempts to steal it
-
-#### MutationObserver
-- Monitor DOM for dynamically injected elements:
-  - Hidden iframes
-  - Overlay divs
-  - Script tags from ad networks
-- Auto-remove detected ad elements
-
-#### PostMessage Filtering
-- Filter incoming `postMessage` events from the iframe
-- Block suspicious cross-origin messages
-- Allow only legitimate player communication
-
-#### Dialog Overrides
-- Override `window.alert`, `window.confirm`, `window.prompt` within the wrapper context
-- Block ad dialogs while allowing legitimate use
-
-### 3. File Changes
+### File Changes
 
 | File | Change |
 |------|--------|
-| `src/components/AdBlockWrapper.tsx` | **NEW** - Main ad blocking wrapper component |
-| `src/components/VideoPlayer.tsx` | Wrap content with AdBlockWrapper, update sandbox attrs |
-| `src/hooks/useAdBlocker.ts` | **NEW** - Custom hook for ad blocking logic |
+| `src/components/VideoPlayer.tsx` | Remove `sandbox` attribute from iframe |
+| `src/components/AdBlockWrapper.tsx` | Always show blocked count, add animation on increment |
 
-### 4. User Experience
+### Why This Works
+- The click shield still prevents first-click hijacks
+- History manipulation protection remains active
+- MutationObserver still removes injected ad elements
+- PostMessage filtering still blocks suspicious messages
+- Dialog overrides still block ad popups
+- The player can now function normally without sandbox restrictions
 
-- First click on player shows a subtle "tap again to play" indicator
-- Second tap within 500ms activates the player normally
-- No interruption to normal playback once "unlocked"
-- Player stays unlocked for the session (stored in state)
-- Visual indicator shows protected status
-
-### 5. Build Errors to Fix
-Also need to fix the existing TypeScript errors in Watch.tsx:
-- Lines 145 and 182: `mediaType === 'anime'` comparison is invalid because the schema only allows `'movie' | 'tv'`
-- Will update the logic to handle anime properly or remove dead code
