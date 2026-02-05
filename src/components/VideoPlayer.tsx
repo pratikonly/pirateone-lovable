@@ -27,7 +27,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             referrerPolicy="no-referrer-when-downgrade"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             style={{ border: 'none' }}
           />
         </div>
