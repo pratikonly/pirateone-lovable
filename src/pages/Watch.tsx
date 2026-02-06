@@ -386,7 +386,7 @@ const Watch = () => {
                                 Anime + Movies + TV
                               </span>
                             </div>
-                            <div className="grid grid-cols-4 gap-1.5">
+                            <div className="grid grid-cols-3 gap-1.5">
                               {animeServers.map((server, index) => {
                                 const isSelected = selectedServer === server.id;
                                 const serverNum = index + 1;
@@ -404,7 +404,7 @@ const Watch = () => {
                                         : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95"
                                     )}
                                   >
-                                    {serverNum}
+                                    Server {serverNum}
                                   </button>
                                 );
                               })}
@@ -419,7 +419,7 @@ const Watch = () => {
                                 Movies + TV Only
                               </span>
                             </div>
-                            <div className="grid grid-cols-4 gap-1.5">
+                            <div className="grid grid-cols-3 gap-1.5">
                               {movieTvServers.map((server, index) => {
                                 const isSelected = selectedServer === server.id;
                                 const serverNum = animeServers.length + index + 1;
@@ -437,7 +437,7 @@ const Watch = () => {
                                         : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 active:scale-95"
                                     )}
                                   >
-                                    {serverNum}
+                                    Server {serverNum}
                                   </button>
                                 );
                               })}
