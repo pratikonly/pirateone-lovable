@@ -24,7 +24,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
             src={playerUrl}
             title={title || 'PirateOne player'}
             className="absolute top-0 left-0 w-full h-full rounded-lg"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
+            
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
             referrerPolicy="no-referrer"
