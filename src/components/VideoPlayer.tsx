@@ -26,7 +26,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
             className="absolute top-0 left-0 w-full h-full rounded-lg"
             allowFullScreen
             allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerPolicy="no-referrer-when-downgrade"
+            referrerPolicy="no-referrer"
             style={{ border: 'none' }}
           />
         </div>
