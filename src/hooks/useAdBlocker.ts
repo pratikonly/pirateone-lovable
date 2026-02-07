@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 interface UseAdBlockerOptions {
   enabled?: boolean;
   onAdBlocked?: (type: string) => void;
+  onPopupBlocked?: (url: string) => void;
 }
 
 const LEGITIMATE_PLAYER_DOMAINS = ['videasy', 'vidking', 'vidzee', 'vidsrc', 'embed', 'player'];
@@ -19,7 +20,7 @@ const SUSPICIOUS_MESSAGE_KEYWORDS = [
 
 const SUSPICIOUS_ELEMENT_PATTERNS = ['ad', 'popup', 'overlay', 'banner', 'sponsor'];
 
-export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOptions = {}) => {
+export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: UseAdBlockerOptions = {}) => {
   const originalRefs = useRef({
     pushState: null as typeof history.pushState | null,
     replaceState: null as typeof history.replaceState | null,
@@ -45,6 +46,7 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOption
         return originalRefs.current.windowOpen?.(url, target, features) ?? null;
       }
       logBlock(`window.open popup to ${urlStr}`);
+      onPopupBlocked?.(urlStr);
       return null;
     };
     return () => { if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen; };
