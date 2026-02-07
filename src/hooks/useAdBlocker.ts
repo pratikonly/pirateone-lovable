@@ -30,6 +30,8 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
     prompt: null as typeof window.prompt | null,
   });
   const currentUrl = useRef(window.location.href);
+  const onPopupBlockedRef = useRef(onPopupBlocked);
+  onPopupBlockedRef.current = onPopupBlocked;
 
   const logBlock = useCallback((type: string) => {
     console.log(`[AdBlocker] Blocked: ${type}`);
@@ -46,10 +48,32 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
         return originalRefs.current.windowOpen?.(url, target, features) ?? null;
       }
       logBlock(`window.open popup to ${urlStr}`);
-      onPopupBlocked?.(urlStr);
+      onPopupBlockedRef.current?.(urlStr);
       return null;
     };
     return () => { if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen; };
+  }, [enabled, logBlock]);
+
+  // Intercept ALL external link clicks
+  useEffect(() => {
+    if (!enabled) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest('a');
+      if (!target) return;
+      const href = target.getAttribute('href');
+      if (!href) return;
+      // Allow same-origin and hash/relative links
+      if (href.startsWith('#') || href.startsWith('/') || href.startsWith(window.location.origin)) return;
+      // Allow javascript: links
+      if (href.startsWith('javascript:')) return;
+      // Block external link and show confirmation
+      e.preventDefault();
+      e.stopPropagation();
+      logBlock(`external link click to ${href}`);
+      onPopupBlockedRef.current?.(href);
+    };
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
   }, [enabled, logBlock]);
 
   // History manipulation protection
@@ -102,7 +126,6 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
       return originalRefs.current.confirm?.(message) ?? false;
     };
 
-    // Block ALL prompts
     window.prompt = (message?: string) => {
       logBlock(`blocked prompt: ${message?.substring(0, 50)}`);
       return null;
@@ -199,7 +222,6 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
 
     const isAdElement = (el: Element): boolean => {
       const tag = el.tagName;
-      // Remove external iframes/scripts not from legitimate players
       if (tag === 'IFRAME' || tag === 'SCRIPT') {
         const src = el.getAttribute('src') || '';
         if (src && !isLegitimatePlayerSrc(src)) return true;
@@ -209,7 +231,6 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
             style.visibility === 'hidden' || style.opacity === '0') return true;
         }
       }
-      // Check overlay divs with z-index > 1000
       if (tag === 'DIV') {
         const style = window.getComputedStyle(el);
         const zIndex = parseInt(style.zIndex) || 0;
