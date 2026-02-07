@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -16,7 +16,6 @@ import {
   ServerType,
   ANIME_SERVERS,
   MOVIE_TV_SERVERS,
-  getDownloadUrl,
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -334,20 +333,6 @@ const Watch = () => {
                         Add to List
                       </>
                     )}
-                  </Button>
-
-                  {/* Download button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-zinc-700 hover:bg-zinc-800 min-w-[110px]"
-                    onClick={() => {
-                      const url = getDownloadUrl(movieId, mediaType, season, episode);
-                      window.open(url, '_blank', 'noopener,noreferrer');
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-1.5" />
-                    Download
                   </Button>
 
                   {/* Server selector */}
