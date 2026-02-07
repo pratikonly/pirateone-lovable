@@ -474,6 +474,16 @@ export const getPlayerUrl = (
   return `https://player.videasy.net/tv/${id}/${season || 1}/${episode || 1}?${qs.toString()}`;
 };
 
+export const getDownloadUrl = (
+  id: number,
+  type: 'movie' | 'tv' | 'anime',
+  season?: number,
+  episode?: number
+): string => {
+  if (type === 'movie') return `https://dl.vidsrc.vip/movie/${id}`;
+  return `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
+};
+
 // Keep backward compatibility
 export const getVideasyUrl = (
   id: number,
