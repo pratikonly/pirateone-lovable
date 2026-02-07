@@ -1,66 +1,78 @@
 
 
-# Complete Ad-Blocking Overhaul
+# Feature Updates: Download, Ad Badge Toggle, and Ad Popup Confirmation
 
-## What's Changing
+## 1. Download Button for Movies, TV Shows, and Anime
 
-Rebuild the ad-blocking system with all techniques from the guide, including a click shield with "double-click to play" UX, visibility change detection, stricter MutationObserver patterns, and improved blocked-ad counter.
+Add a download button on the Watch page that opens a third-party download link in a new tab. Since direct file downloads from streaming embeds aren't possible, we'll use a download aggregator service.
 
-## Changes
+### Changes to `src/pages/Watch.tsx`:
+- Add a `Download` button (using the `Download` icon from lucide-react) next to the existing action buttons (watchlist, etc.)
+- The button will open a download link using a service like `dl.vidsrc.vip` which provides download links by TMDB ID
+- For movies: `https://dl.vidsrc.vip/movie/{id}`
+- For TV: `https://dl.vidsrc.vip/tv/{id}/{season}/{episode}`
+- Opens in a new tab with `noopener,noreferrer`
 
-### 1. Rewrite `src/hooks/useAdBlocker.ts`
+### New helper in `src/lib/tmdb.ts`:
+- Add a `getDownloadUrl()` function that generates the download URL based on type, id, season, episode
 
-Upgrade every protection layer:
+---
 
-- **window.open**: Block ALL external popups (already done, keep as-is)
-- **alert/confirm/prompt**: Block ALL prompts entirely (not just suspicious ones) since they're rarely legitimate from video players. Keep alerts/confirms with expanded suspicious keyword list (`ad`, `click`, `congratulations`, `leave`, `virus`, `malware`, etc.)
-- **History API**: Already good, keep as-is
-- **Focus/Blur**: Add `visibilitychange` listener alongside existing blur detection. When document becomes hidden unexpectedly, force focus back and count as blocked
-- **PostMessage**: Expand suspicious keywords to include `ad`, `click`, `popup`, `redirect`, `track`, `analytics`, `banner`
-- **MutationObserver**: Lower z-index threshold from 9999 to 1000 for overlay detection. Also detect and remove external iframes/scripts whose `src` doesn't match the legitimate player domains. Add `sponsor` to suspicious class/id patterns
+## 2. Ad Blocker Badge - Hidden by Default with Toggle
 
-### 2. Add Click Shield to `src/components/AdBlockWrapper.tsx`
+The "Protected | X ads blocked" badge will be hidden by default. A small shield icon button will sit in the corner that users can click to expand/collapse the full badge.
 
-Re-introduce a smarter click shield:
+### Changes to `src/components/AdBlockWrapper.tsx`:
+- Add `badgeExpanded` state, defaulting to `false`
+- When collapsed: show only a small circular shield icon button (clickable)
+- When expanded: show the full badge with "Protected | X ads blocked" text
+- Clicking the shield toggles between expanded and collapsed
+- Smooth transition animation between states
 
-- Transparent overlay sits on top of the iframe (z-index 20)
-- First click is intercepted and counted as a blocked ad
-- User must click twice within 2 seconds to disable the shield
-- Shield re-enables after 10 seconds of no interaction
-- Shows subtle "Click twice to play (ad protection)" hint at the bottom
-- State: `clickShieldActive` (boolean), `clickCount` (number), `lastClickTime` (ref)
+---
 
-### 3. Update `src/components/VideoPlayer.tsx`
+## 3. Ad Popup Confirmation Dialog
 
-- Change `referrerPolicy` from `no-referrer-when-downgrade` to `no-referrer` (prevents iframe from knowing where user came from, blocks tracking)
+Instead of silently blocking `window.open` calls, show a confirmation dialog asking the user if they want to allow the popup.
 
-### 4. Improve Protection Badge in `src/components/AdBlockWrapper.tsx`
+### Changes to `src/hooks/useAdBlocker.ts`:
+- Modify the `window.open` override to store the blocked URL and trigger a callback
+- Add a new callback option `onPopupBlocked` that passes the URL to the parent component
 
-- Show "X ads blocked" with proper singular/plural ("1 ad blocked" vs "3 ads blocked")
-- Keep existing animation on increment
+### Changes to `src/components/AdBlockWrapper.tsx`:
+- Add state for `pendingPopupUrl` and `showPopupDialog`
+- When a popup is blocked, show an AlertDialog asking "An ad is trying to open: [url]. Do you want to allow it?"
+- "Block" button dismisses the dialog (default action)
+- "Open Anyway" button opens the URL in a new tab
+- Import and use AlertDialog components from the existing UI library
 
-## File Changes
+---
+
+## File Changes Summary
 
 | File | Change |
 |------|--------|
-| `src/hooks/useAdBlocker.ts` | Add visibilitychange detection, expand postMessage keywords, lower MutationObserver z-index threshold to 1000, remove external iframes/scripts, block all prompts |
-| `src/components/AdBlockWrapper.tsx` | Add click shield overlay with double-click-to-play logic, improve counter text (singular/plural) |
-| `src/components/VideoPlayer.tsx` | Change referrerPolicy to `no-referrer` |
+| `src/lib/tmdb.ts` | Add `getDownloadUrl()` function |
+| `src/pages/Watch.tsx` | Add Download button with download icon |
+| `src/components/AdBlockWrapper.tsx` | Hide badge by default with toggle button; add popup confirmation dialog |
+| `src/hooks/useAdBlocker.ts` | Add `onPopupBlocked` callback to pass blocked URLs to parent |
 
 ## Technical Details
 
-**Click Shield Flow:**
-1. Component mounts with `clickShieldActive = true`
-2. User clicks the overlay -- first click blocked, counter incremented
-3. If user clicks again within 2 seconds, shield disables for 10 seconds
-4. After 10 seconds, shield re-enables automatically
-5. If more than 2 seconds between clicks, click count resets
+**Download URL Pattern:**
+- Movie: `https://dl.vidsrc.vip/movie/{tmdbId}`
+- TV/Anime: `https://dl.vidsrc.vip/tv/{tmdbId}/{season}/{episode}`
 
-**MutationObserver Enhancement:**
-- Current: only checks z-index > 9999 for overlays
-- New: checks z-index > 1000, also removes any injected `iframe` or `script` whose `src` doesn't contain known player domains (videasy, vidking, vidzee, etc.)
+**Badge Toggle Flow:**
+1. Component mounts with `badgeExpanded = false`
+2. Only a small shield icon is visible in the top-right corner
+3. User clicks the icon to expand and see "Protected | X ads blocked"
+4. Clicks again to collapse back to just the icon
 
-**Visibility Change Detection:**
-- Listens to `visibilitychange` event
-- If document becomes hidden unexpectedly (within 100ms), counts as ad block and forces focus back
+**Popup Confirmation Flow:**
+1. Ad tries to call `window.open(url)`
+2. Instead of silently blocking, `onPopupBlocked(url)` is called
+3. AdBlockWrapper shows an AlertDialog with the URL
+4. User chooses "Block" (default) or "Open Anyway"
+5. If "Open Anyway", the original `window.open` is called with the URL
 
