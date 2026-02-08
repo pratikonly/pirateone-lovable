@@ -38,20 +38,102 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
     onAdBlocked?.(type);
   }, [onAdBlocked]);
 
-  // Block window.open popups
+  // Layer 1: Block window.open popups
   useEffect(() => {
     if (!enabled) return;
     originalRefs.current.windowOpen = window.open.bind(window);
-    window.open = function (url?: string | URL, target?: string, features?: string) {
+    
+    const blockedOpen = function (url?: string | URL, target?: string, features?: string) {
       const urlStr = url?.toString() || '';
-      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
+      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/') || urlStr === '') {
         return originalRefs.current.windowOpen?.(url, target, features) ?? null;
       }
       logBlock(`window.open popup to ${urlStr}`);
       onPopupBlockedRef.current?.(urlStr);
       return null;
     };
-    return () => { if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen; };
+    
+    window.open = blockedOpen;
+    
+    // Re-apply override periodically in case scripts override it back
+    const interval = setInterval(() => {
+      if (window.open !== blockedOpen) {
+        window.open = blockedOpen;
+      }
+    }, 500);
+    
+    return () => {
+      clearInterval(interval);
+      if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen;
+    };
+  }, [enabled, logBlock]);
+
+  // Layer 2: Block top-level navigation via location changes (beforeunload)
+  useEffect(() => {
+    if (!enabled) return;
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // If navigation is going to an external URL, block it
+      const destination = window.location.href;
+      if (!destination.startsWith(window.location.origin)) {
+        e.preventDefault();
+        e.returnValue = '';
+        logBlock('beforeunload navigation blocked');
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [enabled, logBlock]);
+
+  // Layer 3: Intercept location.assign and location.replace
+  useEffect(() => {
+    if (!enabled) return;
+    
+    const origAssign = window.location.assign.bind(window.location);
+    const origReplace = window.location.replace.bind(window.location);
+    
+    window.location.assign = function (url: string | URL) {
+      const urlStr = url.toString();
+      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
+        origAssign(url);
+      } else {
+        logBlock(`location.assign to ${urlStr}`);
+        onPopupBlockedRef.current?.(urlStr);
+      }
+    };
+    
+    window.location.replace = function (url: string | URL) {
+      const urlStr = url.toString();
+      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
+        origReplace(url);
+      } else {
+        logBlock(`location.replace to ${urlStr}`);
+        onPopupBlockedRef.current?.(urlStr);
+      }
+    };
+    
+    return () => {
+      window.location.assign = origAssign;
+      window.location.replace = origReplace;
+    };
+  }, [enabled, logBlock]);
+
+  // Layer 4: Block form submissions to external URLs
+  useEffect(() => {
+    if (!enabled) return;
+    const handleSubmit = (e: SubmitEvent) => {
+      const form = e.target as HTMLFormElement;
+      const action = form?.action || '';
+      if (action && !action.startsWith(window.location.origin) && !action.startsWith('/')) {
+        e.preventDefault();
+        e.stopPropagation();
+        logBlock(`form submission to ${action}`);
+        onPopupBlockedRef.current?.(action);
+      }
+    };
+    document.addEventListener('submit', handleSubmit, true);
+    return () => document.removeEventListener('submit', handleSubmit, true);
   }, [enabled, logBlock]);
 
   // Intercept external link clicks from iframes/embeds only (not app UI links)
