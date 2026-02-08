@@ -49,7 +49,7 @@ const Watch = () => {
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
+  const [selectedServer, setSelectedServer] = useState<ServerType>('vidnest');
   const [serverOpen, setServerOpen] = useState(false);
   const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
   const serverButtonRef = useRef<HTMLButtonElement>(null);

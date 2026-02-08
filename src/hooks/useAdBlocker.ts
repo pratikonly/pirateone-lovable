@@ -54,19 +54,29 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: Us
     return () => { if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen; };
   }, [enabled, logBlock]);
 
-  // Intercept ALL external link clicks
+  // Intercept external link clicks from iframes/embeds only (not app UI links)
   useEffect(() => {
     if (!enabled) return;
+    
+    // Whitelist: app's own domain and known safe domains
+    const WHITELISTED_DOMAINS = [
+      window.location.origin,
+      'xpratik.vercel.app',
+    ];
+    
+    const isWhitelisted = (url: string) => {
+      if (url.startsWith('#') || url.startsWith('/') || url.startsWith('javascript:')) return true;
+      return WHITELISTED_DOMAINS.some(domain => url.includes(domain));
+    };
+
     const handleClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement)?.closest('a');
       if (!target) return;
       const href = target.getAttribute('href');
       if (!href) return;
-      // Allow same-origin and hash/relative links
-      if (href.startsWith('#') || href.startsWith('/') || href.startsWith(window.location.origin)) return;
-      // Allow javascript: links
-      if (href.startsWith('javascript:')) return;
-      // Block external link and show confirmation
+      // Allow whitelisted links
+      if (isWhitelisted(href)) return;
+      // Block and ask
       e.preventDefault();
       e.stopPropagation();
       logBlock(`external link click to ${href}`);
