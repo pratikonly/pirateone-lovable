@@ -306,9 +306,9 @@ export const MOVIE_TV_SERVERS: ServerInfo[] = [
 
 // Anime servers (also support movies & TV)
 export const ANIME_SERVERS: ServerInfo[] = [
-  { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
-  { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidnest', name: 'VidNest', supportsMovies: true, supportsTV: true, supportsAnime: true },
+  { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
+  { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidsrccc', name: 'VidSrc.cc', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidzee', name: 'VidZee', supportsMovies: true, supportsTV: true, supportsAnime: true },
 ];
@@ -319,7 +319,7 @@ export const SERVER_LIST: ServerInfo[] = [...ANIME_SERVERS, ...MOVIE_TV_SERVERS]
 export const getPlayerUrl = (
   id: number,
   type: 'movie' | 'tv' | 'anime',
-  server: ServerType = 'videasy',
+  server: ServerType = 'vidnest',
   season?: number,
   episode?: number,
   isDub: boolean = false
@@ -328,8 +328,8 @@ export const getPlayerUrl = (
 
   // VidKing (movies & TV only)
   if (server === 'vidking') {
-    if (type === 'movie') return `https://vidking.online/embed/movie/${id}`;
-    return `https://vidking.online/embed/tv/${id}/${season || 1}/${episode || 1}`;
+    if (type === 'movie') return `https://www.vidking.net/embed/movie/${id}`;
+    return `https://www.vidking.net/embed/tv/${id}`;
   }
 
   // VidZee

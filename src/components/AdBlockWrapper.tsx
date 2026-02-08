@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAdBlocker } from '@/hooks/useAdBlocker';
 import { cn } from '@/lib/utils';
 import { ShieldCheck } from 'lucide-react';
@@ -26,12 +26,8 @@ const AdBlockWrapper: React.FC<AdBlockWrapperProps> = ({
 }) => {
   const [blockedCount, setBlockedCount] = useState(0);
   const [showBlockedAnimation, setShowBlockedAnimation] = useState(false);
-  const [clickShieldActive, setClickShieldActive] = useState(true);
-  const [clickCount, setClickCount] = useState(0);
   const [badgeExpanded, setBadgeExpanded] = useState(false);
   const [pendingPopupUrl, setPendingPopupUrl] = useState<string | null>(null);
-  const lastClickTime = useRef(0);
-  const shieldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAdBlocked = useCallback((type: string) => {
     setBlockedCount((prev) => prev + 1);
@@ -44,34 +40,6 @@ const AdBlockWrapper: React.FC<AdBlockWrapperProps> = ({
   }, []);
 
   useAdBlocker({ enabled: true, onAdBlocked: handleAdBlocked, onPopupBlocked: handlePopupBlocked });
-
-  const handleShieldClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const now = Date.now();
-    const timeSinceLastClick = now - lastClickTime.current;
-
-    if (timeSinceLastClick > 2000) {
-      setClickCount(1);
-      lastClickTime.current = now;
-      handleAdBlocked('click-shield intercept');
-      return;
-    }
-
-    lastClickTime.current = now;
-    const newCount = clickCount + 1;
-    setClickCount(newCount);
-
-    if (newCount >= 2) {
-      setClickShieldActive(false);
-      setClickCount(0);
-      if (shieldTimerRef.current) clearTimeout(shieldTimerRef.current);
-      shieldTimerRef.current = setTimeout(() => setClickShieldActive(true), 10000);
-    } else {
-      handleAdBlocked('click-shield intercept');
-    }
-  }, [clickCount, handleAdBlocked]);
 
   return (
     <div className={cn('relative', className)}>
@@ -97,18 +65,6 @@ const AdBlockWrapper: React.FC<AdBlockWrapperProps> = ({
             </span>
           )}
         </button>
-      )}
-
-      {clickShieldActive && (
-        <div
-          className="absolute inset-0 z-20 cursor-pointer"
-          onClick={handleShieldClick}
-          style={{ background: 'transparent' }}
-        >
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm text-white/70 text-xs font-medium whitespace-nowrap pointer-events-none">
-            Click twice to play (ad protection)
-          </div>
-        </div>
       )}
 
       {children}

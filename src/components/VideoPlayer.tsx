@@ -13,7 +13,7 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
-  ({ id, type, season, episode, isDub = false, title, server = 'videasy' }, ref) => {
+  ({ id, type, season, episode, isDub = false, title, server = 'vidnest' }, ref) => {
     const playerUrl = getPlayerUrl(id, type, server, season, episode, isDub);
 
     return (
