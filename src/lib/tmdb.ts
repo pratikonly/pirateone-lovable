@@ -293,13 +293,11 @@ export const MOVIE_TV_SERVERS: ServerInfo[] = [
   { id: 'vidsrc', name: 'VidSrc', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'movies111', name: '111Movies', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'twoembed', name: '2Embed', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'twoembed', name: '2Embed', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'embed2', name: 'Embed2', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidrock', name: 'VidRock', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidfast', name: 'VidFast', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidlink', name: 'VidLink', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidsrcsu', name: 'VidSrc.su', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'vidup', name: 'VidUp', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidup', name: 'VidUp', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidking', name: 'VidKing', supportsMovies: true, supportsTV: true, supportsAnime: false },
 ];

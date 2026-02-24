@@ -3,353 +3,225 @@ import { useEffect, useRef, useCallback } from 'react';
 interface UseAdBlockerOptions {
   enabled?: boolean;
   onAdBlocked?: (type: string) => void;
-  onPopupBlocked?: (url: string) => void;
 }
 
-const LEGITIMATE_PLAYER_DOMAINS = ['videasy', 'vidking', 'vidzee', 'vidsrc', 'embed', 'player'];
+const NOOP = () => null;
 
-const SUSPICIOUS_DIALOG_PATTERNS = [
-  /virus/i, /malware/i, /infected/i, /warning/i, /prize/i,
-  /winner/i, /congratulations/i, /urgent/i, /security/i,
-  /ad/i, /click/i, /leave/i, /stay/i
-];
-
-const SUSPICIOUS_MESSAGE_KEYWORDS = [
-  'ad', 'click', 'popup', 'redirect', 'track', 'analytics', 'banner'
-];
-
-const SUSPICIOUS_ELEMENT_PATTERNS = ['ad', 'popup', 'overlay', 'banner', 'sponsor'];
-
-export const useAdBlocker = ({ enabled = true, onAdBlocked, onPopupBlocked }: UseAdBlockerOptions = {}) => {
-  const originalRefs = useRef({
-    pushState: null as typeof history.pushState | null,
-    replaceState: null as typeof history.replaceState | null,
-    windowOpen: null as typeof window.open | null,
-    alert: null as typeof window.alert | null,
-    confirm: null as typeof window.confirm | null,
-    prompt: null as typeof window.prompt | null,
-  });
-  const currentUrl = useRef(window.location.href);
-  const onPopupBlockedRef = useRef(onPopupBlocked);
-  onPopupBlockedRef.current = onPopupBlocked;
-
-  const logBlock = useCallback((type: string) => {
-    console.log(`[AdBlocker] Blocked: ${type}`);
-    onAdBlocked?.(type);
-  }, [onAdBlocked]);
-
-  // Layer 1: Block window.open popups
-  useEffect(() => {
-    if (!enabled) return;
-    originalRefs.current.windowOpen = window.open.bind(window);
-    
-    const blockedOpen = function (url?: string | URL, target?: string, features?: string) {
-      const urlStr = url?.toString() || '';
-      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/') || urlStr === '') {
-        return originalRefs.current.windowOpen?.(url, target, features) ?? null;
-      }
-      logBlock(`window.open popup to ${urlStr}`);
-      onPopupBlockedRef.current?.(urlStr);
-      return null;
-    };
-    
-    window.open = blockedOpen;
-    
-    // Re-apply override periodically in case scripts override it back
-    const interval = setInterval(() => {
-      if (window.open !== blockedOpen) {
-        window.open = blockedOpen;
-      }
-    }, 500);
-    
-    return () => {
-      clearInterval(interval);
-      if (originalRefs.current.windowOpen) window.open = originalRefs.current.windowOpen;
-    };
-  }, [enabled, logBlock]);
-
-  // Layer 2: Block top-level navigation via location changes (beforeunload)
-  useEffect(() => {
-    if (!enabled) return;
-    
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // If navigation is going to an external URL, block it
-      const destination = window.location.href;
-      if (!destination.startsWith(window.location.origin)) {
-        e.preventDefault();
-        e.returnValue = '';
-        logBlock('beforeunload navigation blocked');
-      }
-    };
-    
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [enabled, logBlock]);
-
-  // Layer 3: Intercept location.assign and location.replace
-  useEffect(() => {
-    if (!enabled) return;
-    
-    const origAssign = window.location.assign.bind(window.location);
-    const origReplace = window.location.replace.bind(window.location);
-    
-    window.location.assign = function (url: string | URL) {
-      const urlStr = url.toString();
-      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
-        origAssign(url);
-      } else {
-        logBlock(`location.assign to ${urlStr}`);
-        onPopupBlockedRef.current?.(urlStr);
-      }
-    };
-    
-    window.location.replace = function (url: string | URL) {
-      const urlStr = url.toString();
-      if (urlStr.startsWith(window.location.origin) || urlStr.startsWith('/')) {
-        origReplace(url);
-      } else {
-        logBlock(`location.replace to ${urlStr}`);
-        onPopupBlockedRef.current?.(urlStr);
-      }
-    };
-    
-    return () => {
-      window.location.assign = origAssign;
-      window.location.replace = origReplace;
-    };
-  }, [enabled, logBlock]);
-
-  // Layer 4: Block form submissions to external URLs
-  useEffect(() => {
-    if (!enabled) return;
-    const handleSubmit = (e: SubmitEvent) => {
-      const form = e.target as HTMLFormElement;
-      const action = form?.action || '';
-      if (action && !action.startsWith(window.location.origin) && !action.startsWith('/')) {
-        e.preventDefault();
-        e.stopPropagation();
-        logBlock(`form submission to ${action}`);
-        onPopupBlockedRef.current?.(action);
-      }
-    };
-    document.addEventListener('submit', handleSubmit, true);
-    return () => document.removeEventListener('submit', handleSubmit, true);
-  }, [enabled, logBlock]);
-
-  // Intercept external link clicks from iframes/embeds only (not app UI links)
-  useEffect(() => {
-    if (!enabled) return;
-    
-    // Whitelist: app's own domain and known safe domains
-    const WHITELISTED_DOMAINS = [
-      window.location.origin,
-      'xpratik.vercel.app',
+const isAd = (url: string): boolean => {
+  if (!url || url === 'about:blank' || url.startsWith('javascript:')) return false;
+  // Same origin = not an ad redirect
+  try {
+    const u = new URL(url, window.location.href);
+    if (u.origin === window.location.origin) return false;
+    // Always block these known ad/redirect domains
+    const AD_DOMAINS = [
+      /doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i, /adsystem/i,
+      /openx\.net/i, /rubiconproject/i, /pubmatic\.com/i, /outbrain\.com/i,
+      /taboola\.com/i, /exoclick/i, /trafficjunky/i, /popads/i, /popcash/i,
+      /adcash/i, /hilltopads/i, /revcontent/i, /propellerads/i, /adsterra/i,
+      /juicyads/i, /trafficstars/i, /plugrush/i, /eroadvertising/i,
     ];
-    
-    const isWhitelisted = (url: string) => {
-      if (url.startsWith('#') || url.startsWith('/') || url.startsWith('javascript:')) return true;
-      return WHITELISTED_DOMAINS.some(domain => url.includes(domain));
-    };
+    if (AD_DOMAINS.some(p => p.test(u.hostname))) return true;
+    // Block anything that isn't a video streaming / CDN domain
+    const ALLOWED = [
+      /vidsrc/i, /videasy/i, /multiembed/i, /2embed/i, /autoembed/i,
+      /smashystream/i, /embedsoap/i, /moviesapi/i, /streamtape/i,
+      /dood/i, /mixdrop/i, /filemoon/i, /tmdb/i, /themoviedb/i,
+      /jwplatform/i, /jwpcdn/i, /cloudfront/i, /akamai/i, /fastly/i,
+    ];
+    // If it's not an allowed domain, it's suspicious — block it
+    if (!ALLOWED.some(p => p.test(u.hostname))) return true;
+    return false;
+  } catch {
+    return false;
+  }
+};
 
-    const handleClick = (e: MouseEvent) => {
-      const target = (e.target as HTMLElement)?.closest('a');
-      if (!target) return;
-      const href = target.getAttribute('href');
-      if (!href) return;
-      // Allow whitelisted links
-      if (isWhitelisted(href)) return;
-      // Block and ask
-      e.preventDefault();
-      e.stopPropagation();
-      logBlock(`external link click to ${href}`);
-      onPopupBlockedRef.current?.(href);
-    };
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
-  }, [enabled, logBlock]);
+const lockWindow = (win: Window, log: (t: string) => void) => {
+  try {
+    // window.open
+    win.open = NOOP as typeof window.open;
 
-  // History manipulation protection
-  useEffect(() => {
-    if (!enabled) return;
-    originalRefs.current.pushState = history.pushState.bind(history);
-    originalRefs.current.replaceState = history.replaceState.bind(history);
-
-    const isLegit = (url: string | URL | null | undefined) => {
-      if (!url) return true;
-      const s = url.toString();
-      return s.startsWith('/') || s.startsWith(window.location.origin);
-    };
-
-    history.pushState = function (state, title, url) {
-      if (isLegit(url)) originalRefs.current.pushState?.(state, title, url);
-      else logBlock(`history.pushState to ${url}`);
-    };
-    history.replaceState = function (state, title, url) {
-      if (isLegit(url)) originalRefs.current.replaceState?.(state, title, url);
-      else logBlock(`history.replaceState to ${url}`);
-    };
-
-    return () => {
-      if (originalRefs.current.pushState) history.pushState = originalRefs.current.pushState;
-      if (originalRefs.current.replaceState) history.replaceState = originalRefs.current.replaceState;
-    };
-  }, [enabled, logBlock]);
-
-  // Dialog overrides
-  useEffect(() => {
-    if (!enabled) return;
-    originalRefs.current.alert = window.alert.bind(window);
-    originalRefs.current.confirm = window.confirm.bind(window);
-    originalRefs.current.prompt = window.prompt.bind(window);
-
-    window.alert = (message?: string) => {
-      if (message && SUSPICIOUS_DIALOG_PATTERNS.some(p => p.test(message))) {
-        logBlock(`suspicious alert: ${message.substring(0, 50)}`);
-        return;
-      }
-      originalRefs.current.alert?.(message);
-    };
-
-    window.confirm = (message?: string) => {
-      if (message && SUSPICIOUS_DIALOG_PATTERNS.some(p => p.test(message))) {
-        logBlock(`suspicious confirm: ${message.substring(0, 50)}`);
-        return false;
-      }
-      return originalRefs.current.confirm?.(message) ?? false;
-    };
-
-    window.prompt = (message?: string) => {
-      logBlock(`blocked prompt: ${message?.substring(0, 50)}`);
-      return null;
-    };
-
-    return () => {
-      if (originalRefs.current.alert) window.alert = originalRefs.current.alert;
-      if (originalRefs.current.confirm) window.confirm = originalRefs.current.confirm;
-      if (originalRefs.current.prompt) window.prompt = originalRefs.current.prompt;
-    };
-  }, [enabled, logBlock]);
-
-  // Popstate / hashchange protection
-  useEffect(() => {
-    if (!enabled) return;
-    const handlePopState = (e: PopStateEvent) => {
-      const newUrl = window.location.href;
-      if (newUrl !== currentUrl.current && !newUrl.startsWith(window.location.origin)) {
-        e.preventDefault();
-        logBlock('popstate redirect');
-        window.history.forward();
-      }
-      currentUrl.current = window.location.href;
-    };
-    const handleHashChange = (e: HashChangeEvent) => {
-      if (!e.newURL.startsWith(window.location.origin)) {
-        e.preventDefault();
-        logBlock('hashchange redirect');
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('hashchange', handleHashChange);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('hashchange', handleHashChange);
-    };
-  }, [enabled, logBlock]);
-
-  // Focus/visibility monitoring
-  useEffect(() => {
-    if (!enabled) return;
-    let lastFocusTime = Date.now();
-
-    const handleBlur = () => {
-      const now = Date.now();
-      if (now - lastFocusTime < 100) {
-        logBlock('rapid focus loss (potential tab steal)');
-        setTimeout(() => window.focus(), 0);
-      }
-    };
-    const handleFocus = () => { lastFocusTime = Date.now(); };
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setTimeout(() => {
-          if (document.hidden) {
-            logBlock('unexpected visibility change');
-            window.focus();
-          }
-        }, 100);
-      }
-    };
-
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [enabled, logBlock]);
-
-  // PostMessage filtering
-  useEffect(() => {
-    if (!enabled) return;
-    const handleMessage = (e: MessageEvent) => {
-      if (e.origin === window.location.origin) return;
-      const dataStr = typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
-      if (SUSPICIOUS_MESSAGE_KEYWORDS.some(kw => dataStr.toLowerCase().includes(kw))) {
-        logBlock(`suspicious postMessage from ${e.origin}`);
-        e.stopImmediatePropagation();
-      }
-    };
-    window.addEventListener('message', handleMessage, true);
-    return () => window.removeEventListener('message', handleMessage, true);
-  }, [enabled, logBlock]);
-
-  // MutationObserver for dynamic ad injection
-  useEffect(() => {
-    if (!enabled) return;
-
-    const isLegitimatePlayerSrc = (src: string) =>
-      LEGITIMATE_PLAYER_DOMAINS.some(d => src.toLowerCase().includes(d));
-
-    const isAdElement = (el: Element): boolean => {
-      const tag = el.tagName;
-      if (tag === 'IFRAME' || tag === 'SCRIPT') {
-        const src = el.getAttribute('src') || '';
-        if (src && !isLegitimatePlayerSrc(src)) return true;
-        if (tag === 'IFRAME') {
-          const style = window.getComputedStyle(el);
-          if (style.width === '0px' || style.height === '0px' ||
-            style.visibility === 'hidden' || style.opacity === '0') return true;
-        }
-      }
-      if (tag === 'DIV') {
-        const style = window.getComputedStyle(el);
-        const zIndex = parseInt(style.zIndex) || 0;
-        if (zIndex > 1000 && (style.position === 'fixed' || style.position === 'absolute')) {
-          const cls = (el.className?.toLowerCase() || '') + ' ' + (el.id?.toLowerCase() || '');
-          if (SUSPICIOUS_ELEMENT_PATTERNS.some(p => cls.includes(p))) return true;
-        }
-      }
-      return false;
-    };
-
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType !== Node.ELEMENT_NODE) return;
-          const el = node as Element;
-          if (isAdElement(el)) { logBlock(`injected ad: ${el.tagName}`); el.remove(); return; }
-          el.querySelectorAll('iframe, script, div').forEach((child) => {
-            if (isAdElement(child)) { logBlock(`injected ad child: ${child.tagName}`); child.remove(); }
-          });
+    // location.assign / replace / href
+    const locProto = Object.getPrototypeOf(win.location) as Location;
+    ['assign', 'replace'].forEach(method => {
+      try {
+        Object.defineProperty(locProto, method, {
+          configurable: true,
+          value: function (url: string | URL) {
+            if (isAd(url?.toString() ?? '')) { log(`location.${method}`); return; }
+            (method === 'assign' ? win.location.assign : win.location.replace).call(win.location, url);
+          },
         });
-      }
+      } catch { /* ignore */ }
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [enabled, logBlock]);
+    const hrefDesc = Object.getOwnPropertyDescriptor(locProto, 'href');
+    if (hrefDesc?.set) {
+      const origSet = hrefDesc.set;
+      try {
+        Object.defineProperty(locProto, 'href', {
+          configurable: true,
+          get: hrefDesc.get,
+          set(url: string) {
+            if (isAd(url)) { log('location.href'); return; }
+            origSet.call(win.location, url);
+          },
+        });
+      } catch { /* ignore */ }
+    }
+
+    // history navigation to external URLs
+    const origPush = win.history.pushState.bind(win.history);
+    const origReplace = win.history.replaceState.bind(win.history);
+    win.history.pushState = (state, title, url) => {
+      if (url && isAd(url.toString())) { log('history.pushState'); return; }
+      origPush(state, title, url);
+    };
+    win.history.replaceState = (state, title, url) => {
+      if (url && isAd(url.toString())) { log('history.replaceState'); return; }
+      origReplace(state, title, url);
+    };
+
+    // Dialogs
+    win.alert = (msg?: string) => { if (msg) log('alert-blocked'); };
+    win.confirm = () => { log('confirm-blocked'); return false; };
+    win.prompt = () => { log('prompt-blocked'); return null; };
+  } catch { /* cross-origin iframe — can't access contentWindow, that's fine */ }
+};
+
+export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOptions = {}) => {
+  const logRef = useRef(onAdBlocked);
+  logRef.current = onAdBlocked;
+  const log = useCallback((type: string) => { logRef.current?.(type); }, []);
+  const iframesLocked = useRef<Set<HTMLIFrameElement>>(new Set());
+
+  // ── 1. Lock parent window ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    lockWindow(window, log);
+    // Re-enforce window.open every 50ms — ad scripts try to overwrite it
+    const iv = setInterval(() => {
+      if (window.open !== (NOOP as typeof window.open)) {
+        window.open = NOOP as typeof window.open;
+        log('popup-overwrite-attempt');
+      }
+    }, 50);
+    return () => clearInterval(iv);
+  }, [enabled, log]);
+
+  // ── 2. Lock same-origin iframes' contentWindow after they load ───────────────
+  useEffect(() => {
+    if (!enabled) return;
+
+    const lockIframe = (iframe: HTMLIFrameElement) => {
+      if (iframesLocked.current.has(iframe)) return;
+      iframesLocked.current.add(iframe);
+      const doLock = () => {
+        try {
+          if (iframe.contentWindow) lockWindow(iframe.contentWindow, log);
+        } catch { /* cross-origin, skip */ }
+      };
+      iframe.addEventListener('load', doLock);
+      doLock(); // Try immediately in case already loaded
+    };
+
+    // Lock existing iframes
+    document.querySelectorAll<HTMLIFrameElement>('iframe').forEach(lockIframe);
+
+    // Lock future iframes
+    const observer = new MutationObserver(mutations => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLIFrameElement) {
+            // Remove known ad iframes entirely
+            const src = node.src || '';
+            const AD_IFRAME = [
+              /doubleclick/i, /googlesyndication/i, /adnxs/i, /adsystem/i,
+              /popads/i, /popcash/i, /exoclick/i, /propellerads/i, /adsterra/i,
+              /trafficjunky/i, /juicyads/i,
+            ];
+            if (AD_IFRAME.some(p => p.test(src))) {
+              node.remove();
+              log('injected-iframe');
+            } else {
+              lockIframe(node);
+            }
+          }
+          // Remove injected ad scripts
+          if (node instanceof HTMLScriptElement) {
+            const src = node.src || '';
+            const AD_SCRIPTS = [/doubleclick/i, /googlesyndication/i, /adnxs/i, /adsystem/i, /exoclick/i];
+            if (src && AD_SCRIPTS.some(p => p.test(src))) {
+              node.remove();
+              log('injected-script');
+            }
+          }
+        }
+      }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    return () => { observer.disconnect(); iframesLocked.current.clear(); };
+  }, [enabled, log]);
+
+  // ── 3. Block external anchor / form submissions ──────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    const handleClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement)?.closest('a');
+      if (!a) return;
+      const href = a.getAttribute('href') ?? '';
+      const target = a.getAttribute('target') ?? '';
+      if (isAd(href) || ['_blank', '_top', '_parent'].includes(target) && isAd(href)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        logRef.current?.('external-link');
+      }
+    };
+    const handleSubmit = (e: SubmitEvent) => {
+      const action = (e.target as HTMLFormElement)?.action ?? '';
+      if (isAd(action)) { e.preventDefault(); e.stopImmediatePropagation(); logRef.current?.('form-submit'); }
+    };
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('submit', handleSubmit, true);
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('submit', handleSubmit, true);
+    };
+  }, [enabled]);
+
+  // ── 4. Block postMessage navigation commands ─────────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    const NAV = /\b(window\.location|top\.location|parent\.location|self\.location)\s*[=.]/i;
+    const handle = (e: MessageEvent) => {
+      if (typeof e.data === 'string' && NAV.test(e.data)) {
+        e.stopImmediatePropagation();
+        log('postMessage-nav');
+      }
+    };
+    window.addEventListener('message', handle, true);
+    return () => window.removeEventListener('message', handle, true);
+  }, [enabled, log]);
+
+  // ── 5. Block beforeunload hijacks ────────────────────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    const block = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', block);
+    return () => window.removeEventListener('beforeunload', block);
+  }, [enabled]);
+
+  // ── 6. Block document.write/writeln injection ────────────────────────────────
+  useEffect(() => {
+    if (!enabled) return;
+    const origWrite = document.write.bind(document);
+    const origWriteln = document.writeln.bind(document);
+    const suspicious = (s: string) => /<(script|iframe)/i.test(s) && /https?:/i.test(s);
+    document.write = (s: string) => { if (suspicious(s)) log('doc.write'); else origWrite(s); };
+    document.writeln = (s: string) => { if (suspicious(s)) log('doc.writeln'); else origWriteln(s); };
+    return () => { document.write = origWrite; document.writeln = origWriteln; };
+  }, [enabled, log]);
 
   return { isEnabled: enabled };
 };
