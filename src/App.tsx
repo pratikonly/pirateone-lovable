@@ -15,6 +15,7 @@ import Watchlist from "./pages/Watchlist";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 import Watch from "./pages/Watch";
+import Sports from "./pages/Sports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/watchlist" element={<Watchlist />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/help" element={<Help />} />
+              <Route path="/sports" element={<Sports />} />
               <Route path="/watch/:type/:id" element={<Watch />} />
             </Route>
             <Route path="*" element={<NotFound />} />
