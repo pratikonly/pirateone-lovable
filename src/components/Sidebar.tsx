@@ -164,20 +164,20 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </NavLink>
         ))}
 
-        {/* Sports - Strike themed, separated */}
-        <div className="pt-3 mt-3 border-t border-sidebar-border">
+        {/* Sports - Strike themed, separated with glass effect */}
+        <div className="pt-4 mt-4 border-t border-sidebar-border">
           <NavLink
             to={sportsItem.path}
             onClick={handleNavClick}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group',
               isActive(sportsItem.path)
-                ? 'bg-[#00e5ff]/15 text-[#00e5ff] border-l-2 border-[#00e5ff]'
-                : 'text-sidebar-foreground hover:text-[#00e5ff] hover:bg-[#00e5ff]/5'
+                ? 'bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30 shadow-[0_0_12px_rgba(0,229,255,0.15)]'
+                : 'text-sidebar-foreground bg-[#00e5ff]/[0.03] border border-[#00e5ff]/10 backdrop-blur-sm hover:bg-[#00e5ff]/10 hover:text-[#00e5ff] hover:border-[#00e5ff]/30 hover:shadow-[0_0_16px_rgba(0,229,255,0.2)]'
             )}
           >
             <span className={cn(
-              'transition-colors',
+              'transition-colors duration-300',
               isActive(sportsItem.path) ? 'text-[#00e5ff]' : 'text-sidebar-foreground group-hover:text-[#00e5ff]'
             )}>
               {sportsItem.icon}
