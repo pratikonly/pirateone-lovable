@@ -17,39 +17,43 @@ const Settings = () => {
   const { identity, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user } = useAuth();
 
-  // Avatar upload state
+  // Avatar state — uses custom_avatar_url column from profiles table
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Notification settings
+  // Settings state
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(true);
-
-  // Playback settings
   const [autoplay, setAutoplay] = useState(true);
   const [defaultQuality, setDefaultQuality] = useState('auto');
-
-  // Privacy settings
   const [saveWatchHistory, setSaveWatchHistory] = useState(true);
 
-  // Load existing avatar on mount
+  // Load existing custom avatar from profiles table
   useEffect(() => {
     const loadAvatar = async () => {
       if (!user) return;
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
-          .select('avatar_url')
+          .select('custom_avatar_url')
           .eq('id', user.id)
           .maybeSingle();
-        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+
+        if (error) {
+          console.error('Error loading avatar:', error);
+          return;
+        }
+        if (data?.custom_avatar_url) {
+          setAvatarUrl(data.custom_avatar_url);
+        }
       } catch (err) {
-        // profiles table may not exist yet — that's fine
+        console.error('Failed to load avatar:', err);
       }
     };
     loadAvatar();
   }, [user]);
 
+  // Load local settings
   useEffect(() => {
     const savedWelcome = localStorage.getItem('pirateone_welcome_shown');
     setShowWelcomeNotification(!savedWelcome);
@@ -72,11 +76,13 @@ const Settings = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    // Validate file
+    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({ title: 'Please select an image file', variant: 'destructive' });
       return;
     }
+
+    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({ title: 'Image must be under 5MB', variant: 'destructive' });
       return;
@@ -84,13 +90,13 @@ const Settings = () => {
 
     setAvatarUploading(true);
     try {
-      const ext = file.name.split('.').pop();
+      const ext = file.name.split('.').pop() || 'jpg';
       const filePath = `${user.id}/avatar.${ext}`;
 
-      // Upload to Supabase storage
+      // Upload to Supabase storage bucket "avatars"
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { upsert: true, contentType: file.type });
 
       if (uploadError) throw uploadError;
 
@@ -101,10 +107,13 @@ const Settings = () => {
 
       const publicUrl = urlData.publicUrl;
 
-      // Save to profiles table
+      // Save to profiles table using correct column: custom_avatar_url
       const { error: dbError } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, avatar_url: publicUrl }, { onConflict: 'id' });
+        .upsert(
+          { id: user.id, custom_avatar_url: publicUrl, updated_at: new Date().toISOString() },
+          { onConflict: 'id' }
+        );
 
       if (dbError) throw dbError;
 
@@ -112,20 +121,23 @@ const Settings = () => {
       toast({ title: 'Profile picture updated!' });
     } catch (err: any) {
       console.error('Avatar upload error:', err);
-      toast({ title: 'Upload failed', description: err.message || 'Please try again', variant: 'destructive' });
+      toast({
+        title: 'Upload failed',
+        description: err.message || 'Please try again',
+        variant: 'destructive',
+      });
     } finally {
       setAvatarUploading(false);
-      // Reset input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
+  // Feature fix: use fresh identity from context after regeneration
   const handleRegenerateIdentity = async () => {
     try {
       await regenerateIdentity();
-      // Identity state updates in context — read fresh value from context after update
       toast({ title: 'New pirate identity assigned!' });
-    } catch (error) {
+    } catch {
       toast({ title: 'Failed to get new identity', variant: 'destructive' });
     }
   };
@@ -133,7 +145,7 @@ const Settings = () => {
   const handleResetWelcomeNotification = () => {
     localStorage.removeItem('pirateone_welcome_shown');
     setShowWelcomeNotification(true);
-    toast({ title: 'Welcome notification reset' });
+    toast({ title: 'Welcome notification reset', description: 'You will see it on next visit' });
   };
 
   const handleAutoplayChange = (enabled: boolean) => {
@@ -156,7 +168,7 @@ const Settings = () => {
 
   const handleClearWatchlist = () => {
     localStorage.removeItem('pirateone_watchlist');
-    toast({ title: 'Watchlist cleared' });
+    toast({ title: 'Watchlist cleared', description: 'Your watchlist has been cleared' });
   };
 
   const handleClearAllData = () => {
@@ -167,12 +179,12 @@ const Settings = () => {
         localStorage.removeItem(key);
       }
     });
-    toast({ title: 'All data cleared' });
+    toast({ title: 'All data cleared', description: 'All local data has been cleared (except login)' });
   };
 
-  // Determine which avatar to show: uploaded > pirate identity > initials
+  // Display priority: uploaded custom avatar > pirate identity image > initials
   const displayAvatarUrl = avatarUrl || identity?.imagePath || null;
-  const displayName = identity?.name || user?.email || 'Guest Pirate';
+  const displayName = identity?.name || 'Guest Pirate';
 
   return (
     <div className="p-4 lg:p-8 pt-20 max-w-2xl">
@@ -180,7 +192,7 @@ const Settings = () => {
 
       <div className="space-y-6">
 
-        {/* Profile / Avatar */}
+        {/* Profile Picture — only shown when signed in */}
         {user && (
           <Card className="bg-card border-border">
             <CardHeader>
@@ -188,11 +200,11 @@ const Settings = () => {
                 <Camera className="w-5 h-5 text-primary" />
                 Profile Picture
               </CardTitle>
-              <CardDescription>Upload your own profile picture</CardDescription>
+              <CardDescription>Upload a custom profile picture</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
-                {/* Clickable avatar */}
+                {/* Clickable avatar with hover overlay */}
                 <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
                   <Avatar className="w-20 h-20 border-2 border-primary/50">
                     {displayAvatarUrl ? (
@@ -202,10 +214,13 @@ const Settings = () => {
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
+
                   {/* Hover overlay */}
-                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <Upload className="w-5 h-5 text-white" />
                   </div>
+
+                  {/* Upload spinner */}
                   {avatarUploading && (
                     <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -213,10 +228,12 @@ const Settings = () => {
                   )}
                 </div>
 
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{displayName}</p>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Click avatar to upload · Max 5MB · JPG, PNG, WebP</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{displayName}</p>
+                  <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click avatar to upload · Max 5MB · JPG, PNG, WebP
+                  </p>
                 </div>
               </div>
 
@@ -397,3 +414,7 @@ const Settings = () => {
 };
 
 export default Settings;
+
+
+
+
