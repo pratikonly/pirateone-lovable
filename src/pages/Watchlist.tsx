@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, List, HardDrive, Cloud } from 'lucide-react';
 import { Movie, getBackdropUrl } from '@/lib/tmdb';
@@ -18,7 +18,8 @@ const Watchlist = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const loadWatchlist = async () => {
+  // Feature E fix: useCallback so useEffect dep is stable
+  const loadWatchlist = useCallback(async () => {
     setLoading(true);
     try {
       if (user) {
@@ -29,20 +30,23 @@ const Watchlist = () => {
       }
     } catch (err) {
       console.error('Failed to load watchlist:', err);
-      // Fallback to local
+      // Fallback to local storage
       setWatchlist(getLocalWatchlist());
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     loadWatchlist();
-  }, [user]);
+  }, [loadWatchlist]);
 
   // Auto-rotate backdrop
   useEffect(() => {
-    if (watchlist.length === 0) { setBackdropUrl(null); return; }
+    if (watchlist.length === 0) {
+      setBackdropUrl(null);
+      return;
+    }
     const updateBackdrop = () => {
       const movie = watchlist[currentIndexRef.current % watchlist.length];
       if (movie?.backdrop_path) setBackdropUrl(getBackdropUrl(movie.backdrop_path, 'original'));
@@ -52,18 +56,26 @@ const Watchlist = () => {
       currentIndexRef.current = (currentIndexRef.current + 1) % watchlist.length;
       updateBackdrop();
     }, 8000);
-    return () => { clearInterval(interval); setBackdropUrl(null); };
+    return () => {
+      clearInterval(interval);
+      setBackdropUrl(null);
+    };
   }, [watchlist, setBackdropUrl]);
 
-  const handleRemove = async (id: number, mediaType: 'movie' | 'tv') => {
+  // Feature E fix: proper type narrowing for mediaType
+  const handleRemove = async (id: number, mediaType: string) => {
+    const safeType = (mediaType === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv';
     try {
       if (user) {
-        await removeFromWatchlistDb(id, mediaType);
+        await removeFromWatchlistDb(id, safeType);
       } else {
-        removeLocal(id, mediaType);
+        removeLocal(id, safeType);
       }
-      loadWatchlist();
-    } catch {
+      // Update local state immediately without full reload
+      setWatchlist(prev => prev.filter(m => !(m.id === id && m.media_type === mediaType)));
+      toast.success('Removed from watchlist');
+    } catch (err) {
+      console.error('Remove failed:', err);
       toast.error('Failed to remove');
     }
   };
@@ -85,9 +97,11 @@ const Watchlist = () => {
   if (loading) {
     return (
       <div className="p-8 pt-20">
-        <h1 className="font-display text-4xl mb-8">My Watchlist</h1>
+        <h1 className="text-4xl font-bold mb-8">My Watchlist</h1>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="aspect-[2/3] bg-card rounded-lg animate-pulse" />)}
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="aspect-[2/3] bg-card rounded-lg animate-pulse" />
+          ))}
         </div>
       </div>
     );
@@ -96,7 +110,7 @@ const Watchlist = () => {
   if (watchlist.length === 0) {
     return (
       <div className="p-8 pt-20">
-        <h1 className="font-display text-4xl mb-8">My Watchlist</h1>
+        <h1 className="text-4xl font-bold mb-8">My Watchlist</h1>
         <div className="text-center py-16">
           <List className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground text-lg">Your watchlist is empty</p>
@@ -115,7 +129,7 @@ const Watchlist = () => {
     <div className="p-8 pt-20">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <h1 className="font-display text-4xl">My Watchlist</h1>
+          <h1 className="text-4xl font-bold">My Watchlist</h1>
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             {user ? <Cloud className="w-4 h-4" /> : <HardDrive className="w-4 h-4" />}
             {user ? 'Synced' : 'Saved locally'}
@@ -126,7 +140,7 @@ const Watchlist = () => {
           Clear All
         </Button>
       </div>
-      
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {watchlist.map((movie, index) => (
           <div key={`${movie.id}-${movie.media_type}`} className="relative group">
