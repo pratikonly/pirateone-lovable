@@ -14,7 +14,174 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          custom_avatar_url: string | null
+          id: string
+          pirate_bounty: string | null
+          pirate_image_path: string | null
+          pirate_name: string
+          pirate_role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_avatar_url?: string | null
+          id?: string
+          pirate_bounty?: string | null
+          pirate_image_path?: string | null
+          pirate_name?: string
+          pirate_role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_avatar_url?: string | null
+          id?: string
+          pirate_bounty?: string | null
+          pirate_image_path?: string | null
+          pirate_name?: string
+          pirate_role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      show_status: {
+        Row: {
+          backdrop_path: string | null
+          created_at: string
+          id: string
+          last_episode: number | null
+          last_season: number | null
+          media_type: string
+          overview: string | null
+          poster_path: string | null
+          status: Database["public"]["Enums"]["show_status_enum"]
+          title: string
+          tmdb_id: number
+          updated_at: string
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          backdrop_path?: string | null
+          created_at?: string
+          id?: string
+          last_episode?: number | null
+          last_season?: number | null
+          media_type: string
+          overview?: string | null
+          poster_path?: string | null
+          status: Database["public"]["Enums"]["show_status_enum"]
+          title: string
+          tmdb_id: number
+          updated_at?: string
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          backdrop_path?: string | null
+          created_at?: string
+          id?: string
+          last_episode?: number | null
+          last_season?: number | null
+          media_type?: string
+          overview?: string | null
+          poster_path?: string | null
+          status?: Database["public"]["Enums"]["show_status_enum"]
+          title?: string
+          tmdb_id?: number
+          updated_at?: string
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
+      watch_history: {
+        Row: {
+          episode: number | null
+          id: string
+          media_type: string
+          poster_path: string | null
+          season: number | null
+          title: string
+          tmdb_id: number
+          user_id: string
+          watched_at: string
+        }
+        Insert: {
+          episode?: number | null
+          id?: string
+          media_type: string
+          poster_path?: string | null
+          season?: number | null
+          title: string
+          tmdb_id: number
+          user_id: string
+          watched_at?: string
+        }
+        Update: {
+          episode?: number | null
+          id?: string
+          media_type?: string
+          poster_path?: string | null
+          season?: number | null
+          title?: string
+          tmdb_id?: number
+          user_id?: string
+          watched_at?: string
+        }
+        Relationships: []
+      }
+      watchlist: {
+        Row: {
+          added_at: string
+          backdrop_path: string | null
+          first_air_date: string | null
+          id: string
+          media_type: string
+          overview: string | null
+          poster_path: string | null
+          release_date: string | null
+          title: string
+          tmdb_id: number
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          added_at?: string
+          backdrop_path?: string | null
+          first_air_date?: string | null
+          id?: string
+          media_type: string
+          overview?: string | null
+          poster_path?: string | null
+          release_date?: string | null
+          title: string
+          tmdb_id: number
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          added_at?: string
+          backdrop_path?: string | null
+          first_air_date?: string | null
+          id?: string
+          media_type?: string
+          overview?: string | null
+          poster_path?: string | null
+          release_date?: string | null
+          title?: string
+          tmdb_id?: number
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +190,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      show_status_enum: "watching" | "completed" | "dropped"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +317,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      show_status_enum: ["watching", "completed", "dropped"],
+    },
   },
 } as const
