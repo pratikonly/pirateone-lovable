@@ -1,6 +1,5 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useCallback } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
-import AdBlockWrapper from '@/components/AdBlockWrapper';
 
 interface VideoPlayerProps {
   id: number;
@@ -13,89 +12,175 @@ interface VideoPlayerProps {
   onAdBlocked?: (count: number) => void;
 }
 
+const ALLOWED_DOMAINS = [
+  'videasy.net', 'vidnest.fun', 'vidsrc.cc', 'vidzee.wtf', 'vidify.top',
+  'autoembed.cc', 'vidsrc-embed.ru', 'vidsrc.su', 'vidlink.pro', 'vidfast.pro',
+  'vidrock.net', '111movies.com', '2embed.cc', 'embed.su', 'vidup.to',
+  'vidking.net', 'youtube.com', 'themoviedb.org',
+];
+
+function isAllowedUrl(url: string): boolean {
+  try {
+    const u = new URL(url, window.location.href);
+    if (u.origin === window.location.origin) return true;
+    return ALLOWED_DOMAINS.some(d => u.hostname === d || u.hostname.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
+const NOOP = () => null;
+
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
   ({ id, type, season, episode, isDub = false, title, server = 'videasy', onAdBlocked }, ref) => {
     const playerUrl = getPlayerUrl(id, type, server, season, episode, isDub);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const shieldRef = useRef<HTMLDivElement>(null);
     const adCountRef = useRef(0);
-    // Has the user clicked once to activate the player?
-    const [activated, setActivated] = useState(false);
-    const activatedRef = useRef(false);
-    const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const openLockRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const lockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const onAdBlockedRef = useRef(onAdBlocked);
 
-    const noop = () => null;
+    useEffect(() => { onAdBlockedRef.current = onAdBlocked; }, [onAdBlocked]);
 
-    const lockWindowOpen = (durationMs: number) => {
-      window.open = noop as typeof window.open;
-      if (openLockRef.current) clearInterval(openLockRef.current);
-      const deadline = Date.now() + durationMs;
-      openLockRef.current = setInterval(() => {
-        if (window.open !== (noop as typeof window.open)) {
-          window.open = noop as typeof window.open;
-          adCountRef.current += 1;
-          onAdBlocked?.(adCountRef.current);
-        }
-        if (Date.now() >= deadline) {
-          clearInterval(openLockRef.current!);
-          openLockRef.current = null;
-        }
-      }, 30);
-    };
+    const reportBlock = useCallback(() => {
+      adCountRef.current += 1;
+      onAdBlockedRef.current?.(adCountRef.current);
+    }, []);
 
-    // ── Shield logic ─────────────────────────────────────────────────────────
-    // Phase 1 (before first click): shield is ON — intercepts misclicks / accidental
-    //   touches, locks ads, then lowers itself so click reaches iframe.
-    // Phase 2 (after first click / activated): shield is OFF permanently.
-    //   We rely purely on window-level ad blockers from useAdBlocker.
-    //   The only time we re-raise the shield is if focus leaves the window
-    //   (indicating a popup/redirect) — we close it immediately.
-
-    const handlePointerDown = () => {
-      if (activatedRef.current) return; // Shield is gone, shouldn't fire
-
-      // Lock ads for 2 seconds starting NOW
-      lockWindowOpen(2000);
-
-      // Lower shield synchronously so the upcoming 'click' hits the iframe directly
-      const shield = shieldRef.current;
-      if (shield) shield.style.pointerEvents = 'none';
-
-      // Mark as activated after a short delay (let the click fully process first)
-      if (restoreTimer.current) clearTimeout(restoreTimer.current);
-      restoreTimer.current = setTimeout(() => {
-        activatedRef.current = true;
-        setActivated(true); // removes shield from DOM entirely
-      }, 400);
-    };
-
-    // After activation: if the window loses focus, it means something tried to
-    // open a new tab/window. Close it immediately and re-focus.
+    // ── 1. Lock window.open permanently, re-enforce every 100ms ──────────────
     useEffect(() => {
-      if (!activated) return;
+      window.open = NOOP as typeof window.open;
+      lockIntervalRef.current = setInterval(() => {
+        if (window.open !== (NOOP as typeof window.open)) {
+          window.open = NOOP as typeof window.open;
+          reportBlock();
+        }
+      }, 100);
+      return () => {
+        if (lockIntervalRef.current) clearInterval(lockIntervalRef.current);
+      };
+    }, [reportBlock]);
+
+    // ── 2. Blur → popup detector: refocus within 20ms ────────────────────────
+    useEffect(() => {
       const handleBlur = () => {
-        // Give 80ms — if we're still blurred it's likely a popup
-        const t = setTimeout(() => {
+        if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
+        blurTimerRef.current = setTimeout(() => {
           window.focus();
-          // Try to close any popup that may have opened
-          // (window.open is already blocked, but just in case)
-          lockWindowOpen(1000);
-          adCountRef.current += 1;
-          onAdBlocked?.(adCountRef.current);
-        }, 80);
-        return () => clearTimeout(t);
+          reportBlock();
+        }, 20);
+      };
+      const handleFocus = () => {
+        if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
       };
       window.addEventListener('blur', handleBlur);
-      return () => window.removeEventListener('blur', handleBlur);
-    }, [activated]);
-
-    useEffect(() => {
+      window.addEventListener('focus', handleFocus);
       return () => {
-        if (restoreTimer.current) clearTimeout(restoreTimer.current);
-        if (openLockRef.current) clearInterval(openLockRef.current);
+        window.removeEventListener('blur', handleBlur);
+        window.removeEventListener('focus', handleFocus);
+        if (blurTimerRef.current) clearTimeout(blurTimerRef.current);
       };
+    }, [reportBlock]);
+
+    // ── 3. Block external anchor clicks ──────────────────────────────────────
+    useEffect(() => {
+      const handleClick = (e: MouseEvent) => {
+        const anchor = (e.target as HTMLElement)?.closest('a');
+        if (!anchor) return;
+        const href = anchor.getAttribute('href') ?? '';
+        const target = anchor.getAttribute('target') ?? '';
+        if (!href) return;
+        const isExternal = href.startsWith('http') && !isAllowedUrl(href);
+        const isNewTab = ['_blank', '_top', '_parent'].includes(target);
+        if (isExternal || (isNewTab && !isAllowedUrl(href))) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          reportBlock();
+        }
+      };
+      document.addEventListener('click', handleClick, true);
+      return () => document.removeEventListener('click', handleClick, true);
+    }, [reportBlock]);
+
+    // ── 4. Block beforeunload hijacks ─────────────────────────────────────────
+    useEffect(() => {
+      const handle = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = '';
+      };
+      window.addEventListener('beforeunload', handle);
+      return () => window.removeEventListener('beforeunload', handle);
     }, []);
+
+    // ── 5. Block postMessage navigation ──────────────────────────────────────
+    useEffect(() => {
+      const NAV = /\b(window\.location|top\.location|parent\.location)\s*[=.]/i;
+      const OPEN = /window\.open\s*\(/i;
+      const handle = (e: MessageEvent) => {
+        if (typeof e.data === 'string' && (NAV.test(e.data) || OPEN.test(e.data))) {
+          e.stopImmediatePropagation();
+          reportBlock();
+        }
+      };
+      window.addEventListener('message', handle, true);
+      return () => window.removeEventListener('message', handle, true);
+    }, [reportBlock]);
+
+    // ── 6. Remove injected ad iframes/scripts ────────────────────────────────
+    useEffect(() => {
+      const AD = [
+        /doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
+        /exoclick/i, /trafficjunky/i, /popads/i, /popcash/i,
+        /propellerads/i, /adsterra/i, /juicyads/i,
+      ];
+      const isAd = (src: string) => AD.some(p => p.test(src));
+      const observer = new MutationObserver(mutations => {
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (
+              (node instanceof HTMLIFrameElement || node instanceof HTMLScriptElement) &&
+              isAd(node.src || '')
+            ) {
+              node.remove();
+              reportBlock();
+            }
+          }
+        }
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      return () => observer.disconnect();
+    }, [reportBlock]);
+
+    // ── 7. Block location.assign / location.replace redirects ────────────────
+    useEffect(() => {
+      const proto = Object.getPrototypeOf(window.location) as Location;
+      const origAssign = window.location.assign.bind(window.location);
+      const origReplace = window.location.replace.bind(window.location);
+
+      try {
+        Object.defineProperty(proto, 'assign', {
+          configurable: true,
+          value(url: string) {
+            if (isAllowedUrl(url)) origAssign(url);
+            else reportBlock();
+          },
+        });
+        Object.defineProperty(proto, 'replace', {
+          configurable: true,
+          value(url: string) {
+            if (isAllowedUrl(url)) origReplace(url);
+            else reportBlock();
+          },
+        });
+      } catch { /* cross-origin restriction — skip */ }
+
+      return () => {
+        try {
+          Object.defineProperty(proto, 'assign', { configurable: true, value: origAssign });
+          Object.defineProperty(proto, 'replace', { configurable: true, value: origReplace });
+        } catch { /* ignore */ }
+      };
+    }, [reportBlock]);
 
     // Merge refs
     const setIframeRef = (el: HTMLIFrameElement | null) => {
@@ -105,32 +190,33 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     };
 
     return (
-      <AdBlockWrapper onAdBlocked={(count) => { adCountRef.current = count; onAdBlocked?.(count); }}>
-        <div className="relative w-full" style={{ paddingBottom: '56.25%', height: 0 }}>
-          <iframe
-            ref={setIframeRef}
-            src={playerUrl}
-            title={title || 'Video player'}
-            className="absolute top-0 left-0 w-full h-full rounded-lg"
-            allowFullScreen
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerPolicy="no-referrer"
-            style={{ border: 'none' }}
-          />
-
-          {/* Shield overlay — only present before first click */}
-          {!activated && (
-            <div
-              ref={shieldRef}
-              onPointerDown={handlePointerDown}
-              onContextMenu={e => e.preventDefault()}
-              className="absolute inset-0 z-10 cursor-pointer"
-              style={{ background: 'transparent', pointerEvents: 'auto' }}
-              aria-hidden="true"
-            />
-          )}
-        </div>
-      </AdBlockWrapper>
+      <div className="relative w-full" style={{ paddingBottom: '56.25%', height: 0 }}>
+        <iframe
+          ref={setIframeRef}
+          src={playerUrl}
+          title={title || 'Video player'}
+          className="absolute top-0 left-0 w-full h-full rounded-lg"
+          /*
+           * CRITICAL: sandbox WITHOUT allow-popups and WITHOUT allow-top-navigation
+           * This is the browser's own hard block — embeds CANNOT open new tabs
+           * or navigate the top frame. Players still work because:
+           * - allow-scripts     → player JS runs fine
+           * - allow-same-origin → player can talk to its own server
+           * - allow-forms       → any form inside works
+           * - allow-presentation → fullscreen presentations
+           *
+           * What is intentionally MISSING:
+           * - allow-popups              → cannot open new tabs AT ALL
+           * - allow-top-navigation      → cannot redirect parent page
+           * - allow-popups-to-escape-sandbox → no sandbox escape
+           */
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+          allowFullScreen
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          referrerPolicy="no-referrer"
+          style={{ border: 'none' }}
+        />
+      </div>
     );
   }
 );
