@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, CheckCircle2, XCircle, Play, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,21 +21,27 @@ const Library = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const loadShows = async () => {
-    if (!user) return;
+  // Feature D fix: wrap in useCallback so useEffect dep is stable
+  const loadShows = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
       const data = await getAllShowStatuses();
       setShows(data);
     } catch (err) {
       console.error('Failed to load library:', err);
+      toast.error('Failed to load library');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     loadShows();
-  }, [user]);
+  }, [loadShows]);
 
   const handleRemove = async (tmdbId: number, mediaType: string) => {
     try {
@@ -56,28 +62,32 @@ const Library = () => {
     }
   };
 
-  const filtered = shows.filter(s => s.status === activeTab);
-
   if (!user) {
     return (
       <div className="p-8 pt-20 text-center">
-        <h1 className="font-display text-4xl mb-4">My Library</h1>
+        <h1 className="text-4xl font-bold mb-4">My Library</h1>
         <p className="text-muted-foreground">Sign in to track your shows</p>
         <Button onClick={() => navigate('/auth')} className="mt-4">Sign In</Button>
       </div>
     );
   }
 
+  const filtered = shows.filter(s => s.status === activeTab);
+
   return (
     <div className="p-4 lg:p-8 pt-20">
-      <h1 className="font-display text-3xl lg:text-4xl mb-6">My Library</h1>
+      <h1 className="text-3xl lg:text-4xl font-bold mb-6">My Library</h1>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-card border border-border mb-6">
           {(Object.entries(statusConfig) as [ShowStatusType, typeof statusConfig[ShowStatusType]][]).map(([key, cfg]) => {
             const count = shows.filter(s => s.status === key).length;
             return (
-              <TabsTrigger key={key} value={key} className="flex items-center gap-1.5 data-[state=active]:bg-primary/15">
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="flex items-center gap-1.5 data-[state=active]:bg-primary/15"
+              >
                 <span className={cfg.color}>{cfg.icon}</span>
                 <span>{cfg.label}</span>
                 {count > 0 && (
@@ -99,7 +109,10 @@ const Library = () => {
             ) : filtered.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-muted-foreground text-lg">
-                  No {statusConfig[status as ShowStatusType].label.toLowerCase()} shows
+                  No {statusConfig[status as ShowStatusType].label.toLowerCase()} shows yet
+                </p>
+                <p className="text-muted-foreground text-sm mt-2">
+                  Go to any movie or show and mark it as {status}
                 </p>
               </div>
             ) : (
@@ -118,7 +131,7 @@ const Library = () => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                        <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
                           No Poster
                         </div>
                       )}
@@ -127,7 +140,7 @@ const Library = () => {
                     {/* Info */}
                     <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
                       <div>
-                        <h3 className="font-medium text-sm text-foreground truncate">{show.title}</h3>
+                        <h3 className="font-semibold text-sm text-foreground truncate">{show.title}</h3>
                         <p className="text-xs text-muted-foreground mt-0.5 capitalize">{show.media_type}</p>
                         {show.last_season && show.last_episode && (
                           <p className="text-xs text-primary mt-1">
