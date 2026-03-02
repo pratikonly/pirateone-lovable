@@ -20,8 +20,14 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
+    // Basic email validation
+    if (!email.includes('@') || !email.includes('.')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
     try {
       if (isLogin) {
         const { error } = await signIn(email, password);
@@ -41,8 +47,15 @@ const Auth = () => {
         if (error) {
           toast.error(error.message);
         } else {
-          toast.success('Account created! Check your email to confirm, or log in directly.');
-          setIsLogin(true);
+          // Feature B: Auto sign in after signup — no email confirm needed
+          const { error: signInError } = await signIn(email, password);
+          if (signInError) {
+            toast.success('Account created! Please sign in.');
+            setIsLogin(true);
+          } else {
+            toast.success('Welcome aboard, pirate!');
+            navigate('/');
+          }
         }
       }
     } finally {
@@ -53,7 +66,6 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <img src={pirateOneLogo} alt="PirateOne" className="h-12 object-contain invert dark:invert-0 mb-3" />
           <p className="text-muted-foreground text-sm">Your pirate streaming haven</p>
@@ -61,7 +73,7 @@ const Auth = () => {
 
         <Card className="bg-card border-border">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="font-display text-2xl flex items-center justify-center gap-2">
+            <CardTitle className="text-2xl flex items-center justify-center gap-2">
               <Anchor className="w-6 h-6 text-primary" />
               {isLogin ? 'Welcome Back' : 'Join the Crew'}
             </CardTitle>
