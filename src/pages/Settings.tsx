@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Bell, Eye, EyeOff, Trash2, User, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, Eye, EyeOff, Trash2, User, RefreshCw, Upload, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -9,44 +9,123 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getInitials } from '@/lib/pirateIdentity';
 import { usePirateIdentity } from '@/contexts/PirateIdentityContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const { toast } = useToast();
-  
-  // Pirate Identity from shared context
   const { identity, isRegenerating, regenerateIdentity } = usePirateIdentity();
-  
+  const { user } = useAuth();
+
+  // Avatar upload state
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Notification settings
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(true);
-  
+
   // Playback settings
   const [autoplay, setAutoplay] = useState(true);
   const [defaultQuality, setDefaultQuality] = useState('auto');
-  
+
   // Privacy settings
   const [saveWatchHistory, setSaveWatchHistory] = useState(true);
 
+  // Load existing avatar on mount
   useEffect(() => {
-    // Load saved settings
+    const loadAvatar = async () => {
+      if (!user) return;
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+      } catch (err) {
+        // profiles table may not exist yet — that's fine
+      }
+    };
+    loadAvatar();
+  }, [user]);
+
+  useEffect(() => {
     const savedWelcome = localStorage.getItem('pirateone_welcome_shown');
     setShowWelcomeNotification(!savedWelcome);
-    
+
     const savedAutoplay = localStorage.getItem('pirateone_autoplay');
     if (savedAutoplay !== null) setAutoplay(savedAutoplay === 'true');
-    
+
     const savedQuality = localStorage.getItem('pirateone_quality');
     if (savedQuality) setDefaultQuality(savedQuality);
-    
+
     const savedHistory = localStorage.getItem('pirateone_save_history');
     if (savedHistory !== null) setSaveWatchHistory(savedHistory === 'true');
   }, []);
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Please select an image file', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Image must be under 5MB', variant: 'destructive' });
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // Save to profiles table
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, avatar_url: publicUrl }, { onConflict: 'id' });
+
+      if (dbError) throw dbError;
+
+      setAvatarUrl(publicUrl);
+      toast({ title: 'Profile picture updated!' });
+    } catch (err: any) {
+      console.error('Avatar upload error:', err);
+      toast({ title: 'Upload failed', description: err.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setAvatarUploading(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleRegenerateIdentity = async () => {
     try {
       await regenerateIdentity();
-      toast({ title: 'New identity assigned!', description: `You are now ${identity?.name}` });
+      // Identity state updates in context — read fresh value from context after update
+      toast({ title: 'New pirate identity assigned!' });
     } catch (error) {
-      console.error('Failed to regenerate identity:', error);
       toast({ title: 'Failed to get new identity', variant: 'destructive' });
     }
   };
@@ -54,7 +133,7 @@ const Settings = () => {
   const handleResetWelcomeNotification = () => {
     localStorage.removeItem('pirateone_welcome_shown');
     setShowWelcomeNotification(true);
-    toast({ title: 'Welcome notification reset', description: 'You will see the welcome notification on next visit' });
+    toast({ title: 'Welcome notification reset' });
   };
 
   const handleAutoplayChange = (enabled: boolean) => {
@@ -77,7 +156,7 @@ const Settings = () => {
 
   const handleClearWatchlist = () => {
     localStorage.removeItem('pirateone_watchlist');
-    toast({ title: 'Watchlist cleared', description: 'Your watchlist has been cleared' });
+    toast({ title: 'Watchlist cleared' });
   };
 
   const handleClearAllData = () => {
@@ -88,14 +167,90 @@ const Settings = () => {
         localStorage.removeItem(key);
       }
     });
-    toast({ title: 'All data cleared', description: 'All local data has been cleared (except login)' });
+    toast({ title: 'All data cleared' });
   };
+
+  // Determine which avatar to show: uploaded > pirate identity > initials
+  const displayAvatarUrl = avatarUrl || identity?.imagePath || null;
+  const displayName = identity?.name || user?.email || 'Guest Pirate';
 
   return (
     <div className="p-4 lg:p-8 pt-20 max-w-2xl">
-      <h1 className="font-display text-3xl lg:text-4xl mb-8">Settings</h1>
-      
+      <h1 className="text-3xl lg:text-4xl font-bold mb-8">Settings</h1>
+
       <div className="space-y-6">
+
+        {/* Profile / Avatar */}
+        {user && (
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-primary" />
+                Profile Picture
+              </CardTitle>
+              <CardDescription>Upload your own profile picture</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                {/* Clickable avatar */}
+                <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                  <Avatar className="w-20 h-20 border-2 border-primary/50">
+                    {displayAvatarUrl ? (
+                      <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" />
+                    ) : null}
+                    <AvatarFallback className="bg-muted text-muted-foreground text-xl">
+                      {getInitials(displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Upload className="w-5 h-5 text-white" />
+                  </div>
+                  {avatarUploading && (
+                    <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">{displayName}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click avatar to upload · Max 5MB · JPG, PNG, WebP</p>
+                </div>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAvatarClick}
+                disabled={avatarUploading}
+                className="w-full"
+              >
+                {avatarUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Profile Picture
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pirate Identity */}
         <Card className="bg-card border-border">
@@ -110,27 +265,17 @@ const Settings = () => {
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16 border-2 border-primary/50">
                 {identity?.imagePath ? (
-                  <AvatarImage 
-                    src={identity.imagePath} 
-                    alt={identity.name}
-                    className="object-cover"
-                  />
+                  <AvatarImage src={identity.imagePath} alt={identity.name} className="object-cover" />
                 ) : null}
                 <AvatarFallback className="bg-muted text-muted-foreground text-lg">
                   {identity ? getInitials(identity.name) : 'GP'}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <p className="font-medium text-foreground text-lg">
-                  {identity?.name || 'Guest Pirate'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {identity?.role || 'Pirate'}
-                </p>
+                <p className="font-medium text-foreground text-lg">{identity?.name || 'Guest Pirate'}</p>
+                <p className="text-sm text-muted-foreground">{identity?.role || 'Pirate'}</p>
                 {identity?.bounty && (
-                  <p className="text-sm text-primary font-medium mt-1">
-                    💰 {identity.bounty}
-                  </p>
+                  <p className="text-sm text-primary font-medium mt-1">💰 {identity.bounty}</p>
                 )}
               </div>
             </div>
@@ -162,12 +307,8 @@ const Settings = () => {
                 <Label>Autoplay next episode</Label>
                 <p className="text-xs text-muted-foreground">Automatically play the next episode</p>
               </div>
-              <Switch
-                checked={autoplay}
-                onCheckedChange={handleAutoplayChange}
-              />
+              <Switch checked={autoplay} onCheckedChange={handleAutoplayChange} />
             </div>
-            
             <div className="space-y-2">
               <Label>Default Quality</Label>
               <Select value={defaultQuality} onValueChange={handleQualityChange}>
@@ -230,19 +371,10 @@ const Settings = () => {
                 <Label>Save watch history</Label>
                 <p className="text-xs text-muted-foreground">Remember what you watch</p>
               </div>
-              <Switch
-                checked={saveWatchHistory}
-                onCheckedChange={handleHistoryChange}
-              />
+              <Switch checked={saveWatchHistory} onCheckedChange={handleHistoryChange} />
             </div>
-
             <div className="pt-4 border-t border-border space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={handleClearWatchlist}
-              >
+              <Button variant="outline" size="sm" className="w-full" onClick={handleClearWatchlist}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Clear Watchlist
               </Button>
@@ -258,6 +390,7 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
       </div>
     </div>
   );
