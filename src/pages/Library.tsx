@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, CheckCircle2, XCircle, Play, Trash2 } from 'lucide-react';
+import { Eye, CheckCircle2, XCircle, Play, Trash2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getImageUrl } from '@/lib/tmdb';
 import { getAllShowStatuses, removeShowStatus, type ShowStatusEntry, type ShowStatusType } from '@/lib/showStatus';
+import { getAllWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -16,6 +17,7 @@ const statusConfig: Record<ShowStatusType, { label: string; icon: React.ReactNod
 
 const Library = () => {
   const [shows, setShows] = useState<ShowStatusEntry[]>([]);
+  const [progressData, setProgressData] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('watching');
   const navigate = useNavigate();
@@ -31,6 +33,15 @@ const Library = () => {
     try {
       const data = await getAllShowStatuses();
       setShows(data);
+
+      // Load watch progress data
+      const progress = await getAllWatchProgress();
+      const progressMap = new Map<string, number>();
+      progress.forEach(p => {
+        const key = `${p.tmdb_id}-${p.media_type}-${p.season || 'movie'}-${p.episode || 0}`;
+        progressMap.set(key, getProgressPercentage(p));
+      });
+      setProgressData(progressMap);
     } catch (err) {
       console.error('Failed to load library:', err);
       toast.error('Failed to load library');
@@ -117,66 +128,90 @@ const Library = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map(show => (
-                  <div
-                    key={`${show.tmdb_id}-${show.media_type}`}
-                    className="bg-card border border-border rounded-lg overflow-hidden flex group hover:border-primary/30 transition-colors"
-                  >
-                    {/* Poster */}
-                    <div className="w-24 flex-shrink-0">
-                      {show.poster_path ? (
-                        <img
-                          src={getImageUrl(show.poster_path, 'w200') || ''}
-                          alt={show.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
-                          No Poster
-                        </div>
-                      )}
-                    </div>
+                {filtered.map(show => {
+                  const progressKey = `${show.tmdb_id}-${show.media_type}-${show.last_season || 'movie'}-${show.last_episode || 0}`;
+                  const progress = progressData.get(progressKey) || 0;
 
-                    {/* Info */}
-                    <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-                      <div>
-                        <h3 className="font-semibold text-sm text-foreground truncate">{show.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 capitalize">{show.media_type}</p>
-                        {show.last_season && show.last_episode && (
-                          <p className="text-xs text-primary mt-1">
-                            S{show.last_season} E{show.last_episode}
-                          </p>
+                  return (
+                    <div
+                      key={`${show.tmdb_id}-${show.media_type}`}
+                      className="bg-card border border-border rounded-lg overflow-hidden flex group hover:border-primary/30 transition-colors"
+                    >
+                      {/* Poster */}
+                      <div className="w-24 flex-shrink-0 relative">
+                        {show.poster_path ? (
+                          <img
+                            src={getImageUrl(show.poster_path, 'w200') || ''}
+                            alt={show.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
+                            No Poster
+                          </div>
                         )}
-                        {show.vote_average && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            ⭐ {Number(show.vote_average).toFixed(1)}
-                          </p>
+                        {/* Progress indicator */}
+                        {progress > 0 && progress < 95 && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
+                            <div className="h-1 bg-primary/30">
+                              <div
+                                className="h-full bg-primary"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        {(status === 'watching' || status === 'dropped') && (
+
+                      {/* Info */}
+                      <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-semibold text-sm text-foreground truncate flex-1">{show.title}</h3>
+                            {progress > 0 && progress < 95 && (
+                              <div className="flex items-center gap-1 text-xs text-primary flex-shrink-0">
+                                <Clock className="w-3 h-3" />
+                                <span>{Math.round(progress)}%</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 capitalize">{show.media_type}</p>
+                          {show.last_season && show.last_episode && (
+                            <p className="text-xs text-primary mt-1">
+                              S{show.last_season} E{show.last_episode}
+                            </p>
+                          )}
+                          {show.vote_average && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ⭐ {Number(show.vote_average).toFixed(1)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          {(status === 'watching' || status === 'dropped') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => handleContinue(show)}
+                            >
+                              <Play className="w-3 h-3" />
+                              {status === 'dropped' ? 'Resume' : 'Continue from here'}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
-                            variant="outline"
-                            className="h-7 text-xs gap-1"
-                            onClick={() => handleContinue(show)}
+                            variant="ghost"
+                            className="h-7 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleRemove(show.tmdb_id, show.media_type)}
                           >
-                            <Play className="w-3 h-3" />
-                            {status === 'dropped' ? 'Resume' : 'Continue from here'}
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs text-destructive hover:text-destructive"
-                          onClick={() => handleRemove(show.tmdb_id, show.media_type)}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>

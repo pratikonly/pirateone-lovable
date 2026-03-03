@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick, Play } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -19,6 +19,7 @@ import {
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { saveWatchHistory } from '@/lib/watchHistory';
+import { getWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
@@ -28,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const watchParamsSchema = z.object({
   type: z.enum(['movie', 'tv']),
@@ -49,6 +51,7 @@ const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
   const navigate = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
+  const { user } = useAuth();
   const parsed = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
   const movieId = parsed.success ? parsed.data.id : 0;
@@ -70,6 +73,8 @@ const Watch = () => {
   const downloadButtonRef = useRef<HTMLButtonElement>(null);
   // Note is dismissed per page load only — reappears on refresh (no localStorage)
   const [noteDismissed, setNoteDismissed] = useState(false);
+  // Watch progress state
+  const [watchProgress, setWatchProgress] = useState<{ currentTime: number; duration: number; percentage: number } | null>(null);
 
   // FIX: fetchDetails no longer depends on season/episode
   // Those are only used for saveWatchHistory which runs separately
@@ -144,6 +149,40 @@ const Watch = () => {
     };
     fetchSeasonDetails();
   }, [movieId, mediaType, season]);
+
+  // Load watch progress for autoembed server
+  useEffect(() => {
+    if (!user || selectedServer !== 'autoembed') {
+      setWatchProgress(null);
+      return;
+    }
+
+    const loadProgress = async () => {
+      try {
+        const progress = await getWatchProgress(
+          movieId,
+          mediaType,
+          mediaType === 'tv' ? season : undefined,
+          mediaType === 'tv' ? episode : undefined
+        );
+        if (progress && progress.current_time > 0) {
+          const percentage = getProgressPercentage(progress);
+          setWatchProgress({
+            currentTime: progress.current_time,
+            duration: progress.duration || 0,
+            percentage
+          });
+        } else {
+          setWatchProgress(null);
+        }
+      } catch (error) {
+        console.error('Failed to load watch progress:', error);
+        setWatchProgress(null);
+      }
+    };
+
+    loadProgress();
+  }, [movieId, mediaType, season, episode, selectedServer, user]);
 
   const handleWatchlistToggle = () => {
     if (!details) return;
@@ -336,6 +375,36 @@ const Watch = () => {
                 </div>
               )}
 
+              {/* Watch progress indicator for autoembed */}
+              {watchProgress && watchProgress.percentage > 0 && watchProgress.percentage < 95 && (
+                <div className="w-full max-w-4xl mx-auto mb-4">
+                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Play className="w-5 h-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Continue watching</p>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round(watchProgress.percentage)}% complete
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-1 mx-4">
+                      <div className="h-2 bg-primary/20 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${watchProgress.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {watchProgress.duration > 0
+                        ? `${Math.floor((watchProgress.duration - watchProgress.currentTime) / 60)}m remaining`
+                        : 'Resume'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Video Player */}
               <div className="w-full max-w-4xl mx-auto">
                 <VideoPlayer
@@ -429,9 +498,13 @@ const Watch = () => {
                   <div className="relative inline-block">
                     <Button
                       ref={serverButtonRef}
-                      variant="outline"
+                      variant={selectedServer === 'autoembed' ? 'default' : 'outline'}
                       size="sm"
-                      className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2 min-w-[110px]"
+                      className={cn(
+                        "h-9 px-3 hover:bg-zinc-800 flex items-center gap-2 min-w-[110px]",
+                        selectedServer === 'autoembed' ? "bg-primary text-primary-foreground" : "border-zinc-700",
+                        selectedServer !== 'autoembed' && "hover:bg-zinc-800"
+                      )}
                       onClick={handleServerToggle}
                     >
                       <Server className="w-4 h-4" />
@@ -472,7 +545,14 @@ const Watch = () => {
                                       : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95"
                                   )}
                                 >
-                                  Server {index + 1}
+                                  {server.id === 'autoembed' ? (
+                                    <span className="flex items-center gap-1 justify-center">
+                                      Server 1
+                                      <span className="text-[9px] bg-primary/30 px-1 rounded text-primary-foreground">Progress</span>
+                                    </span>
+                                  ) : (
+                                    `Server ${index + 1}`
+                                  )}
                                 </button>
                               ))}
                             </div>
