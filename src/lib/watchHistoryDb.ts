@@ -44,9 +44,13 @@ export const saveWatchHistoryDb = async (entry: {
 };
 
 export const getWatchHistoryDb = async (): Promise<WatchHistoryEntryDb[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('watch_history')
     .select('*')
+    .eq('user_id', user.id)
     .order('watched_at', { ascending: false })
     .limit(50);
 

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, Video } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist } from '@/lib/watchlist';
+import { addToWatchlistDb, isInWatchlistDb } from '@/lib/watchlistDb';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import TrailerModal from './TrailerModal';
@@ -15,9 +17,11 @@ interface HeroBannerProps {
 const HeroBanner = ({ movies }: HeroBannerProps) => {
   const navigate = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
+  const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [inWatchlist, setInWatchlist] = useState(false);
   const [logos, setLogos] = useState<Record<string, string | null>>({});
   const [trailers, setTrailers] = useState<Record<string, Video | null>>({});
   const [trailerOpen, setTrailerOpen] = useState(false);
@@ -25,43 +29,39 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
   const featuredMovies = movies.slice(0, 5);
   const currentMovie = featuredMovies[currentIndex];
 
-  // Update global backdrop when slide changes
   useEffect(() => {
     if (currentMovie?.backdrop_path) {
       setBackdropUrl(getBackdropUrl(currentMovie.backdrop_path, 'original'));
     }
-    
-    // Clear backdrop when component unmounts
+
     return () => {
       setBackdropUrl(null);
     };
   }, [currentMovie, setBackdropUrl]);
 
-  // Fetch logos for all featured movies
   useEffect(() => {
     const fetchLogos = async () => {
       const logoPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
-        if (logos[key] !== undefined) return; // Already fetched
-        
+        if (logos[key] !== undefined) return;
+
         try {
           const mediaType = movie.media_type || 'movie';
-          const images = mediaType === 'tv' 
+          const images = mediaType === 'tv'
             ? await getTVImages(movie.id)
             : await getMovieImages(movie.id);
-          
-          // Get the best English logo (prefer larger widths)
+
           const englishLogos = images.logos
             .filter(l => l.iso_639_1 === 'en' || l.iso_639_1 === null)
             .sort((a, b) => b.width - a.width);
-          
+
           const logoPath = englishLogos[0]?.file_path || null;
           setLogos(prev => ({ ...prev, [key]: logoPath }));
         } catch {
           setLogos(prev => ({ ...prev, [key]: null }));
         }
       });
-      
+
       await Promise.all(logoPromises);
     };
 
@@ -70,20 +70,18 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
     }
   }, [featuredMovies]);
 
-  // Fetch trailers for all featured movies
   useEffect(() => {
     const fetchTrailers = async () => {
       const trailerPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
         if (trailers[key] !== undefined) return;
-        
+
         try {
           const mediaType = movie.media_type || 'movie';
-          const videos = mediaType === 'tv' 
+          const videos = mediaType === 'tv'
             ? await getTVVideos(movie.id)
             : await getMovieVideos(movie.id);
-          
-          // Find official YouTube trailer
+
           const trailer = videos.results.find(
             v => v.site === 'YouTube' && v.type === 'Trailer' && v.official
           ) || videos.results.find(
@@ -91,13 +89,13 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
           ) || videos.results.find(
             v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip')
           );
-          
+
           setTrailers(prev => ({ ...prev, [key]: trailer || null }));
         } catch {
           setTrailers(prev => ({ ...prev, [key]: null }));
         }
       });
-      
+
       await Promise.all(trailerPromises);
     };
 
@@ -108,7 +106,7 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
 
   useEffect(() => {
     if (featuredMovies.length <= 1 || isPaused) return;
-    
+
     const interval = setInterval(() => {
       setIsTransitioning(true);
       setTimeout(() => {
@@ -120,6 +118,23 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
     return () => clearInterval(interval);
   }, [featuredMovies.length, isPaused]);
 
+  useEffect(() => {
+    const syncWatchlistState = async () => {
+      if (!currentMovie) return;
+      const mediaType = currentMovie.media_type || 'movie';
+
+      if (user) {
+        const inDb = await isInWatchlistDb(currentMovie.id, mediaType);
+        setInWatchlist(inDb);
+        return;
+      }
+
+      setInWatchlist(isInWatchlist(currentMovie.id, mediaType));
+    };
+
+    syncWatchlistState();
+  }, [currentMovie, user]);
+
   if (!currentMovie) return null;
 
   const backdropUrl = getBackdropUrl(currentMovie.backdrop_path, 'original');
@@ -129,46 +144,42 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
   const rating = currentMovie.vote_average?.toFixed(1) || 'N/A';
   const year = (currentMovie.release_date || currentMovie.first_air_date)?.split('-')[0] || '';
   const mediaType = currentMovie.media_type || 'movie';
-  const inWatchlist = isInWatchlist(currentMovie.id, mediaType);
-  
-  // Get logo URL for current movie
+
   const logoKey = `${mediaType}-${currentMovie.id}`;
   const logoPath = logos[logoKey];
   const logoUrl = logoPath ? getLogoUrl(logoPath, 'w500') : null;
-  
-  // Get trailer for current movie
+
   const currentTrailer = trailers[logoKey];
 
   const handlePlay = () => {
     navigate(`/watch/${mediaType}/${currentMovie.id}`);
   };
 
-  const handleAddToList = () => {
-    addToWatchlist({ ...currentMovie, media_type: mediaType });
+  const handleAddToList = async () => {
+    if (inWatchlist) return;
+
+    if (user) {
+      await addToWatchlistDb({ ...currentMovie, media_type: mediaType });
+    } else {
+      addToWatchlist({ ...currentMovie, media_type: mediaType });
+    }
+
+    setInWatchlist(true);
   };
-  
+
   const handleTrailerClick = () => {
     if (currentTrailer) {
       setTrailerOpen(true);
     }
   };
 
-  const goToSlide = (index: number) => {
-    if (index === currentIndex) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex(index);
-      setIsTransitioning(false);
-    }, 300);
-  };
 
   return (
-    <div 
+    <div
       className="relative h-[60vh] md:h-[70vh] min-h-[400px] max-h-[600px] -mt-14 mb-8 overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Background Image with Ken Burns effect */}
       <div className="absolute inset-0">
         {featuredMovies.map((movie, index) => {
           const url = getBackdropUrl(movie.backdrop_path, 'original');
@@ -177,8 +188,8 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
               key={movie.id}
               className={cn(
                 'absolute inset-0 transition-all duration-700 ease-out',
-                index === currentIndex 
-                  ? 'opacity-100 scale-100' 
+                index === currentIndex
+                  ? 'opacity-100 scale-100'
                   : 'opacity-0 scale-105'
               )}
               style={{
@@ -198,24 +209,18 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
         })}
       </div>
 
-      {/* Gradient Overlays - Enhanced */}
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
       <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/60" />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-      
-      {/* Vignette Effect */}
       <div className="absolute inset-0 shadow-[inset_0_0_150px_60px_hsl(var(--background))]" />
 
-      {/* Content */}
       <div className="absolute inset-0 flex items-center">
         <div className="container mx-auto px-4 lg:px-6 pt-14">
           <div className="flex items-center gap-6 lg:gap-10">
-            {/* Text Content - On Left */}
             <div className={cn(
               'flex-1 max-w-2xl transition-all duration-500',
               isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
             )}>
-              {/* Meta Info */}
               <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
                 <span className="bg-white text-black px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-lg">
                   {mediaType === 'tv' ? 'TV Series' : 'Movie'}
@@ -231,10 +236,9 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
                 </span>
               </div>
 
-              {/* Title - Show official logo if available, otherwise styled text */}
               {logoUrl ? (
                 <div className="mb-3 md:mb-4">
-                  <img 
+                  <img
                     src={logoUrl}
                     alt={title}
                     className="max-h-20 sm:max-h-24 md:max-h-28 lg:max-h-32 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] filter brightness-110"
@@ -247,15 +251,13 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
                 </h1>
               )}
 
-              {/* Overview */}
               <p className="text-muted-foreground text-sm md:text-base leading-relaxed mb-5 md:mb-6 max-w-xl line-clamp-3 md:line-clamp-none">
                 {overview}
               </p>
 
-              {/* Actions */}
               <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                <Button 
-                  size="default" 
+                <Button
+                  size="default"
                   className="bg-white text-black hover:bg-gray-200 shadow-lg text-sm md:text-base px-3 md:px-6 h-9 md:h-11"
                   onClick={handlePlay}
                 >
@@ -265,8 +267,8 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
                   Watch
                 </Button>
                 {currentTrailer && (
-                  <Button 
-                    size="default" 
+                  <Button
+                    size="default"
                     variant="outline"
                     onClick={handleTrailerClick}
                     className="backdrop-blur-sm border-white/50 hover:bg-white/20 text-foreground text-sm md:text-base px-3 md:px-6 h-9 md:h-11"
@@ -275,8 +277,8 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
                     Trailer
                   </Button>
                 )}
-                <Button 
-                  size="default" 
+                <Button
+                  size="default"
                   variant="secondary"
                   onClick={handleAddToList}
                   disabled={inWatchlist}
@@ -297,7 +299,6 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
               </div>
             </div>
 
-            {/* Poster - On Right, Hidden on mobile */}
             <div className={cn(
               'hidden md:block flex-shrink-0 transition-all duration-500',
               isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
@@ -317,7 +318,6 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
         </div>
       </div>
 
-      {/* Slide Indicators */}
       {featuredMovies.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
           {featuredMovies.map((_, index) => (
@@ -325,16 +325,16 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
               key={index}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
-                index === currentIndex 
-                  ? 'w-6 bg-primary' 
+                index === currentIndex
+                  ? 'w-6 bg-primary'
                   : 'w-2 bg-white/40'
               )}
+              
             />
           ))}
         </div>
       )}
 
-      {/* Trailer Modal */}
       <TrailerModal
         isOpen={trailerOpen}
         onClose={() => setTrailerOpen(false)}
@@ -342,7 +342,6 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
         title={title}
       />
 
-      {/* Ken Burns Animation Style */}
       <style>{`
         @keyframes kenburns {
           0% { transform: scale(1); }
@@ -354,3 +353,4 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
 };
 
 export default HeroBanner;
+

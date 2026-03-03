@@ -3,6 +3,8 @@ import { Play, Plus, Check, Star, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Movie, getImageUrl, getBackdropUrl } from '@/lib/tmdb';
 import { isInWatchlist, addToWatchlist, removeFromWatchlist } from '@/lib/watchlist';
+import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import {
@@ -19,7 +21,8 @@ interface MovieCardProps {
 const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
-  const [inWatchlist, setInWatchlist] = useState(isInWatchlist(movie.id, movie.media_type));
+  const { user } = useAuth();
+  const [inWatchlist, setInWatchlist] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [popupSide, setPopupSide] = useState<'left' | 'right'>('right');
   
@@ -32,6 +35,19 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
   const mediaType = movie.media_type || 'movie';
   const overview = movie.overview || 'No description available.';
 
+  useEffect(() => {
+    const loadWatchlistState = async () => {
+      if (user) {
+        const inDb = await isInWatchlistDb(movie.id, mediaType);
+        setInWatchlist(inDb);
+        return;
+      }
+      setInWatchlist(isInWatchlist(movie.id, mediaType));
+    };
+
+    loadWatchlistState();
+  }, [movie.id, mediaType, user]);
+
   // Determine popup side based on card position
   const updatePopupSide = () => {
     if (cardRef.current) {
@@ -42,15 +58,25 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
     }
   };
 
-  const handleWatchlistToggle = (e: React.MouseEvent) => {
+  const handleWatchlistToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
     if (inWatchlist) {
-      removeFromWatchlist(movie.id, mediaType);
+      if (user) {
+        await removeFromWatchlistDb(movie.id, mediaType);
+      } else {
+        removeFromWatchlist(movie.id, mediaType);
+      }
       setInWatchlist(false);
+      return;
+    }
+
+    if (user) {
+      await addToWatchlistDb({ ...movie, media_type: mediaType });
     } else {
       addToWatchlist({ ...movie, media_type: mediaType });
-      setInWatchlist(true);
     }
+    setInWatchlist(true);
   };
 
   const handlePlay = () => {
@@ -163,15 +189,12 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
         
         {/* Content */}
         <div className="p-3 space-y-2">
-          {/* Title */}
           <h3 className="font-semibold text-base leading-tight line-clamp-1">{title}</h3>
           
-          {/* Description */}
           <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
             {overview}
           </p>
           
-          {/* Details */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
@@ -182,7 +205,6 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
             )}
           </div>
           
-          {/* Action Buttons */}
           <div className="flex gap-2 pt-2">
             <Button 
               size="sm" 
@@ -214,3 +236,4 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
 };
 
 export default MovieCard;
+

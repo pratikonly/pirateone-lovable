@@ -18,7 +18,11 @@ import {
   MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
+import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
+import { saveWatchHistoryDb } from '@/lib/watchHistoryDb';
+import { getShowStatus, setShowStatus } from '@/lib/showStatus';
+import { useAuth } from '@/contexts/AuthContext';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
@@ -41,6 +45,7 @@ const Watch = () => {
   const parsed = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
   const movieId = parsed.success ? parsed.data.id : 0;
+  const { user } = useAuth();
 
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
@@ -60,6 +65,7 @@ const Watch = () => {
         setIsLoading(false);
         return;
       }
+
       try {
         const data = mediaType === 'movie'
           ? await getMovieDetails(movieId)
@@ -82,17 +88,11 @@ const Watch = () => {
           console.error('Failed to fetch logo:', e);
         }
 
-        setInWatchlist(isInWatchlist(movieId, mediaType));
+        const watchlistValue = user
+          ? await isInWatchlistDb(movieId, mediaType)
+          : isInWatchlist(movieId, mediaType);
 
-        const title = data.title || data.name || 'Unknown';
-        saveWatchHistory({
-          mediaId: movieId,
-          mediaType,
-          mediaTitle: title,
-          posterPath: data.poster_path || null,
-          season: mediaType === 'tv' ? season : undefined,
-          episode: mediaType === 'tv' ? episode : undefined,
-        });
+        setInWatchlist(watchlistValue);
       } catch (error) {
         console.error('Failed to fetch details:', error);
       } finally {
@@ -105,7 +105,7 @@ const Watch = () => {
     return () => {
       setBackdropUrl(null);
     };
-  }, [movieId, mediaType, setBackdropUrl, season, episode]);
+  }, [movieId, mediaType, setBackdropUrl, user]);
 
   useEffect(() => {
     const fetchSeasonDetails = async () => {
@@ -121,14 +121,73 @@ const Watch = () => {
     fetchSeasonDetails();
   }, [movieId, mediaType, season]);
 
-  const handleWatchlistToggle = () => {
+  useEffect(() => {
     if (!details) return;
 
-    if (inWatchlist) {
-      removeFromWatchlist(movieId, mediaType);
-      setInWatchlist(false);
-    } else {
-      addToWatchlist({
+    const title = details.title || details.name || 'Unknown';
+    const baseEntry = {
+      mediaId: movieId,
+      mediaType,
+      mediaTitle: title,
+      posterPath: details.poster_path || null,
+      season: mediaType === 'tv' ? season : undefined,
+      episode: mediaType === 'tv' ? episode : undefined,
+    };
+
+    saveWatchHistory(baseEntry);
+
+    if (!user) return;
+
+    const saveProgressToCloud = async () => {
+      try {
+        await saveWatchHistoryDb(baseEntry);
+
+        const existingStatus = await getShowStatus(movieId, mediaType);
+        const statusToPersist =
+          existingStatus?.status === 'completed' || existingStatus?.status === 'dropped'
+            ? existingStatus.status
+            : 'watching';
+
+        await setShowStatus(
+          {
+            id: movieId,
+            title: details.title,
+            name: details.name,
+            poster_path: details.poster_path,
+            backdrop_path: details.backdrop_path,
+            overview: details.overview || '',
+            vote_average: details.vote_average || 0,
+            release_date: details.release_date,
+            first_air_date: details.first_air_date,
+            media_type: mediaType,
+          },
+          statusToPersist,
+          mediaType === 'tv' ? season : undefined,
+          mediaType === 'tv' ? episode : undefined,
+        );
+      } catch (error) {
+        console.error('Failed to persist watch progress:', error);
+      }
+    };
+
+    saveProgressToCloud();
+  }, [details, movieId, mediaType, season, episode, user]);
+
+  const handleWatchlistToggle = async () => {
+    if (!details) return;
+
+    try {
+      if (inWatchlist) {
+        if (user) {
+          await removeFromWatchlistDb(movieId, mediaType);
+        } else {
+          removeFromWatchlist(movieId, mediaType);
+        }
+        setInWatchlist(false);
+        return;
+      }
+
+      const movie = {
         id: movieId,
         title: details.title,
         name: details.name,
@@ -139,8 +198,16 @@ const Watch = () => {
         release_date: details.release_date,
         first_air_date: details.first_air_date,
         media_type: mediaType,
-      });
+      };
+
+      if (user) {
+        await addToWatchlistDb(movie);
+      } else {
+        addToWatchlist(movie);
+      }
       setInWatchlist(true);
+    } catch (error) {
+      console.error('Failed to update watchlist:', error);
     }
   };
 
