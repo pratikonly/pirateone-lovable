@@ -31,7 +31,6 @@ const App = () => (
           <PirateIdentityProvider>
             <Toaster />
             <Sonner />
-            <CannonCorner />
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
