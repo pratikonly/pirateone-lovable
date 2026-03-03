@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Bell, Eye, EyeOff, Trash2, User, RefreshCw, Upload,
-  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle
+  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film, Tv
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -65,6 +65,125 @@ const SettingRow = ({ label, description, right, danger = false }: {
     <div style={{ flexShrink: 0 }}>{right}</div>
   </div>
 );
+
+
+/* ─── Watch Activity Graph ─── */
+const WatchActivity = () => {
+  const WEEKS = 26;
+  const DAYS = 7;
+  const today = new Date();
+
+  // Generate deterministic-looking fake activity data seeded from date
+  const cells = Array.from({ length: WEEKS * DAYS }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (WEEKS * DAYS - 1 - i));
+    const seed = d.getDate() * 7 + d.getMonth() * 31;
+    const rand = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const rand2 = (((seed + 99) * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const level = rand > 0.72 ? (rand > 0.88 ? (rand > 0.95 ? 4 : 3) : 2) : (rand > 0.55 ? 1 : 0);
+    // type: 0=empty, 1=movie(purple), 2=episode(teal)
+    const type = level === 0 ? 0 : rand2 > 0.45 ? 1 : 2;
+    return { date: new Date(d), level, type };
+  });
+
+  const movieColor = (level: number) => {
+    if (level === 0) return 'rgba(255,255,255,0.05)';
+    const alpha = [0, 0.25, 0.45, 0.7, 1][level];
+    return `rgba(168,85,247,${alpha})`;
+  };
+  const episodeColor = (level: number) => {
+    if (level === 0) return 'rgba(255,255,255,0.05)';
+    const alpha = [0, 0.25, 0.45, 0.7, 1][level];
+    return `rgba(20,184,166,${alpha})`;
+  };
+
+  const totalMovies = cells.filter(c => c.type === 1).length;
+  const totalEpisodes = cells.filter(c => c.type === 2).length;
+
+  const months: string[] = [];
+  for (let w = 0; w < WEEKS; w += 4) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (WEEKS - w) * 7);
+    months.push(d.toLocaleString('default', { month: 'short' }));
+  }
+
+  return (
+    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}><Film size={13}/></span>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Watch Activity</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '2px', background: 'rgba(168,85,247,0.8)', display: 'inline-block' }}/>
+            <span>{totalMovies} movies</span>
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '2px', background: 'rgba(20,184,166,0.8)', display: 'inline-block' }}/>
+            <span>{totalEpisodes} episodes</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Month labels */}
+      <div style={{ display: 'flex', gap: '3px', marginBottom: '4px', paddingLeft: '20px' }}>
+        {months.map((m, i) => (
+          <span key={i} style={{ flex: '0 0 calc((100% - 20px) / 6.5)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)', fontWeight: 500 }}>{m}</span>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div style={{ display: 'flex', gap: '3px' }}>
+        {/* Day labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginRight: '2px' }}>
+          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((d, i) => (
+            <span key={i} style={{ height: '11px', fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', lineHeight: '11px', whiteSpace: 'nowrap' }}>{d}</span>
+          ))}
+        </div>
+        {/* Weeks */}
+        {Array.from({ length: WEEKS }, (_, w) => (
+          <div key={w} style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+            {Array.from({ length: DAYS }, (_, d) => {
+              const cell = cells[w * DAYS + d];
+              const bg = cell.level === 0
+                ? 'rgba(255,255,255,0.05)'
+                : cell.type === 1 ? movieColor(cell.level) : episodeColor(cell.level);
+              const border = cell.level === 0
+                ? 'rgba(255,255,255,0.07)'
+                : cell.type === 1 ? `rgba(168,85,247,${0.15 + cell.level * 0.1})` : `rgba(20,184,166,${0.15 + cell.level * 0.1})`;
+              return (
+                <div
+                  key={d}
+                  title={`${cell.date.toDateString()} · ${cell.level === 0 ? 'No activity' : cell.type === 1 ? `${cell.level} movie${cell.level > 1 ? 's' : ''}` : `${cell.level} episode${cell.level > 1 ? 's' : ''}`}`}
+                  style={{
+                    height: '11px', borderRadius: '2px',
+                    background: bg,
+                    border: `1px solid ${border}`,
+                    transition: 'transform 0.1s',
+                    cursor: cell.level > 0 ? 'pointer' : 'default',
+                  }}
+                  onMouseEnter={e => { if(cell.level > 0) (e.currentTarget as HTMLElement).style.transform = 'scale(1.3)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '10px' }}>
+        <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)' }}>Less</span>
+        {[0,1,2,3,4].map(l => (
+          <div key={l} style={{ width: 10, height: 10, borderRadius: '2px', background: l === 0 ? 'rgba(255,255,255,0.05)' : `rgba(168,85,247,${[0,0.25,0.45,0.7,1][l]})`, border: '1px solid rgba(255,255,255,0.08)' }}/>
+        ))}
+        <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)' }}>More</span>
+      </div>
+    </div>
+  );
+};
 
 const Settings = () => {
   const { toast } = useToast();
@@ -355,6 +474,7 @@ const Settings = () => {
                 <RefreshCw size={13} style={{ animation: isRegenerating ? 'spin 1s linear infinite' : 'none' }} />
                 {isRegenerating ? 'Getting new identity…' : 'Get New Pirate Identity'}
               </button>
+              <WatchActivity />
             </Section>
 
           </div>
