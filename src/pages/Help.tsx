@@ -160,7 +160,7 @@ const Help = () => {
         @keyframes spin { to{transform:rotate(360deg)} }
       `}</style>
 
-      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'88px 0px 72px' }}>
+      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'88px 15% 72px' }}>
 
         {/* ══ 1. CENTERED TITLE ══ */}
         <div className="hfu" style={{ textAlign:'center', marginBottom:'36px', width:'100%', maxWidth:'100%' }}>
@@ -296,6 +296,57 @@ const Help = () => {
                 ))}
               </div>
             </div>
+
+            {/* ── Quick Tips ── */}
+            <div style={{ marginTop:'40px', paddingTop:'32px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <SL icon={<Lightbulb size={13}/>} label="Quick Tips" />
+              <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                {tips.map((tip,i)=>(
+                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'12px 14px' }}>
+                    <span style={{ flexShrink:0, width:22, height:22, borderRadius:'99px', background:'rgba(234,179,8,0.12)', border:'1px solid rgba(234,179,8,0.2)', color:'#eab308', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:700 }}>{i+1}</span>
+                    <p style={{ fontSize:'0.83rem', color:'rgba(255,255,255,0.5)', lineHeight:1.5, margin:0 }}>{tip}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Library Status Guide ── */}
+            <div style={{ marginTop:'32px', paddingTop:'32px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <SL icon={<Library size={13}/>} label="Library Status Guide" />
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                {[
+                  { label:'Watching',      color:'#3b82f6', bg:'rgba(59,130,246,0.1)',  border:'rgba(59,130,246,0.2)',  desc:'Currently watching this title' },
+                  { label:'Completed',     color:'#22c55e', bg:'rgba(34,197,94,0.1)',   border:'rgba(34,197,94,0.2)',   desc:'Finished watching — marked as done' },
+                  { label:'Dropped',       color:'#ef4444', bg:'rgba(239,68,68,0.1)',   border:'rgba(239,68,68,0.2)',   desc:'Stopped watching — saved for reference' },
+                  { label:'Plan to Watch', color:'#eab308', bg:'rgba(234,179,8,0.1)',   border:'rgba(234,179,8,0.2)',   desc:'Added to watchlist for later' },
+                ].map(s=>(
+                  <div key={s.label} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'9px' }}>
+                    <span style={{ flexShrink:0, fontSize:'0.67rem', fontWeight:700, padding:'2px 9px', borderRadius:'99px', background:s.bg, border:`1px solid ${s.border}`, color:s.color }}>{s.label}</span>
+                    <p style={{ fontSize:'0.78rem', color:'rgba(255,255,255,0.4)', margin:0, lineHeight:1.4 }}>{s.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Keyboard Shortcuts ── */}
+            <div style={{ marginTop:'32px', paddingTop:'32px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+              <SL icon={<Zap size={13}/>} label="Keyboard Shortcuts" />
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+                {[
+                  { key:'Space', desc:'Play / Pause' },
+                  { key:'F',     desc:'Fullscreen' },
+                  { key:'M',     desc:'Mute / Unmute' },
+                  { key:'← →',  desc:'Seek ±10s' },
+                  { key:'↑ ↓',  desc:'Volume ±5%' },
+                  { key:'Esc',   desc:'Exit fullscreen' },
+                ].map(s=>(
+                  <div key={s.key} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'8px' }}>
+                    <kbd style={{ flexShrink:0, fontSize:'0.65rem', fontWeight:700, fontFamily:'monospace', padding:'2px 7px', borderRadius:'5px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.7)' }}>{s.key}</kbd>
+                    <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.38)' }}>{s.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* RIGHT — All Features */}
@@ -323,22 +374,7 @@ const Help = () => {
           </div>
         </div>
 
-        {/* ══ 4. QUICK TIPS — full width, centered ══ */}
-        <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'48px' }}>
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'40px' }}>
-            <SL icon={<Lightbulb size={13}/>} label="Quick Tips" />
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'14px' }}>
-              {tips.map((tip,i)=>(
-                <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'10px', padding:'12px 14px' }}>
-                  <span style={{ flexShrink:0, width:22, height:22, borderRadius:'99px', background:'rgba(234,179,8,0.12)', border:'1px solid rgba(234,179,8,0.2)', color:'#eab308', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.65rem', fontWeight:700 }}>{i+1}</span>
-                  <p style={{ fontSize:'0.83rem', color:'rgba(255,255,255,0.5)', lineHeight:1.5, margin:0 }}>{tip}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ══ 5. FAQ — full width, centered ══ */}
+        {/* ══ 4. FAQ — full width, centered ══ */}
         <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'32px' }}>
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'40px' }}>
             <SL icon={<HelpCircle size={13}/>} label="Frequently Asked Questions" />
