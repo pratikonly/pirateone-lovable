@@ -20,7 +20,6 @@ import Watch from "./pages/Watch";
 import Sports from "./pages/Sports";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import CannonCorner from "./components/CannonCorner";
 
 const queryClient = new QueryClient();
 
