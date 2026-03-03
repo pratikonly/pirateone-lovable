@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, MousePointerClick } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -64,7 +64,12 @@ const Watch = () => {
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen] = useState(false);
   const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [downloadDirection, setDownloadDirection] = useState<'up' | 'down'>('down');
   const serverButtonRef = useRef<HTMLButtonElement>(null);
+  const downloadButtonRef = useRef<HTMLButtonElement>(null);
+  // Note is dismissed per page load only — reappears on refresh (no localStorage)
+  const [noteDismissed, setNoteDismissed] = useState(false);
 
   // FIX: fetchDetails no longer depends on season/episode
   // Those are only used for saveWatchHistory which runs separately
@@ -180,6 +185,16 @@ const Watch = () => {
       setOpenDirection(spaceBelow < 250 && spaceAbove > spaceBelow ? 'up' : 'down');
     }
     setServerOpen(!serverOpen);
+  };
+
+  const handleDownloadToggle = () => {
+    if (!downloadOpen && downloadButtonRef.current) {
+      const rect = downloadButtonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setDownloadDirection(spaceBelow < 220 && spaceAbove > spaceBelow ? 'up' : 'down');
+    }
+    setDownloadOpen(!downloadOpen);
   };
 
   if (isLoading) {
@@ -300,15 +315,26 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Yellow click tip — ABOVE the video player */}
-              <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
-                <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-300/90 leading-relaxed">
-                  <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
-                  <span className="font-semibold">click twice</span> to interact with the video player —
-                  the first click activates it, the second performs the action.
-                </p>
-              </div>
+              {/* Yellow click tip — dismissible, reappears on every page refresh */}
+              {!noteDismissed && (
+                <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
+                  <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-yellow-300/90 leading-relaxed flex-1">
+                    <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
+                    <span className="font-semibold">click twice</span> to interact with the video player —
+                    the first click activates it, the second performs the action.
+                  </p>
+                  <button
+                    onClick={() => setNoteDismissed(true)}
+                    className="flex-shrink-0 text-yellow-500/60 hover:text-yellow-400 transition-colors ml-1 mt-0.5"
+                    aria-label="Dismiss tip"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
 
               {/* Video Player */}
               <div className="w-full max-w-4xl mx-auto">
@@ -344,21 +370,60 @@ const Watch = () => {
                     )}
                   </Button>
 
-                  {/* Download button — direct link to vidsrc.vip */}
-                  <a
-                    href={getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  {/* Download button — smart positioned */}
+                  <div className="relative inline-block">
                     <Button
+                      ref={downloadButtonRef}
                       variant="outline"
                       size="sm"
                       className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
+                      onClick={handleDownloadToggle}
                     >
                       <Download className="w-4 h-4" />
                       <span className="font-medium">Download</span>
+                      <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", downloadOpen && "rotate-180")} />
                     </Button>
-                  </a>
+
+                    {downloadOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setDownloadOpen(false)} />
+                        <div
+                          className={cn(
+                            "absolute z-50 w-72 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
+                            "animate-in fade-in-60 zoom-in-95 duration-150",
+                            // Smart positioning — same logic as server selector
+                            "right-0",
+                            downloadDirection === 'up' ? "bottom-full mb-2" : "top-full mt-2"
+                          )}
+                        >
+                          <div className="p-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Download className="w-4 h-4 text-primary" />
+                              <p className="text-sm font-semibold text-white">Download</p>
+                            </div>
+                            <p className="text-xs text-zinc-500 mb-4">
+                              {mediaType === 'tv'
+                                ? `Season ${season}, Episode ${episode}`
+                                : 'Full Movie'}
+                            </p>
+                            <a
+                              href={getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => setDownloadOpen(false)}
+                              className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium text-sm"
+                            >
+                              <span>Download via VidSrc</span>
+                              <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                            </a>
+                            <p className="text-[10px] text-zinc-600 mt-3 leading-relaxed">
+                              Opens dl.vidsrc.vip in a new tab. We don't host any files.
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
                   {/* Server selector */}
                   <div className="relative inline-block">
