@@ -300,106 +300,6 @@ const WatchActivity = () => {
     </div>
   );
 };
-  });
-
-  const movieColor = (level: number) => {
-    if (level === 0) return 'rgba(255,255,255,0.05)';
-    const alpha = [0, 0.25, 0.45, 0.7, 1][level];
-    return `rgba(168,85,247,${alpha})`;
-  };
-  const episodeColor = (level: number) => {
-    if (level === 0) return 'rgba(255,255,255,0.05)';
-    const alpha = [0, 0.25, 0.45, 0.7, 1][level];
-    return `rgba(20,184,166,${alpha})`;
-  };
-
-  const totalMovies = cells.filter(c => c.type === 1).length;
-  const totalEpisodes = cells.filter(c => c.type === 2).length;
-
-  const months: string[] = [];
-  for (let w = 0; w < WEEKS; w += 4) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (WEEKS - w) * 7);
-    months.push(d.toLocaleString('default', { month: 'short' }));
-  }
-
-  return (
-    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}><Film size={13}/></span>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Watch Activity</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '2px', background: 'rgba(168,85,247,0.8)', display: 'inline-block' }}/>
-            <span>{totalMovies} movies</span>
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.66rem', color: 'rgba(255,255,255,0.3)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '2px', background: 'rgba(20,184,166,0.8)', display: 'inline-block' }}/>
-            <span>{totalEpisodes} episodes</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Month labels */}
-      <div style={{ display: 'flex', gap: '3px', marginBottom: '4px', paddingLeft: '20px' }}>
-        {months.map((m, i) => (
-          <span key={i} style={{ flex: '0 0 calc((100% - 20px) / 6.5)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)', fontWeight: 500 }}>{m}</span>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div style={{ display: 'flex', gap: '3px' }}>
-        {/* Day labels */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginRight: '2px' }}>
-          {['', 'Mon', '', 'Wed', '', 'Fri', ''].map((d, i) => (
-            <span key={i} style={{ height: '11px', fontSize: '0.55rem', color: 'rgba(255,255,255,0.2)', lineHeight: '11px', whiteSpace: 'nowrap' }}>{d}</span>
-          ))}
-        </div>
-        {/* Weeks */}
-        {Array.from({ length: WEEKS }, (_, w) => (
-          <div key={w} style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
-            {Array.from({ length: DAYS }, (_, d) => {
-              const cell = cells[w * DAYS + d];
-              const bg = cell.level === 0
-                ? 'rgba(255,255,255,0.05)'
-                : cell.type === 1 ? movieColor(cell.level) : episodeColor(cell.level);
-              const border = cell.level === 0
-                ? 'rgba(255,255,255,0.07)'
-                : cell.type === 1 ? `rgba(168,85,247,${0.15 + cell.level * 0.1})` : `rgba(20,184,166,${0.15 + cell.level * 0.1})`;
-              return (
-                <div
-                  key={d}
-                  title={`${cell.date.toDateString()} · ${cell.level === 0 ? 'No activity' : cell.type === 1 ? `${cell.level} movie${cell.level > 1 ? 's' : ''}` : `${cell.level} episode${cell.level > 1 ? 's' : ''}`}`}
-                  style={{
-                    height: '11px', borderRadius: '2px',
-                    background: bg,
-                    border: `1px solid ${border}`,
-                    transition: 'transform 0.1s',
-                    cursor: cell.level > 0 ? 'pointer' : 'default',
-                  }}
-                  onMouseEnter={e => { if(cell.level > 0) (e.currentTarget as HTMLElement).style.transform = 'scale(1.3)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginTop: '10px' }}>
-        <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)' }}>Less</span>
-        {[0,1,2,3,4].map(l => (
-          <div key={l} style={{ width: 10, height: 10, borderRadius: '2px', background: l === 0 ? 'rgba(255,255,255,0.05)' : `rgba(168,85,247,${[0,0.25,0.45,0.7,1][l]})`, border: '1px solid rgba(255,255,255,0.08)' }}/>
-        ))}
-        <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.22)' }}>More</span>
-      </div>
-    </div>
-  );
-};
 
 const Settings = () => {
   const { toast } = useToast();
@@ -756,9 +656,11 @@ const Settings = () => {
               </div>
             </Section>
 
-            <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'rgba(255,255,255,0.16)', letterSpacing: '0.04em' }}>
-              ⚓ PirateOne · Your data stays yours
-            </p>
+            <div style={{ marginTop: '48px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.32)', letterSpacing: '0.08em', fontWeight: 500, margin: 0 }}>
+                ⚓ PirateOne · Your data stays yours
+              </p>
+            </div>
 
           </div>
         </div>
