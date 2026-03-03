@@ -328,25 +328,7 @@ const Help = () => {
               </div>
             </div>
 
-            {/* ── Keyboard Shortcuts ── */}
-            <div style={{ marginTop:'32px', paddingTop:'32px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-              <SL icon={<Zap size={13}/>} label="Keyboard Shortcuts" />
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
-                {[
-                  { key:'Space', desc:'Play / Pause' },
-                  { key:'F',     desc:'Fullscreen' },
-                  { key:'M',     desc:'Mute / Unmute' },
-                  { key:'← →',  desc:'Seek ±10s' },
-                  { key:'↑ ↓',  desc:'Volume ±5%' },
-                  { key:'Esc',   desc:'Exit fullscreen' },
-                ].map(s=>(
-                  <div key={s.key} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 10px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'8px' }}>
-                    <kbd style={{ flexShrink:0, fontSize:'0.65rem', fontWeight:700, fontFamily:'monospace', padding:'2px 7px', borderRadius:'5px', background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.14)', color:'rgba(255,255,255,0.7)' }}>{s.key}</kbd>
-                    <span style={{ fontSize:'0.75rem', color:'rgba(255,255,255,0.38)' }}>{s.desc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+
           </div>
 
           {/* RIGHT — All Features */}
