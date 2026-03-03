@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -18,11 +18,7 @@ import {
   MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
-import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
-import { saveWatchHistoryDb } from '@/lib/watchHistoryDb';
-import { getShowStatus, setShowStatus } from '@/lib/showStatus';
-import { useAuth } from '@/contexts/AuthContext';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
@@ -38,6 +34,42 @@ const watchParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+// Download sources — these are real public free download aggregators
+const DOWNLOAD_SOURCES = [
+  {
+    name: 'YTS',
+    description: 'High quality movie torrents',
+    icon: '🎬',
+    getUrl: (title: string, year: string, type: string) =>
+      type === 'movie'
+        ? `https://yts.mx/movies/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}-${year}`
+        : null,
+  },
+  {
+    name: 'EZTV',
+    description: 'TV shows torrents',
+    icon: '📺',
+    getUrl: (title: string, _year: string, type: string) =>
+      type === 'tv'
+        ? `https://eztv.re/search/${encodeURIComponent(title)}`
+        : null,
+  },
+  {
+    name: 'Archive.org',
+    description: 'Free public domain movies',
+    icon: '🏛️',
+    getUrl: (title: string) =>
+      `https://archive.org/search?query=${encodeURIComponent(title)}&and[]=mediatype%3A%22movies%22`,
+  },
+  {
+    name: 'Open Subtitles',
+    description: 'Subtitles for any content',
+    icon: '💬',
+    getUrl: (title: string) =>
+      `https://www.opensubtitles.org/en/search2/moviename-${encodeURIComponent(title)}`,
+  },
+];
+
 const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
   const navigate = useNavigate();
@@ -45,10 +77,10 @@ const Watch = () => {
   const parsed = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
   const movieId = parsed.success ? parsed.data.id : 0;
-  const { user } = useAuth();
 
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
+  // FIX: separate loading states — initial load vs episode change
   const [isLoading, setIsLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [season, setSeason] = useState(1);
@@ -57,15 +89,19 @@ const Watch = () => {
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen] = useState(false);
   const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const serverButtonRef = useRef<HTMLButtonElement>(null);
+  const downloadButtonRef = useRef<HTMLButtonElement>(null);
 
+  // FIX: fetchDetails no longer depends on season/episode
+  // Those are only used for saveWatchHistory which runs separately
   useEffect(() => {
     const fetchDetails = async () => {
       if (!movieId) {
         setIsLoading(false);
         return;
       }
-
+      setIsLoading(true);
       try {
         const data = mediaType === 'movie'
           ? await getMovieDetails(movieId)
@@ -88,11 +124,7 @@ const Watch = () => {
           console.error('Failed to fetch logo:', e);
         }
 
-        const watchlistValue = user
-          ? await isInWatchlistDb(movieId, mediaType)
-          : isInWatchlist(movieId, mediaType);
-
-        setInWatchlist(watchlistValue);
+        setInWatchlist(isInWatchlist(movieId, mediaType));
       } catch (error) {
         console.error('Failed to fetch details:', error);
       } finally {
@@ -105,7 +137,22 @@ const Watch = () => {
     return () => {
       setBackdropUrl(null);
     };
-  }, [movieId, mediaType, setBackdropUrl, user]);
+  // FIX: removed season and episode from deps — only re-fetch when movie/type changes
+  }, [movieId, mediaType, setBackdropUrl]);
+
+  // FIX: save watch history separately when season/episode changes, without re-fetching details
+  useEffect(() => {
+    if (!details || !movieId) return;
+    const title = details.title || details.name || 'Unknown';
+    saveWatchHistory({
+      mediaId: movieId,
+      mediaType,
+      mediaTitle: title,
+      posterPath: details.poster_path || null,
+      season: mediaType === 'tv' ? season : undefined,
+      episode: mediaType === 'tv' ? episode : undefined,
+    });
+  }, [movieId, mediaType, season, episode, details]);
 
   useEffect(() => {
     const fetchSeasonDetails = async () => {
@@ -117,77 +164,16 @@ const Watch = () => {
         console.error('Failed to fetch season details:', error);
       }
     };
-
     fetchSeasonDetails();
   }, [movieId, mediaType, season]);
 
-  useEffect(() => {
+  const handleWatchlistToggle = () => {
     if (!details) return;
-
-    const title = details.title || details.name || 'Unknown';
-    const baseEntry = {
-      mediaId: movieId,
-      mediaType,
-      mediaTitle: title,
-      posterPath: details.poster_path || null,
-      season: mediaType === 'tv' ? season : undefined,
-      episode: mediaType === 'tv' ? episode : undefined,
-    };
-
-    saveWatchHistory(baseEntry);
-
-    if (!user) return;
-
-    const saveProgressToCloud = async () => {
-      try {
-        await saveWatchHistoryDb(baseEntry);
-
-        const existingStatus = await getShowStatus(movieId, mediaType);
-        const statusToPersist =
-          existingStatus?.status === 'completed' || existingStatus?.status === 'dropped'
-            ? existingStatus.status
-            : 'watching';
-
-        await setShowStatus(
-          {
-            id: movieId,
-            title: details.title,
-            name: details.name,
-            poster_path: details.poster_path,
-            backdrop_path: details.backdrop_path,
-            overview: details.overview || '',
-            vote_average: details.vote_average || 0,
-            release_date: details.release_date,
-            first_air_date: details.first_air_date,
-            media_type: mediaType,
-          },
-          statusToPersist,
-          mediaType === 'tv' ? season : undefined,
-          mediaType === 'tv' ? episode : undefined,
-        );
-      } catch (error) {
-        console.error('Failed to persist watch progress:', error);
-      }
-    };
-
-    saveProgressToCloud();
-  }, [details, movieId, mediaType, season, episode, user]);
-
-  const handleWatchlistToggle = async () => {
-    if (!details) return;
-
-    try {
-      if (inWatchlist) {
-        if (user) {
-          await removeFromWatchlistDb(movieId, mediaType);
-        } else {
-          removeFromWatchlist(movieId, mediaType);
-        }
-        setInWatchlist(false);
-        return;
-      }
-
-      const movie = {
+    if (inWatchlist) {
+      removeFromWatchlist(movieId, mediaType);
+      setInWatchlist(false);
+    } else {
+      addToWatchlist({
         id: movieId,
         title: details.title,
         name: details.name,
@@ -198,59 +184,47 @@ const Watch = () => {
         release_date: details.release_date,
         first_air_date: details.first_air_date,
         media_type: mediaType,
-      };
-
-      if (user) {
-        await addToWatchlistDb(movie);
-      } else {
-        addToWatchlist(movie);
-      }
+      });
       setInWatchlist(true);
-    } catch (error) {
-      console.error('Failed to update watchlist:', error);
     }
   };
 
-  const animeServers = ANIME_SERVERS.filter((server) => {
-    if (mediaType === 'tv') return server.supportsTV;
-    return server.supportsMovies;
-  });
-
-  const movieTvServers = MOVIE_TV_SERVERS.filter((server) => {
-    if (mediaType === 'tv') return server.supportsTV;
-    return server.supportsMovies;
-  });
-
-  // Get current server number
+  const animeServers = ANIME_SERVERS.filter((server) =>
+    mediaType === 'tv' ? server.supportsTV : server.supportsMovies
+  );
+  const movieTvServers = MOVIE_TV_SERVERS.filter((server) =>
+    mediaType === 'tv' ? server.supportsTV : server.supportsMovies
+  );
   const allServers = [...animeServers, ...movieTvServers];
   const currentServerIndex = allServers.findIndex(s => s.id === selectedServer);
   const currentServerNumber = currentServerIndex >= 0 ? currentServerIndex + 1 : 1;
 
-  // Smart open direction detection
   const handleServerToggle = () => {
     if (!serverOpen && serverButtonRef.current) {
       const rect = serverButtonRef.current.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      
-      // If more space above or less than 250px below, open upward
-      if (spaceBelow < 250 && spaceAbove > spaceBelow) {
-        setOpenDirection('up');
-      } else {
-        setOpenDirection('down');
-      }
+      setOpenDirection(spaceBelow < 250 && spaceAbove > spaceBelow ? 'up' : 'down');
     }
     setServerOpen(!serverOpen);
   };
 
   if (isLoading) {
     return (
-      <div className="p-8">
-        <div className="aspect-video bg-muted rounded-lg animate-pulse mb-8" />
-        <div className="space-y-4">
-          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-          <div className="h-4 w-full max-w-2xl bg-muted rounded animate-pulse" />
+      <div className="p-8 pt-20">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
+            <div className="space-y-4">
+              <div className="aspect-video bg-zinc-900 rounded-lg animate-pulse" />
+              <div className="h-8 w-64 bg-zinc-900 rounded animate-pulse" />
+              <div className="h-4 w-full bg-zinc-900 rounded animate-pulse" />
+              <div className="h-4 w-3/4 bg-zinc-900 rounded animate-pulse" />
+            </div>
+            <div className="space-y-4 hidden lg:block">
+              <div className="h-48 bg-zinc-900 rounded-lg animate-pulse" />
+              <div className="h-32 bg-zinc-900 rounded-lg animate-pulse" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -260,9 +234,7 @@ const Watch = () => {
     return (
       <div className="p-8 text-center">
         <p className="text-muted-foreground">Content not found</p>
-        <Button onClick={() => navigate('/')} className="mt-4">
-          Go Home
-        </Button>
+        <Button onClick={() => navigate('/')} className="mt-4">Go Home</Button>
       </div>
     );
   }
@@ -273,15 +245,12 @@ const Watch = () => {
   const runtime = details.runtime ? `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m` : null;
   const seasons = details.number_of_seasons || 0;
   const posterUrl = getImageUrl(details.poster_path, 'w500');
-
   const cast = details.credits?.cast?.slice(0, 10) || [];
   const director = details.credits?.crew?.find(c => c.job === 'Director');
 
-  // Note: Anime content uses the /anime route, not /watch
-
   return (
     <div className="min-h-screen text-white bg-transparent">
-      <div className="p-4 md:p-8">
+      <div className="p-4 md:p-8 pt-20">
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
@@ -294,8 +263,8 @@ const Watch = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
 
-            {/* Left column - Video + content */}
-            <div className="space-y-6">
+            {/* Left column */}
+            <div className="space-y-4">
 
               {/* TV Season/Episode Selector */}
               {mediaType === 'tv' && seasons > 0 && (
@@ -347,9 +316,7 @@ const Watch = () => {
                           onClick={() => setEpisode(i + 1)}
                           className={cn(
                             "p-2 rounded-md text-left transition-colors text-sm",
-                            episode === i + 1
-                              ? "bg-white/10 text-white"
-                              : "bg-zinc-900/50 hover:bg-zinc-800"
+                            episode === i + 1 ? "bg-white/10 text-white" : "bg-zinc-900/50 hover:bg-zinc-800"
                           )}
                         >
                           <div className="font-medium">Episode {i + 1}</div>
@@ -359,6 +326,16 @@ const Watch = () => {
                   </ScrollArea>
                 </div>
               )}
+
+              {/* Yellow click tip — ABOVE the video player */}
+              <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
+                <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-yellow-300/90 leading-relaxed">
+                  <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
+                  <span className="font-semibold">click twice</span> to interact with the video player —
+                  the first click activates it, the second performs the action.
+                </p>
+              </div>
 
               {/* Video Player */}
               <div className="w-full max-w-4xl mx-auto">
@@ -372,35 +349,82 @@ const Watch = () => {
                 />
               </div>
 
-              {/* Title (LEFT) + Buttons (RIGHT) */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h1 className="font-display text-2xl md:text-3xl font-bold order-1">
-                  {title}
-                </h1>
+              {/* Title + Buttons row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
 
-                <div className="flex items-center gap-3 order-2 flex-wrap gap-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {/* Add to List */}
                   <Button
                     variant={inWatchlist ? 'default' : 'outline'}
                     onClick={handleWatchlistToggle}
                     size="sm"
                     className={cn(
-                      "min-w-[130px] border-zinc-700 hover:bg-zinc-800",
+                      "min-w-[120px] border-zinc-700 hover:bg-zinc-800",
                       inWatchlist && "bg-white text-black hover:bg-gray-200"
                     )}
                   >
                     {inWatchlist ? (
-                      <>
-                        <Check className="w-4 h-4 mr-1.5" />
-                        In List
-                      </>
+                      <><Check className="w-4 h-4 mr-1.5" />In List</>
                     ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-1.5" />
-                        Add to List
-                      </>
+                      <><Plus className="w-4 h-4 mr-1.5" />Add to List</>
                     )}
                   </Button>
+
+                  {/* Download button */}
+                  <div className="relative inline-block">
+                    <Button
+                      ref={downloadButtonRef}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
+                      onClick={() => setDownloadOpen(!downloadOpen)}
+                    >
+                      <Download className="w-4 h-4" />
+                      <span className="font-medium">Download</span>
+                      <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", downloadOpen && "rotate-180")} />
+                    </Button>
+
+                    {downloadOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setDownloadOpen(false)} />
+                        <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in-60 zoom-in-95 duration-150">
+                          <div className="p-3 border-b border-zinc-800">
+                            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Download Sources</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">External sites — opens in new tab</p>
+                          </div>
+                          <div className="p-2 space-y-1">
+                            {DOWNLOAD_SOURCES.map((source) => {
+                              const url = source.getUrl(title, year, mediaType);
+                              if (!url) return null;
+                              return (
+                                <a
+                                  key={source.name}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors group"
+                                  onClick={() => setDownloadOpen(false)}
+                                >
+                                  <span className="text-xl">{source.icon}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white">{source.name}</p>
+                                    <p className="text-xs text-zinc-500">{source.description}</p>
+                                  </div>
+                                  <ExternalLink className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 flex-shrink-0" />
+                                </a>
+                              );
+                            })}
+                          </div>
+                          <div className="px-3 pb-3 pt-1">
+                            <p className="text-[10px] text-zinc-600 leading-relaxed">
+                              PirateOne links to external download sites. We don't host any files.
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
                   {/* Server selector */}
                   <div className="relative inline-block">
@@ -408,44 +432,28 @@ const Watch = () => {
                       ref={serverButtonRef}
                       variant="outline"
                       size="sm"
-                      className={cn(
-                        "h-9 px-3 text-sm font-medium border-zinc-700 hover:bg-zinc-800 transition-colors",
-                        "min-w-[110px]",
-                        "flex items-center gap-2"
-                      )}
+                      className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2 min-w-[110px]"
                       onClick={handleServerToggle}
                     >
                       <Server className="w-4 h-4" />
                       <span className="font-medium">Server {currentServerNumber}</span>
-                      <ChevronDown className={cn(
-                        "w-4 h-4 ml-auto transition-transform duration-200",
-                        serverOpen && "rotate-180"
-                      )} />
+                      <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform duration-200", serverOpen && "rotate-180")} />
                     </Button>
 
                     {serverOpen && (
                       <>
-                        {/* Backdrop */}
-                        <div 
-                          className="fixed inset-0 z-40" 
-                          onClick={() => setServerOpen(false)}
-                        />
-                        
-                        {/* Dropdown - centered on mobile, right-aligned on desktop */}
+                        <div className="fixed inset-0 z-40" onClick={() => setServerOpen(false)} />
                         <div
                           className={cn(
                             "z-50 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
                             "w-[300px] sm:w-[340px]",
-                            // Mobile: fixed center of screen
                             "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
-                            // Desktop: absolute positioned
                             "sm:absolute sm:left-auto sm:top-auto sm:translate-x-0 sm:translate-y-0",
                             "sm:right-0",
                             openDirection === 'up' ? "sm:bottom-full sm:mb-2" : "sm:top-full sm:mt-2",
                             "animate-in fade-in-60 zoom-in-95 duration-150"
                           )}
                         >
-                          {/* Anime Servers Section */}
                           <div className="p-3 border-b border-zinc-800">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -454,31 +462,23 @@ const Watch = () => {
                               </span>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {animeServers.map((server, index) => {
-                                const isSelected = selectedServer === server.id;
-                                const serverNum = index + 1;
-                                return (
-                                  <button
-                                    key={server.id}
-                                    onClick={() => {
-                                      setSelectedServer(server.id);
-                                      setServerOpen(false);
-                                    }}
-                                    className={cn(
-                                      "px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center",
-                                      isSelected
-                                        ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
-                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95"
-                                    )}
-                                  >
-                                    Server {serverNum}
-                                  </button>
-                                );
-                              })}
+                              {animeServers.map((server, index) => (
+                                <button
+                                  key={server.id}
+                                  onClick={() => { setSelectedServer(server.id); setServerOpen(false); }}
+                                  className={cn(
+                                    "px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center",
+                                    selectedServer === server.id
+                                      ? "bg-emerald-500/20 border-emerald-500 text-emerald-300"
+                                      : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95"
+                                  )}
+                                >
+                                  Server {index + 1}
+                                </button>
+                              ))}
                             </div>
                           </div>
 
-                          {/* Movie & TV Servers Section */}
                           <div className="p-3">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -487,27 +487,20 @@ const Watch = () => {
                               </span>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {movieTvServers.map((server, index) => {
-                                const isSelected = selectedServer === server.id;
-                                const serverNum = animeServers.length + index + 1;
-                                return (
-                                  <button
-                                    key={server.id}
-                                    onClick={() => {
-                                      setSelectedServer(server.id);
-                                      setServerOpen(false);
-                                    }}
-                                    className={cn(
-                                      "px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center",
-                                      isSelected
-                                        ? "bg-blue-500/20 border-blue-500 text-blue-300"
-                                        : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 active:scale-95"
-                                    )}
-                                  >
-                                    Server {serverNum}
-                                  </button>
-                                );
-                              })}
+                              {movieTvServers.map((server, index) => (
+                                <button
+                                  key={server.id}
+                                  onClick={() => { setSelectedServer(server.id); setServerOpen(false); }}
+                                  className={cn(
+                                    "px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center",
+                                    selectedServer === server.id
+                                      ? "bg-blue-500/20 border-blue-500 text-blue-300"
+                                      : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 active:scale-95"
+                                  )}
+                                >
+                                  Server {animeServers.length + index + 1}
+                                </button>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -556,22 +549,14 @@ const Watch = () => {
 
             {/* Right sidebar */}
             <div className="space-y-4">
-              {/* Title Logo */}
               <div className="p-4 flex items-center justify-center min-h-[80px]">
                 {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt={title}
-                    className="max-h-16 max-w-full object-contain"
-                  />
+                  <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
                 ) : (
-                  <h2 className="font-display text-xl font-bold text-white text-center">
-                    {title}
-                  </h2>
+                  <h2 className="text-xl font-bold text-white text-center">{title}</h2>
                 )}
               </div>
 
-              {/* Poster + Quick Info */}
               <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-3 border border-zinc-800">
                 <div className="flex gap-3">
                   {posterUrl && (
@@ -579,7 +564,6 @@ const Watch = () => {
                       <img src={posterUrl} alt={title} className="w-full h-auto" />
                     </div>
                   )}
-
                   <div className="flex-1 space-y-2 text-sm text-zinc-300">
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded">
@@ -588,21 +572,18 @@ const Watch = () => {
                       </div>
                       <span className="text-xs text-zinc-500">/10</span>
                     </div>
-
                     {year && (
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                         <span>{year}</span>
                       </div>
                     )}
-
                     {runtime && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5 text-zinc-400" />
                         <span>{runtime}</span>
                       </div>
                     )}
-
                     <span className="inline-block bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded text-xs font-medium uppercase">
                       {mediaType === 'tv' ? 'TV Series' : 'Movie'}
                     </span>
@@ -610,9 +591,8 @@ const Watch = () => {
                 </div>
               </div>
 
-              {/* Details Card */}
               <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800 space-y-4 text-zinc-300">
-                <h3 className="font-display text-lg text-white">Details</h3>
+                <h3 className="text-lg font-bold text-white">Details</h3>
                 <div className="space-y-3 text-sm">
                   {details.tagline && (
                     <div>
@@ -639,10 +619,7 @@ const Watch = () => {
                       <span className="text-zinc-500">Genres</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {details.genres.map((genre) => (
-                          <span
-                            key={genre.id}
-                            className="px-2 py-0.5 bg-zinc-900 rounded-full text-xs border border-zinc-800"
-                          >
+                          <span key={genre.id} className="px-2 py-0.5 bg-zinc-900 rounded-full text-xs border border-zinc-800">
                             {genre.name}
                           </span>
                         ))}
@@ -652,12 +629,11 @@ const Watch = () => {
                 </div>
               </div>
 
-              {/* Cast */}
               {cast.length > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
                   <div className="flex items-center gap-2 mb-3">
                     <Users className="w-4 h-4 text-zinc-300" />
-                    <h3 className="font-display text-lg text-white">Cast</h3>
+                    <h3 className="text-lg font-bold text-white">Cast</h3>
                   </div>
                   {director && (
                     <div className="mb-3 pb-3 border-b border-zinc-800">
@@ -674,11 +650,7 @@ const Watch = () => {
                         <div key={member.id} className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-900 flex-shrink-0 border border-zinc-800">
                             {member.profile_path ? (
-                              <img
-                                src={getImageUrl(member.profile_path, 'w200') || ''}
-                                alt={member.name}
-                                className="w-full h-full object-cover"
-                              />
+                              <img src={getImageUrl(member.profile_path, 'w200') || ''} alt={member.name} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">
                                 {member.name.charAt(0)}
@@ -696,10 +668,9 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Production Companies */}
               {details.production_companies && details.production_companies.length > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
-                  <h3 className="font-display text-sm mb-2 text-zinc-400">Production</h3>
+                  <h3 className="text-sm font-bold mb-2 text-zinc-400">Production</h3>
                   <div className="flex flex-wrap gap-2">
                     {details.production_companies.slice(0, 3).map((company) => (
                       <span key={company.id} className="text-xs bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
