@@ -5,41 +5,32 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 import pirateOneLogo from '@/assets/pirateone-logo.png';
 
-/*
-  All poster paths below are verified popular TMDB titles.
-  We use a large flat pool and slice into columns — so if one
-  image fails the column still fills from the remaining pool.
-  Each column repeats the same list twice to enable seamless loop.
-*/
 const ALL_POSTERS = [
-  // Verified working TMDB poster paths (w342 size, very reliable)
-  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', // Spider-Man: No Way Home
-  '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg', // The Dark Knight
-  '/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg', // Inception
-  '/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg', // Interstellar
-  '/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', // Avengers: Endgame
-  '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg', // Fight Club
-  '/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg', // Pulp Fiction
-  '/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg', // The Godfather
-  '/or06FN3Dka5tukK1e9sl16pB3iy.jpg', // Forrest Gump
-  '/velWPhVMQeQKcxggNEU8YmIo52R.jpg', // The Shawshank Redemption
-  '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg', // The Matrix
-  '/2CAL2433ZeIihfX1Hb2139CX0pW.jpg', // Goodfellas
-  '/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg', // The Silence of the Lambs
-  '/sv1xJUazXeYqALzczSZ3O6nkH75.jpg', // Schindler's List
-  '/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg', // 12 Angry Men
-  '/8kSerJrhrJWKLk1LViesGcnrVPE.jpg', // Spirited Away
-  '/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg', // Parasite
-  '/A3ZbZsmsvNGdprRi2lKgGEeVLEH.jpg', // Whiplash
-  '/xmbU4JTUm4GYKE56n9TXjyHbCGw.jpg', // La La Land
-  '/NNxYkU70HPurnNCSiCjYAmacwm.jpg',  // The Lion King
-  '/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg', // Gladiator
-  '/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg', // Black Panther
-  '/aosm8NMQ3UyoBVpSxyimorCQykC.jpg', // Avengers: Infinity War
-  '/74xTEgt7R36Fpooo50r9T25onhq.jpg', // Iron Man
-  '/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',  // The Green Mile
-  '/velWPhVMQeQKcxggNEU8YmIo52R.jpg', // Shawshank (alt slot)
-  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', // repeat for density
+  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
+  '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
+  '/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg',
+  '/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
+  '/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
+  '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+  '/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
+  '/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
+  '/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
+  '/velWPhVMQeQKcxggNEU8YmIo52R.jpg',
+  '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
+  '/2CAL2433ZeIihfX1Hb2139CX0pW.jpg',
+  '/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg',
+  '/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
+  '/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg',
+  '/8kSerJrhrJWKLk1LViesGcnrVPE.jpg',
+  '/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg',
+  '/A3ZbZsmsvNGdprRi2lKgGEeVLEH.jpg',
+  '/xmbU4JTUm4GYKE56n9TXjyHbCGw.jpg',
+  '/NNxYkU70HPurnNCSiCjYAmacwm.jpg',
+  '/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg',
+  '/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
+  '/aosm8NMQ3UyoBVpSxyimorCQykC.jpg',
+  '/74xTEgt7R36Fpooo50r9T25onhq.jpg',
+  '/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
   '/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
   '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
   '/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
@@ -49,11 +40,12 @@ const ALL_POSTERS = [
   '/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
   '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
   '/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
+  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
+  '/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg',
 ];
 
 const BASE = 'https://image.tmdb.org/t/p/w342';
 
-// Split flat pool into N evenly-sized columns, offset each by column index
 function makeColumns(n: number): string[][] {
   const perCol = Math.ceil(ALL_POSTERS.length / n);
   return Array.from({ length: n }, (_, ci) => {
@@ -66,22 +58,20 @@ function makeColumns(n: number): string[][] {
   });
 }
 
-// Number of columns changes with screen width via JS — we always render 8 and hide via CSS
 const COLS = makeColumns(8);
 
-const PosterColumn = ({
-  images,
-  reverse = false,
-  duration = 32,
-}: {
+interface PosterColumnProps {
   images: string[];
   reverse?: boolean;
   duration?: number;
-}) => {
+  className?: string;
+}
+
+const PosterColumn = ({ images, reverse = false, duration = 32, className = '' }: PosterColumnProps) => {
   const doubled = [...images, ...images];
   return (
     <div
-      className={reverse ? 'poster-col-up' : 'poster-col-down'}
+      className={`${reverse ? 'poster-col-up' : 'poster-col-down'} ${className}`}
       style={{ animationDuration: `${duration}s` }}
     >
       {doubled.map((path, i) => (
@@ -91,7 +81,6 @@ const PosterColumn = ({
             alt=""
             loading="lazy"
             onError={(e) => {
-              // hide the wrapper div so no blank gap is left
               const wrapper = (e.target as HTMLImageElement).parentElement;
               if (wrapper) wrapper.style.display = 'none';
             }}
@@ -137,7 +126,6 @@ const Auth = () => {
   return (
     <>
       <style>{`
-        /* ── Scroll animations ── */
         @keyframes scrollDown {
           from { transform: translateY(0); }
           to   { transform: translateY(-50%); }
@@ -149,7 +137,6 @@ const Auth = () => {
         .poster-col-down { animation: scrollDown linear infinite; }
         .poster-col-up   { animation: scrollUp  linear infinite; }
 
-        /* ── Poster column layout ── */
         .poster-col-down,
         .poster-col-up {
           display: flex;
@@ -159,34 +146,27 @@ const Auth = () => {
           min-width: 0;
         }
 
-        /* ── Individual poster ── */
         .poster-item {
           width: 100%;
           aspect-ratio: 2 / 3;
           border-radius: 8px;
           overflow: hidden;
           flex-shrink: 0;
-          background: #111;   /* dark placeholder — no flash of blank */
+          background: #111;
         }
         .poster-item img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           opacity: 0.6;
-          transition: opacity 0.4s;
           display: block;
+          transition: opacity 0.4s;
         }
         .poster-item:hover img { opacity: 0.85; }
 
-        /* Hide columns 6-8 on small screens so they don't squish */
-        @media (max-width: 480px) {
-          .poster-col-hide-xs { display: none !important; }
-        }
-        @media (max-width: 768px) {
-          .poster-col-hide-sm { display: none !important; }
-        }
+        @media (max-width: 480px)  { .hide-xs { display: none !important; } }
+        @media (max-width: 768px)  { .hide-sm { display: none !important; } }
 
-        /* ── Fade-in for form ── */
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -196,7 +176,6 @@ const Auth = () => {
         .fu3 { animation: fadeUp 0.55s 0.25s ease both; }
         .fu4 { animation: fadeUp 0.55s 0.35s ease both; }
 
-        /* ── Auth inputs ── */
         .auth-input {
           width: 100%;
           height: 48px;
@@ -208,6 +187,7 @@ const Auth = () => {
           font-size: 0.9rem;
           outline: none;
           transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+          box-sizing: border-box;
         }
         .auth-input::placeholder { color: rgba(255,255,255,0.28); }
         .auth-input:focus {
@@ -217,7 +197,6 @@ const Auth = () => {
         }
         .auth-input-pr { padding-right: 44px; }
 
-        /* ── Submit button ── */
         .submit-btn {
           width: 100%;
           height: 50px;
@@ -234,6 +213,7 @@ const Auth = () => {
           justify-content: center;
           gap: 8px;
           transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+          box-sizing: border-box;
         }
         .submit-btn:hover:not(:disabled) {
           background: rgba(255,255,255,0.88);
@@ -243,7 +223,6 @@ const Auth = () => {
         .submit-btn:active:not(:disabled) { transform: translateY(0); }
         .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        /* ── Tab switcher ── */
         .tab-bar {
           display: flex;
           background: rgba(255,255,255,0.05);
@@ -263,57 +242,65 @@ const Auth = () => {
           transition: all 0.2s;
           letter-spacing: 0.01em;
         }
-        .tab-btn-active {
+        .tab-active {
           background: rgba(255,255,255,0.13);
           color: #fff;
           border-color: rgba(255,255,255,0.13);
         }
-        .tab-btn-inactive {
+        .tab-inactive {
           background: transparent;
           color: rgba(255,255,255,0.38);
         }
-        .tab-btn-inactive:hover { color: rgba(255,255,255,0.65); }
+        .tab-inactive:hover { color: rgba(255,255,255,0.65); }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+          width: 16px; height: 16px;
+          border: 2px solid rgba(0,0,0,0.2);
+          border-top-color: #0a0a0a;
+          border-radius: 50%;
+          animation: spin 0.7s linear infinite;
+          display: inline-block;
+          flex-shrink: 0;
+        }
       `}</style>
 
       <div style={{ position: 'relative', minHeight: '100vh', background: '#080808', overflow: 'hidden', display: 'flex' }}>
 
-        {/* ══ POSTER BACKGROUND ══ */}
+        {/* POSTER BACKGROUND */}
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', gap: '8px', padding: '8px',
           overflow: 'hidden',
           pointerEvents: 'none', userSelect: 'none',
         }}>
-          {/* 8 columns — some hidden at small sizes via CSS classes */}
           <PosterColumn images={COLS[0]} duration={30} />
           <PosterColumn images={COLS[1]} reverse duration={36} />
           <PosterColumn images={COLS[2]} duration={28} />
-          <PosterColumn images={COLS[3]} reverse duration={34} className="poster-col-hide-xs" />
-          <PosterColumn images={COLS[4]} duration={32} className="poster-col-hide-xs" />
-          <PosterColumn images={COLS[5]} reverse duration={38} className="poster-col-hide-sm" />
-          <PosterColumn images={COLS[6]} duration={29} className="poster-col-hide-sm" />
-          <PosterColumn images={COLS[7]} reverse duration={35} className="poster-col-hide-sm" />
+          <PosterColumn images={COLS[3]} reverse duration={34} className="hide-xs" />
+          <PosterColumn images={COLS[4]} duration={32} className="hide-xs" />
+          <PosterColumn images={COLS[5]} reverse duration={38} className="hide-sm" />
+          <PosterColumn images={COLS[6]} duration={29} className="hide-sm" />
+          <PosterColumn images={COLS[7]} reverse duration={35} className="hide-sm" />
 
-          {/* Overlays */}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #080808 0%, transparent 18%, transparent 82%, #080808 100%)' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #080808 0%, transparent 12%, transparent 88%, #080808 100%)' }} />
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 55% 70% at 50% 50%, rgba(8,8,8,0.72) 0%, transparent 100%)' }} />
         </div>
 
-        {/* Grain */}
+        {/* Grain overlay */}
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.55,
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E")`,
         }} />
 
-        {/* ══ FORM ══ */}
+        {/* FORM */}
         <div style={{
           position: 'relative', zIndex: 10,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           width: '100%', padding: '64px 16px',
         }}>
-
           {/* Logo */}
           <div className="fu1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '36px' }}>
             <img src={pirateOneLogo} alt="PirateOne" style={{ height: '40px', objectFit: 'contain', filter: 'invert(1)', marginBottom: '10px' }} />
@@ -323,30 +310,23 @@ const Auth = () => {
           </div>
 
           {/* Panel */}
-          <div
-            className="fu2"
-            style={{
-              width: '100%',
-              maxWidth: '480px',           // wider than before (was 400px)
-              background: 'rgba(14,14,14,0.88)',
-              backdropFilter: 'blur(28px)',
-              WebkitBackdropFilter: 'blur(28px)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: '18px',
-              padding: '40px 36px',
-              boxShadow: '0 40px 100px rgba(0,0,0,0.75)',
-            }}
-          >
-            {/* Tab switcher */}
+          <div className="fu2" style={{
+            width: '100%', maxWidth: '480px',
+            background: 'rgba(14,14,14,0.88)',
+            backdropFilter: 'blur(28px)',
+            WebkitBackdropFilter: 'blur(28px)',
+            border: '1px solid rgba(255,255,255,0.09)',
+            borderRadius: '18px',
+            padding: '40px 36px',
+            boxShadow: '0 40px 100px rgba(0,0,0,0.75)',
+            boxSizing: 'border-box',
+          }}>
+            {/* Tabs */}
             <div className="fu2 tab-bar">
               {['Sign In', 'Sign Up'].map((tab) => {
                 const active = (tab === 'Sign In') === isLogin;
                 return (
-                  <button
-                    key={tab}
-                    onClick={() => setIsLogin(tab === 'Sign In')}
-                    className={`tab-btn ${active ? 'tab-btn-active' : 'tab-btn-inactive'}`}
-                  >
+                  <button key={tab} onClick={() => setIsLogin(tab === 'Sign In')} className={`tab-btn ${active ? 'tab-active' : 'tab-inactive'}`}>
                     {tab}
                   </button>
                 );
@@ -363,20 +343,13 @@ const Auth = () => {
               </p>
             </div>
 
-            {/* Form fields */}
+            {/* Form */}
             <form onSubmit={handleSubmit} className="fu4">
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', marginBottom: '8px' }}>
                   Email
                 </label>
-                <input
-                  type="email"
-                  placeholder="pirate@sea.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="auth-input"
-                />
+                <input type="email" placeholder="pirate@sea.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="auth-input" />
               </div>
 
               <div style={{ marginBottom: '24px' }}>
@@ -384,49 +357,27 @@ const Auth = () => {
                   Password
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="auth-input auth-input-pr"
-                  />
+                  <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="auth-input auth-input-pr" />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(255,255,255,0.32)', padding: 0, display: 'flex',
-                      transition: 'color 0.2s',
-                    }}
+                    style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.32)', padding: 0, display: 'flex', transition: 'color 0.2s' }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
                     onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.32)')}
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                {!isLogin && (
-                  <p style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)' }}>Minimum 6 characters</p>
-                )}
+                {!isLogin && <p style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)' }}>Minimum 6 characters</p>}
               </div>
 
               <button type="submit" disabled={loading} className="submit-btn">
                 {loading ? (
-                  <>
-                    <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.2)', borderTop: '2px solid #0a0a0a', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-                    {isLogin ? 'Signing in…' : 'Creating account…'}
-                  </>
+                  <><span className="spinner" />{isLogin ? 'Signing in…' : 'Creating account…'}</>
                 ) : (
-                  <>
-                    {isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}
-                    {isLogin ? 'Sign In' : 'Create Account'}
-                  </>
+                  <>{isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}{isLogin ? 'Sign In' : 'Create Account'}</>
                 )}
               </button>
-
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </form>
 
             {/* Toggle */}
@@ -452,34 +403,5 @@ const Auth = () => {
     </>
   );
 };
-
-// Patch PosterColumn to accept className
-function PosterColumn({
-  images, reverse = false, duration = 32, className = '',
-}: {
-  images: string[]; reverse?: boolean; duration?: number; className?: string;
-}) {
-  const doubled = [...images, ...images];
-  return (
-    <div
-      className={`${reverse ? 'poster-col-up' : 'poster-col-down'} ${className}`}
-      style={{ animationDuration: `${duration}s` }}
-    >
-      {doubled.map((path, i) => (
-        <div key={i} className="poster-item">
-          <img
-            src={`${BASE}${path}`}
-            alt=""
-            loading="lazy"
-            onError={(e) => {
-              const wrapper = (e.target as HTMLImageElement).parentElement;
-              if (wrapper) wrapper.style.display = 'none';
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export default Auth;
