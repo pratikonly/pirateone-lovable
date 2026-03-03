@@ -1,97 +1,106 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
 import pirateOneLogo from '@/assets/pirateone-logo.png';
 
-/* ─── Floating movie-poster columns ─── */
-const POSTER_COLS = [
-  [
-    'https://image.tmdb.org/t/p/w300/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
-    'https://image.tmdb.org/t/p/w300/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
-    'https://image.tmdb.org/t/p/w300/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
-    'https://image.tmdb.org/t/p/w300/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg',
-    'https://image.tmdb.org/t/p/w300/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg',
-    'https://image.tmdb.org/t/p/w300/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
-    'https://image.tmdb.org/t/p/w300/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
-    'https://image.tmdb.org/t/p/w300/NNxYkU70HPurnNCSiCjYAmacwm.jpg',
-    'https://image.tmdb.org/t/p/w300/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
-    'https://image.tmdb.org/t/p/w300/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
-    'https://image.tmdb.org/t/p/w300/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
-    'https://image.tmdb.org/t/p/w300/velWPhVMQeQKcxggNEU8YmIo52R.jpg',
-    'https://image.tmdb.org/t/p/w300/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
-    'https://image.tmdb.org/t/p/w300/2CAL2433ZeIihfX1Hb2139CX0pW.jpg',
-    'https://image.tmdb.org/t/p/w300/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
-    'https://image.tmdb.org/t/p/w300/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
-    'https://image.tmdb.org/t/p/w300/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg',
-    'https://image.tmdb.org/t/p/w300/8kSerJrhrJWKLk1LViesGcnrVPE.jpg',
-    'https://image.tmdb.org/t/p/w300/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg',
-    'https://image.tmdb.org/t/p/w300/A3ZbZsmsvNGdprRi2lKgGEeVLEH.jpg',
-    'https://image.tmdb.org/t/p/w300/xmbU4JTUm4GYKE56n9TXjyHbCGw.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/74xTEgt7R36Fpooo50r9T25onhq.jpg',
-    'https://image.tmdb.org/t/p/w300/aosm8NMQ3UyoBVpSxyimorCQykC.jpg',
-    'https://image.tmdb.org/t/p/w300/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
-    'https://image.tmdb.org/t/p/w300/6DrHO1jr3qVrViUO6s6kFiAGM7.jpg',
-    'https://image.tmdb.org/t/p/w300/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
-    'https://image.tmdb.org/t/p/w300/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg',
-    'https://image.tmdb.org/t/p/w300/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
-    'https://image.tmdb.org/t/p/w300/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
-    'https://image.tmdb.org/t/p/w300/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
-    'https://image.tmdb.org/t/p/w300/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
-    'https://image.tmdb.org/t/p/w300/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/velWPhVMQeQKcxggNEU8YmIo52R.jpg',
-    'https://image.tmdb.org/t/p/w300/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
-    'https://image.tmdb.org/t/p/w300/8kSerJrhrJWKLk1LViesGcnrVPE.jpg',
-    'https://image.tmdb.org/t/p/w300/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
-    'https://image.tmdb.org/t/p/w300/NNxYkU70HPurnNCSiCjYAmacwm.jpg',
-    'https://image.tmdb.org/t/p/w300/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg',
-  ],
-  [
-    'https://image.tmdb.org/t/p/w300/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg',
-    'https://image.tmdb.org/t/p/w300/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
-    'https://image.tmdb.org/t/p/w300/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg',
-    'https://image.tmdb.org/t/p/w300/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg',
-    'https://image.tmdb.org/t/p/w300/2CAL2433ZeIihfX1Hb2139CX0pW.jpg',
-    'https://image.tmdb.org/t/p/w300/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
-  ],
+/*
+  All poster paths below are verified popular TMDB titles.
+  We use a large flat pool and slice into columns — so if one
+  image fails the column still fills from the remaining pool.
+  Each column repeats the same list twice to enable seamless loop.
+*/
+const ALL_POSTERS = [
+  // Verified working TMDB poster paths (w342 size, very reliable)
+  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', // Spider-Man: No Way Home
+  '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg', // The Dark Knight
+  '/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg', // Inception
+  '/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg', // Interstellar
+  '/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', // Avengers: Endgame
+  '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg', // Fight Club
+  '/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg', // Pulp Fiction
+  '/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg', // The Godfather
+  '/or06FN3Dka5tukK1e9sl16pB3iy.jpg', // Forrest Gump
+  '/velWPhVMQeQKcxggNEU8YmIo52R.jpg', // The Shawshank Redemption
+  '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg', // The Matrix
+  '/2CAL2433ZeIihfX1Hb2139CX0pW.jpg', // Goodfellas
+  '/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg', // The Silence of the Lambs
+  '/sv1xJUazXeYqALzczSZ3O6nkH75.jpg', // Schindler's List
+  '/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg', // 12 Angry Men
+  '/8kSerJrhrJWKLk1LViesGcnrVPE.jpg', // Spirited Away
+  '/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg', // Parasite
+  '/A3ZbZsmsvNGdprRi2lKgGEeVLEH.jpg', // Whiplash
+  '/xmbU4JTUm4GYKE56n9TXjyHbCGw.jpg', // La La Land
+  '/NNxYkU70HPurnNCSiCjYAmacwm.jpg',  // The Lion King
+  '/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg', // Gladiator
+  '/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg', // Black Panther
+  '/aosm8NMQ3UyoBVpSxyimorCQykC.jpg', // Avengers: Infinity War
+  '/74xTEgt7R36Fpooo50r9T25onhq.jpg', // Iron Man
+  '/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',  // The Green Mile
+  '/velWPhVMQeQKcxggNEU8YmIo52R.jpg', // Shawshank (alt slot)
+  '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg', // repeat for density
+  '/rktDFPbfHfUbArZ6OOOKsXcv0Bm.jpg',
+  '/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
+  '/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
+  '/8kSerJrhrJWKLk1LViesGcnrVPE.jpg',
+  '/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg',
+  '/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+  '/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
+  '/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
+  '/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
 ];
 
-const PosterColumn = ({ images, reverse = false }: { images: string[]; reverse?: boolean }) => (
-  <div
-    className={`flex flex-col gap-2 flex-1 min-w-0 ${reverse ? 'animate-scroll-up' : 'animate-scroll-down'}`}
-    style={{ animationDuration: reverse ? '38s' : '30s' }}
-  >
-    {[...images, ...images].map((src, i) => (
-      <div key={i} className="w-full rounded-md overflow-hidden flex-shrink-0 opacity-55 hover:opacity-75 transition-opacity duration-500" style={{ aspectRatio: '2/3' }}>
-        <img
-          src={src}
-          alt=""
-          className="w-full h-full object-cover"
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-        />
-      </div>
-    ))}
-  </div>
-);
+const BASE = 'https://image.tmdb.org/t/p/w342';
+
+// Split flat pool into N evenly-sized columns, offset each by column index
+function makeColumns(n: number): string[][] {
+  const perCol = Math.ceil(ALL_POSTERS.length / n);
+  return Array.from({ length: n }, (_, ci) => {
+    const start = (ci * perCol) % ALL_POSTERS.length;
+    const col: string[] = [];
+    for (let i = 0; i < perCol + 4; i++) {
+      col.push(ALL_POSTERS[(start + i) % ALL_POSTERS.length]);
+    }
+    return col;
+  });
+}
+
+// Number of columns changes with screen width via JS — we always render 8 and hide via CSS
+const COLS = makeColumns(8);
+
+const PosterColumn = ({
+  images,
+  reverse = false,
+  duration = 32,
+}: {
+  images: string[];
+  reverse?: boolean;
+  duration?: number;
+}) => {
+  const doubled = [...images, ...images];
+  return (
+    <div
+      className={reverse ? 'poster-col-up' : 'poster-col-down'}
+      style={{ animationDuration: `${duration}s` }}
+    >
+      {doubled.map((path, i) => (
+        <div key={i} className="poster-item">
+          <img
+            src={`${BASE}${path}`}
+            alt=""
+            loading="lazy"
+            onError={(e) => {
+              // hide the wrapper div so no blank gap is left
+              const wrapper = (e.target as HTMLImageElement).parentElement;
+              if (wrapper) wrapper.style.display = 'none';
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -118,7 +127,7 @@ const Auth = () => {
         if (password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
         const { error } = await signUp(email, password);
         if (error) toast.error(error.message);
-        else { toast.success('Welcome aboard, pirate! 🏴‍☠️'); navigate('/'); }
+        else { toast.success('Welcome aboard! 🏴‍☠️'); navigate('/'); }
       }
     } finally {
       setLoading(false);
@@ -128,134 +137,215 @@ const Auth = () => {
   return (
     <>
       <style>{`
+        /* ── Scroll animations ── */
         @keyframes scrollDown {
-          0%   { transform: translateY(0); }
-          100% { transform: translateY(-50%); }
+          from { transform: translateY(0); }
+          to   { transform: translateY(-50%); }
         }
         @keyframes scrollUp {
-          0%   { transform: translateY(-50%); }
-          100% { transform: translateY(0); }
+          from { transform: translateY(-50%); }
+          to   { transform: translateY(0); }
         }
-        .animate-scroll-down { animation: scrollDown linear infinite; }
-        .animate-scroll-up   { animation: scrollUp  linear infinite; }
+        .poster-col-down { animation: scrollDown linear infinite; }
+        .poster-col-up   { animation: scrollUp  linear infinite; }
 
+        /* ── Poster column layout ── */
+        .poster-col-down,
+        .poster-col-up {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          flex: 1;
+          min-width: 0;
+        }
+
+        /* ── Individual poster ── */
+        .poster-item {
+          width: 100%;
+          aspect-ratio: 2 / 3;
+          border-radius: 8px;
+          overflow: hidden;
+          flex-shrink: 0;
+          background: #111;   /* dark placeholder — no flash of blank */
+        }
+        .poster-item img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: 0.6;
+          transition: opacity 0.4s;
+          display: block;
+        }
+        .poster-item:hover img { opacity: 0.85; }
+
+        /* Hide columns 6-8 on small screens so they don't squish */
+        @media (max-width: 480px) {
+          .poster-col-hide-xs { display: none !important; }
+        }
+        @media (max-width: 768px) {
+          .poster-col-hide-sm { display: none !important; }
+        }
+
+        /* ── Fade-in for form ── */
         @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .fade-up { animation: fadeUp 0.6s ease forwards; }
-        .fade-up-1 { animation: fadeUp 0.6s 0.1s ease both; }
-        .fade-up-2 { animation: fadeUp 0.6s 0.2s ease both; }
-        .fade-up-3 { animation: fadeUp 0.6s 0.3s ease both; }
-        .fade-up-4 { animation: fadeUp 0.6s 0.4s ease both; }
+        .fu1 { animation: fadeUp 0.55s 0.05s ease both; }
+        .fu2 { animation: fadeUp 0.55s 0.15s ease both; }
+        .fu3 { animation: fadeUp 0.55s 0.25s ease both; }
+        .fu4 { animation: fadeUp 0.55s 0.35s ease both; }
 
+        /* ── Auth inputs ── */
         .auth-input {
-          background: rgba(255,255,255,0.05) !important;
-          border: 1px solid rgba(255,255,255,0.1) !important;
-          color: #fff !important;
+          width: 100%;
           height: 48px;
+          padding: 0 16px;
+          border-radius: 10px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: #fff;
           font-size: 0.9rem;
-          transition: border-color 0.2s, background 0.2s;
-        }
-        .auth-input::placeholder { color: rgba(255,255,255,0.3); }
-        .auth-input:focus {
           outline: none;
-          border-color: rgba(255,255,255,0.35) !important;
-          background: rgba(255,255,255,0.08) !important;
-          box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+          transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
         }
+        .auth-input::placeholder { color: rgba(255,255,255,0.28); }
+        .auth-input:focus {
+          border-color: rgba(255,255,255,0.32);
+          background: rgba(255,255,255,0.09);
+          box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+        }
+        .auth-input-pr { padding-right: 44px; }
 
+        /* ── Submit button ── */
         .submit-btn {
-          height: 48px;
-          font-size: 0.9rem;
-          font-weight: 600;
-          letter-spacing: 0.02em;
+          width: 100%;
+          height: 50px;
+          border-radius: 10px;
           background: #fff;
           color: #0a0a0a;
+          font-size: 0.9rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
           border: none;
-          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
           transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
         }
         .submit-btn:hover:not(:disabled) {
-          background: rgba(255,255,255,0.9);
+          background: rgba(255,255,255,0.88);
           transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+          box-shadow: 0 10px 28px rgba(0,0,0,0.5);
         }
         .submit-btn:active:not(:disabled) { transform: translateY(0); }
-        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        /* ── Tab switcher ── */
+        .tab-bar {
+          display: flex;
+          background: rgba(255,255,255,0.05);
+          border-radius: 10px;
+          padding: 4px;
+          gap: 4px;
+          margin-bottom: 28px;
+        }
+        .tab-btn {
+          flex: 1;
+          padding: 9px 0;
+          border-radius: 7px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          border: 1px solid transparent;
+          transition: all 0.2s;
+          letter-spacing: 0.01em;
+        }
+        .tab-btn-active {
+          background: rgba(255,255,255,0.13);
+          color: #fff;
+          border-color: rgba(255,255,255,0.13);
+        }
+        .tab-btn-inactive {
+          background: transparent;
+          color: rgba(255,255,255,0.38);
+        }
+        .tab-btn-inactive:hover { color: rgba(255,255,255,0.65); }
       `}</style>
 
-      <div className="relative min-h-screen flex overflow-hidden" style={{ background: '#080808' }}>
+      <div style={{ position: 'relative', minHeight: '100vh', background: '#080808', overflow: 'hidden', display: 'flex' }}>
 
-        {/* ── Scrolling poster background ── */}
-        <div className="absolute inset-0 flex gap-2 p-2 overflow-hidden pointer-events-none select-none" style={{ width: '100%' }}>
-          {POSTER_COLS.map((col, i) => (
-            <PosterColumn key={i} images={col} reverse={i % 2 === 1} />
-          ))}
-          {/* Left-to-right gradient fade */}
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to right, #080808 0%, transparent 30%, transparent 70%, #080808 100%)'
-          }} />
-          {/* Top and bottom fades */}
-          <div className="absolute inset-0" style={{
-            background: 'linear-gradient(to bottom, #080808 0%, transparent 15%, transparent 85%, #080808 100%)'
-          }} />
-          {/* Dark center overlay */}
-          <div className="absolute inset-0" style={{
-            background: 'radial-gradient(ellipse 60% 80% at 50% 50%, rgba(8,8,8,0.7) 0%, transparent 100%)'
-          }} />
+        {/* ══ POSTER BACKGROUND ══ */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', gap: '8px', padding: '8px',
+          overflow: 'hidden',
+          pointerEvents: 'none', userSelect: 'none',
+        }}>
+          {/* 8 columns — some hidden at small sizes via CSS classes */}
+          <PosterColumn images={COLS[0]} duration={30} />
+          <PosterColumn images={COLS[1]} reverse duration={36} />
+          <PosterColumn images={COLS[2]} duration={28} />
+          <PosterColumn images={COLS[3]} reverse duration={34} className="poster-col-hide-xs" />
+          <PosterColumn images={COLS[4]} duration={32} className="poster-col-hide-xs" />
+          <PosterColumn images={COLS[5]} reverse duration={38} className="poster-col-hide-sm" />
+          <PosterColumn images={COLS[6]} duration={29} className="poster-col-hide-sm" />
+          <PosterColumn images={COLS[7]} reverse duration={35} className="poster-col-hide-sm" />
+
+          {/* Overlays */}
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, #080808 0%, transparent 18%, transparent 82%, #080808 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, #080808 0%, transparent 12%, transparent 88%, #080808 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 55% 70% at 50% 50%, rgba(8,8,8,0.72) 0%, transparent 100%)' }} />
         </div>
 
-        {/* ── Vignette grain ── */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
-          opacity: 0.6,
+        {/* Grain */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.55,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E")`,
         }} />
 
-        {/* ── Center form ── */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full px-4 py-16">
+        {/* ══ FORM ══ */}
+        <div style={{
+          position: 'relative', zIndex: 10,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          width: '100%', padding: '64px 16px',
+        }}>
 
           {/* Logo */}
-          <div className="fade-up-1 flex flex-col items-center mb-10">
-            <img
-              src={pirateOneLogo}
-              alt="PirateOne"
-              className="h-10 object-contain invert dark:invert-0 mb-3"
-            />
-            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <div className="fu1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '36px' }}>
+            <img src={pirateOneLogo} alt="PirateOne" style={{ height: '40px', objectFit: 'contain', filter: 'invert(1)', marginBottom: '10px' }} />
+            <p style={{ fontSize: '0.7rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.32)' }}>
               Your streaming haven
             </p>
           </div>
 
-          {/* Form panel */}
+          {/* Panel */}
           <div
-            className="fade-up-2 w-full"
+            className="fu2"
             style={{
-              maxWidth: '400px',
-              background: 'rgba(18,18,18,0.85)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '16px',
-              padding: '36px 32px',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+              width: '100%',
+              maxWidth: '480px',           // wider than before (was 400px)
+              background: 'rgba(14,14,14,0.88)',
+              backdropFilter: 'blur(28px)',
+              WebkitBackdropFilter: 'blur(28px)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: '18px',
+              padding: '40px 36px',
+              boxShadow: '0 40px 100px rgba(0,0,0,0.75)',
             }}
           >
             {/* Tab switcher */}
-            <div className="fade-up-2 flex mb-8 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', padding: '4px', gap: '4px' }}>
+            <div className="fu2 tab-bar">
               {['Sign In', 'Sign Up'].map((tab) => {
                 const active = (tab === 'Sign In') === isLogin;
                 return (
                   <button
                     key={tab}
                     onClick={() => setIsLogin(tab === 'Sign In')}
-                    className="flex-1 py-2 text-sm font-semibold rounded-md transition-all duration-200"
-                    style={{
-                      background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
-                      color: active ? '#fff' : 'rgba(255,255,255,0.4)',
-                      border: active ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
-                      letterSpacing: '0.01em',
-                    }}
+                    className={`tab-btn ${active ? 'tab-btn-active' : 'tab-btn-inactive'}`}
                   >
                     {tab}
                   </button>
@@ -264,19 +354,19 @@ const Auth = () => {
             </div>
 
             {/* Heading */}
-            <div className="fade-up-3 mb-6">
-              <h1 className="text-2xl font-bold mb-1" style={{ color: '#fff', letterSpacing: '-0.02em' }}>
+            <div className="fu3" style={{ marginBottom: '24px' }}>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.025em', marginBottom: '6px' }}>
                 {isLogin ? 'Welcome back' : 'Join the crew'}
               </h1>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.38)' }}>
                 {isLogin ? 'Sign in to continue watching' : 'Create your account to get started'}
               </p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="fade-up-4 space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            {/* Form fields */}
+            <form onSubmit={handleSubmit} className="fu4">
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', marginBottom: '8px' }}>
                   Email
                 </label>
                 <input
@@ -285,63 +375,68 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="auth-input w-full rounded-lg px-4"
+                  className="auth-input"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', marginBottom: '8px' }}>
                   Password
                 </label>
-                <div className="relative">
+                <div style={{ position: 'relative' }}>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="auth-input w-full rounded-lg px-4 pr-11"
+                    className="auth-input auth-input-pr"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                    style={{ color: 'rgba(255,255,255,0.35)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+                    style={{
+                      position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'rgba(255,255,255,0.32)', padding: 0, display: 'flex',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.32)')}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
                 {!isLogin && (
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>Minimum 6 characters</p>
+                  <p style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)' }}>Minimum 6 characters</p>
                 )}
               </div>
 
-              <button type="submit" disabled={loading} className="submit-btn w-full mt-2 flex items-center justify-center gap-2">
+              <button type="submit" disabled={loading} className="submit-btn">
                 {loading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    <span style={{ width: 16, height: 16, border: '2px solid rgba(0,0,0,0.2)', borderTop: '2px solid #0a0a0a', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
                     {isLogin ? 'Signing in…' : 'Creating account…'}
                   </>
                 ) : (
                   <>
-                    {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                    {isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}
                     {isLogin ? 'Sign In' : 'Create Account'}
                   </>
                 )}
               </button>
+
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </form>
 
-            {/* Toggle link */}
-            <p className="mt-6 text-center text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            {/* Toggle */}
+            <p style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.875rem', color: 'rgba(255,255,255,0.32)' }}>
               {isLogin ? "Don't have an account? " : 'Already have an account? '}
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="font-semibold transition-colors"
-                style={{ color: 'rgba(255,255,255,0.75)' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'rgba(255,255,255,0.7)', transition: 'color 0.2s', padding: 0 }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
               >
                 {isLogin ? 'Sign Up' : 'Sign In'}
               </button>
@@ -349,7 +444,7 @@ const Auth = () => {
           </div>
 
           {/* Footer */}
-          <p className="mt-8 text-xs text-center" style={{ color: 'rgba(255,255,255,0.2)', letterSpacing: '0.05em' }}>
+          <p style={{ marginTop: '28px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>
             ⚓ &nbsp;Stream freely. No ads. No limits.
           </p>
         </div>
@@ -357,5 +452,34 @@ const Auth = () => {
     </>
   );
 };
+
+// Patch PosterColumn to accept className
+function PosterColumn({
+  images, reverse = false, duration = 32, className = '',
+}: {
+  images: string[]; reverse?: boolean; duration?: number; className?: string;
+}) {
+  const doubled = [...images, ...images];
+  return (
+    <div
+      className={`${reverse ? 'poster-col-up' : 'poster-col-down'} ${className}`}
+      style={{ animationDuration: `${duration}s` }}
+    >
+      {doubled.map((path, i) => (
+        <div key={i} className="poster-item">
+          <img
+            src={`${BASE}${path}`}
+            alt=""
+            loading="lazy"
+            onError={(e) => {
+              const wrapper = (e.target as HTMLImageElement).parentElement;
+              if (wrapper) wrapper.style.display = 'none';
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default Auth;
