@@ -1,6 +1,5 @@
 import React, { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
-import { MousePointerClick } from 'lucide-react';
 
 interface VideoPlayerProps {
   id: number;
@@ -87,7 +86,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => observer.disconnect();
     }, [reportBlock]);
 
-    // ── Overlay click handler ─────────────────────────────────────────────────
+    // ── Overlay click: hide 800ms so click reaches player, then restore ───────
     const handleOverlayClick = useCallback(() => {
       lastClickTimeRef.current = Date.now();
       setOverlayVisible(false);
@@ -102,41 +101,29 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     };
 
     return (
-      <div ref={wrapperRef} className="w-full space-y-2">
-        {/* Player wrapper */}
-        <div
-          className="relative w-full rounded-lg overflow-hidden bg-black"
-          style={{ paddingBottom: '56.25%', height: 0 }}
-        >
-          <iframe
-            ref={setIframeRef}
-            src={playerUrl}
-            title={title || 'Video player'}
-            className="absolute top-0 left-0 w-full h-full"
-            allowFullScreen
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-            referrerPolicy="no-referrer"
-            style={{ border: 'none' }}
+      <div
+        ref={wrapperRef}
+        className="relative w-full rounded-lg overflow-hidden bg-black"
+        style={{ paddingBottom: '56.25%', height: 0 }}
+      >
+        <iframe
+          ref={setIframeRef}
+          src={playerUrl}
+          title={title || 'Video player'}
+          className="absolute top-0 left-0 w-full h-full"
+          allowFullScreen
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          referrerPolicy="no-referrer"
+          style={{ border: 'none' }}
+        />
+
+        {overlayVisible && (
+          <div
+            className="absolute inset-0 z-10"
+            style={{ background: 'transparent', cursor: 'pointer' }}
+            onClick={handleOverlayClick}
           />
-
-          {overlayVisible && (
-            <div
-              className="absolute inset-0 z-10"
-              style={{ background: 'transparent', cursor: 'pointer' }}
-              onClick={handleOverlayClick}
-            />
-          )}
-        </div>
-
-        {/* Yellow hint note below the player */}
-        <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
-          <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-yellow-300/90 leading-relaxed">
-            <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
-            <span className="font-semibold">click twice</span> to interact with the video player —
-            the first click activates it, the second performs the action (play, pause, fullscreen, etc).
-          </p>
-        </div>
+        )}
       </div>
     );
   }
