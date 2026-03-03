@@ -515,9 +515,9 @@ const Settings = () => {
       <div className="settings-outer" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '88px 24px 72px' }}>
 
         {/* Header */}
-        <div className="s-fu" style={{ width: '100%', maxWidth: '900px', marginBottom: '44px' }}>
+        <div className="s-fu" style={{ width: '100%', maxWidth: '900px', marginBottom: '44px', textAlign: 'center' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', margin: 0 }}>Settings</h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>Manage your account, playback and preferences</p>
+          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginTop: '6px' }}>Manage your account, playback and preferences</p>
         </div>
 
         {/* Two-column grid */}
@@ -656,14 +656,17 @@ const Settings = () => {
               </div>
             </Section>
 
-            <div style={{ marginTop: '48px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-              <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.32)', letterSpacing: '0.08em', fontWeight: 500, margin: 0 }}>
-                ⚓ PirateOne · Your data stays yours
-              </p>
-            </div>
 
           </div>
         </div>
+
+        {/* ── Footer — outside grid, full width centered ── */}
+        <div style={{ width: '100%', maxWidth: '900px', marginTop: '64px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+          <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontWeight: 500, margin: 0 }}>
+            ⚓ &nbsp;PirateOne · Your data stays yours
+          </p>
+        </div>
+
       </div>
     </>
   );
