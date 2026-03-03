@@ -162,7 +162,7 @@ const Library = () => {
                             onClick={() => handleContinue(show)}
                           >
                             <Play className="w-3 h-3" />
-                            {status === 'dropped' ? 'Resume' : 'Continue'}
+                            {status === 'dropped' ? 'Resume' : 'Continue from here'}
                           </Button>
                         )}
                         <Button
