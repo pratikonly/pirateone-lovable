@@ -93,13 +93,11 @@ const WatchActivity = () => {
   });
 
   // Compute which week index each month label should appear at
-  // (when a new month first appears in that week's column)
   const monthLabels: { weekIdx: number; label: string }[] = [];
   let lastMonth = -1;
   weeks.forEach((week, w) => {
     const month = week[0].date.getMonth();
     if (month !== lastMonth) {
-      // Only add if there's enough room (not the very last week)
       if (w < WEEKS - 1) {
         monthLabels.push({
           weekIdx: w,
@@ -139,7 +137,7 @@ const WatchActivity = () => {
     <div style={{ marginTop: '22px', paddingTop: '22px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
           <span style={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}><Film size={13}/></span>
           <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Watch Activity</span>
@@ -219,7 +217,6 @@ const WatchActivity = () => {
 
             {/* Week columns */}
             {weeks.map((week, w) => {
-              // detect if this week starts a new month (for subtle bg stripe)
               const isMonthStart = monthLabels.some(ml => ml.weekIdx === w && w > 0);
               return (
                 <div
@@ -280,7 +277,7 @@ const WatchActivity = () => {
       </div>
 
       {/* ── Footer: total count + legend ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
         <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.2)' }}>
           {totalMovies + totalEpisodes} total watches in the last 6 months
         </span>
@@ -303,70 +300,45 @@ const WatchActivity = () => {
 
 const Settings = () => {
   const { toast } = useToast();
-  const { identity, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user } = useAuth();
-
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
+  const { identity, regenerateIdentity, avatarUrl } = usePirateIdentity();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [autoplay, setAutoplay] = useState(() => { try { return localStorage.getItem('pirateone_autoplay') !== 'false'; } catch { return true; } });
+  const [defaultQuality, setDefaultQuality] = useState(() => { try { return localStorage.getItem('pirateone_quality') || 'auto'; } catch { return 'auto'; } });
+  const [saveWatchHistory, setSaveWatchHistory] = useState(() => { try { return localStorage.getItem('pirateone_save_history') !== 'false'; } catch { return true; } });
+  const [showWelcomeNotification, setShowWelcomeNotification] = useState(() => { try { return !localStorage.getItem('pirateone_welcome_shown'); } catch { return true; } });
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [savingName, setSavingName] = useState(false);
-
-  const [showWelcomeNotification, setShowWelcomeNotification] = useState(true);
-  const [autoplay, setAutoplay] = useState(true);
-  const [defaultQuality, setDefaultQuality] = useState('auto');
-  const [saveWatchHistory, setSaveWatchHistory] = useState(true);
-  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
-    const load = async () => {
-      if (!user) return;
-      try {
-        const { data } = await supabase.from('profiles').select('custom_avatar_url, pirate_name').eq('user_id', user.id).maybeSingle();
-        if (data?.custom_avatar_url) setAvatarUrl(data.custom_avatar_url);
-        if (data?.pirate_name) setEditName(data.pirate_name);
-      } catch {}
-    };
-    load();
-  }, [user]);
-
-  useEffect(() => {
-    try {
-      setShowWelcomeNotification(!localStorage.getItem('pirateone_welcome_shown'));
-      const ap = localStorage.getItem('pirateone_autoplay'); if (ap !== null) setAutoplay(ap === 'true');
-      const q = localStorage.getItem('pirateone_quality'); if (q) setDefaultQuality(q);
-      const h = localStorage.getItem('pirateone_save_history'); if (h !== null) setSaveWatchHistory(h === 'true');
-    } catch {}
-  }, []);
+    if (identity?.name) setEditName(identity.name);
+  }, [identity?.name]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    if (!file.type.startsWith('image/')) { toast({ title: 'Please select an image file', variant: 'destructive' }); return; }
     if (file.size > 5 * 1024 * 1024) { toast({ title: 'Image must be under 5MB', variant: 'destructive' }); return; }
     setAvatarUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const filePath = `${user.id}/avatar.${ext}`;
-      const { error: ue } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true, contentType: file.type });
-      if (ue) throw ue;
-      const { data: ud } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const { error: de } = await supabase.from('profiles').update({ custom_avatar_url: ud.publicUrl, updated_at: new Date().toISOString() }).eq('user_id', user.id);
-      if (de) throw de;
-      setAvatarUrl(ud.publicUrl);
-      toast({ title: 'Profile picture updated!' });
-    } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message || 'Please try again', variant: 'destructive' });
-    } finally {
-      setAvatarUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${user.id}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', user.id);
+      if (dbErr) throw dbErr;
+      toast({ title: 'Avatar updated!' });
+    } catch { toast({ title: 'Failed to upload avatar', variant: 'destructive' }); }
+    finally { setAvatarUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
   const handleSaveName = async () => {
-    if (!user || !editName.trim() || savingName) return;
+    if (!user || !editName.trim()) return;
     setSavingName(true);
     try {
       const { error } = await supabase.from('profiles').update({ pirate_name: editName.trim() }).eq('user_id', user.id);
@@ -378,8 +350,10 @@ const Settings = () => {
   };
 
   const handleRegenerateIdentity = async () => {
+    setIsRegenerating(true);
     try { await regenerateIdentity(); toast({ title: 'New pirate identity assigned!' }); }
     catch { toast({ title: 'Failed to get new identity', variant: 'destructive' }); }
+    finally { setIsRegenerating(false); }
   };
 
   const ls = (key: string, val: string) => { try { localStorage.setItem(key, val); } catch {} };
@@ -401,6 +375,10 @@ const Settings = () => {
           opacity: 0; transition: opacity 0.2s;
         }
         .sav-wrap:hover .sav-overlay { opacity: 1; }
+        /* On touch devices, always show overlay hint */
+        @media (hover: none) {
+          .sav-overlay { opacity: 0.7; }
+        }
 
         .s-btn {
           height: 36px; padding: 0 14px; border-radius: 8px;
@@ -408,8 +386,10 @@ const Settings = () => {
           color: rgba(255,255,255,0.65); font-size: 0.8rem; font-weight: 600;
           cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
           transition: background 0.2s, color 0.2s, border-color 0.2s; white-space: nowrap;
+          -webkit-tap-highlight-color: transparent;
         }
         .s-btn:hover { background: rgba(255,255,255,0.09); color: #fff; border-color: rgba(255,255,255,0.18); }
+        .s-btn:active { background: rgba(255,255,255,0.12); }
         .s-btn:disabled { opacity: 0.38; cursor: not-allowed; }
         .s-btn-full { width: 100%; justify-content: center; height: 40px; }
 
@@ -419,8 +399,10 @@ const Settings = () => {
           color: #ef4444; font-size: 0.8rem; font-weight: 600;
           cursor: pointer; display: flex; align-items: center; gap: 6px;
           transition: background 0.2s, border-color 0.2s;
+          -webkit-tap-highlight-color: transparent;
         }
         .s-dbtn:hover { background: rgba(239,68,68,0.14); border-color: rgba(239,68,68,0.35); }
+        .s-dbtn:active { background: rgba(239,68,68,0.2); }
 
         .s-ico {
           width: 28px; height: 28px; border-radius: 7px;
@@ -428,9 +410,19 @@ const Settings = () => {
           color: rgba(255,255,255,0.55); cursor: pointer; flex-shrink: 0;
           display: inline-flex; align-items: center; justify-content: center;
           transition: background 0.15s, color 0.15s;
+          -webkit-tap-highlight-color: transparent;
         }
         .s-ico:hover { background: rgba(255,255,255,0.12); color: #fff; }
+        .s-ico:active { background: rgba(255,255,255,0.16); }
         .s-ico:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Larger tap targets on mobile */
+        @media (max-width: 640px) {
+          .s-ico { width: 36px; height: 36px; border-radius: 9px; }
+          .s-btn { height: 44px; font-size: 0.875rem; }
+          .s-btn-full { height: 48px; }
+          .s-dbtn { height: 48px; font-size: 0.875rem; }
+        }
 
         .ghost-inp {
           background: rgba(255,255,255,0.06) !important;
@@ -439,30 +431,95 @@ const Settings = () => {
         }
         .ghost-inp:focus { border-color: rgba(255,255,255,0.25) !important; outline: none; }
 
+        @media (max-width: 640px) {
+          .ghost-inp { height: 44px; font-size: 1rem; }
+        }
+
         .pirate-tile {
           background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
           border-radius: 12px; padding: 14px 16px;
           display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
         }
 
-        /* Two-column grid */
+        /* ── Two-column grid ── */
         .settings-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 0 48px;
           align-items: start;
         }
+
+        /* Stack to single column on mobile */
         @media (max-width: 700px) {
           .settings-grid { grid-template-columns: 1fr; gap: 0; }
         }
 
-        /* Vertical separator between columns */
+        /* Vertical separator between columns — desktop only */
         .settings-col-right {
           border-left: 1px solid rgba(255,255,255,0.06);
           padding-left: 48px;
         }
         @media (max-width: 700px) {
-          .settings-col-right { border-left: none; padding-left: 0; }
+          .settings-col-right {
+            border-left: none;
+            padding-left: 0;
+            /* Visual divider between stacked sections on mobile */
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 28px;
+            margin-top: 4px;
+          }
+        }
+
+        /* ── Outer padding: more breathing room on desktop, tighter on mobile ── */
+        .settings-outer-pad {
+          padding: 88px 24px 72px;
+        }
+        @media (max-width: 640px) {
+          .settings-outer-pad {
+            padding: 64px 16px 80px;
+          }
+        }
+
+        /* ── Header typography ── */
+        .settings-h1 {
+          font-size: 2rem;
+          font-weight: 800;
+          color: #fff;
+          letter-spacing: -0.03em;
+          margin: 0;
+        }
+        @media (max-width: 640px) {
+          .settings-h1 { font-size: 1.6rem; }
+        }
+
+        /* ── Profile avatar row: stack on very small screens ── */
+        .profile-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin-bottom: 16px;
+        }
+        @media (max-width: 360px) {
+          .profile-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+        }
+
+        /* ── Quality select: full-width on mobile ── */
+        .quality-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        @media (max-width: 400px) {
+          .quality-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .quality-select { width: 100% !important; }
         }
 
         /* ── Cinematic grain background ── */
@@ -492,6 +549,19 @@ const Settings = () => {
           mix-blend-mode: overlay;
         }
         .settings-outer { position:relative; z-index:2; }
+
+        /* ── Footer ── */
+        .settings-footer {
+          width: 100%;
+          max-width: 900px;
+          margin-top: 64px;
+          padding-top: 28px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+          text-align: center;
+        }
+        @media (max-width: 640px) {
+          .settings-footer { margin-top: 40px; }
+        }
       `}</style>
 
       <ConfirmDialog
@@ -512,161 +582,162 @@ const Settings = () => {
       <div className="settings-bg" aria-hidden="true"/>
       <div className="settings-grain" aria-hidden="true"/>
 
-      <div className="settings-outer" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '88px 24px 72px' }}>
+      <div className="settings-outer" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="settings-outer-pad" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-        {/* Header */}
-        <div className="s-fu" style={{ width: '100%', maxWidth: '900px', marginBottom: '44px', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', margin: 0 }}>Settings</h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginTop: '6px' }}>Manage your account, playback and preferences</p>
-        </div>
+          {/* Header */}
+          <div className="s-fu" style={{ width: '100%', maxWidth: '900px', marginBottom: '44px', textAlign: 'center' }}>
+            <h1 className="settings-h1">Settings</h1>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.35)', marginTop: '6px' }}>Manage your account, playback and preferences</p>
+          </div>
 
-        {/* Two-column grid */}
-        <div className="s-fu settings-grid" style={{ width: '100%', maxWidth: '900px' }}>
+          {/* Two-column grid */}
+          <div className="s-fu settings-grid" style={{ width: '100%', maxWidth: '900px' }}>
 
-          {/* ══ LEFT COLUMN ══ */}
-          <div>
+            {/* ══ LEFT COLUMN ══ */}
+            <div>
 
-            {/* PROFILE */}
-            {user && (
-              <Section>
-                <SectionLabel icon={<Camera size={13} />} label="Profile" />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
-                  <div className="sav-wrap" onClick={() => fileInputRef.current?.click()}>
-                    <Avatar style={{ width: 68, height: 68, border: '2px solid rgba(255,255,255,0.12)', display: 'block' }}>
-                      {displayAvatarUrl && <AvatarImage src={displayAvatarUrl} alt={displayName} style={{ objectFit: 'cover' }} />}
-                      <AvatarFallback style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', fontSize: '1.2rem' }}>{getInitials(displayName)}</AvatarFallback>
-                    </Avatar>
-                    <div className="sav-overlay">
-                      {avatarUploading
-                        ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                        : <Upload size={15} color="#fff" />}
+              {/* PROFILE */}
+              {user && (
+                <Section>
+                  <SectionLabel icon={<Camera size={13} />} label="Profile" />
+                  <div className="profile-row">
+                    <div className="sav-wrap" onClick={() => fileInputRef.current?.click()}>
+                      <Avatar style={{ width: 68, height: 68, border: '2px solid rgba(255,255,255,0.12)', display: 'block' }}>
+                        {displayAvatarUrl && <AvatarImage src={displayAvatarUrl} alt={displayName} style={{ objectFit: 'cover' }} />}
+                        <AvatarFallback style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)', fontSize: '1.2rem' }}>{getInitials(displayName)}</AvatarFallback>
+                      </Avatar>
+                      <div className="sav-overlay">
+                        {avatarUploading
+                          ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                          : <Upload size={15} color="#fff" />}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {isEditingName ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Input value={editName} onChange={e => setEditName(e.target.value)} className="ghost-inp" autoFocus onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setIsEditingName(false); }} />
+                          <button className="s-ico" onClick={handleSaveName} disabled={savingName || !editName.trim()}><Check size={12} /></button>
+                          <button className="s-ico" onClick={() => setIsEditingName(false)}><X size={12} /></button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>{displayName}</span>
+                          <button className="s-ico" onClick={() => setIsEditingName(true)} style={{ width: 22, height: 22 }}><Pencil size={10} /></button>
+                        </div>
+                      )}
+                      <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.36)', marginTop: '3px' }}>{user.email}</p>
+                      <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginTop: '2px' }}>Tap avatar to upload · Max 5MB</p>
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {isEditingName ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Input value={editName} onChange={e => setEditName(e.target.value)} className="ghost-inp" autoFocus onKeyDown={e => { if (e.key === 'Enter') handleSaveName(); if (e.key === 'Escape') setIsEditingName(false); }} />
-                        <button className="s-ico" onClick={handleSaveName} disabled={savingName || !editName.trim()}><Check size={12} /></button>
-                        <button className="s-ico" onClick={() => setIsEditingName(false)}><X size={12} /></button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#fff' }}>{displayName}</span>
-                        <button className="s-ico" onClick={() => setIsEditingName(true)} style={{ width: 22, height: 22 }}><Pencil size={10} /></button>
-                      </div>
-                    )}
-                    <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.36)', marginTop: '3px' }}>{user.email}</p>
-                    <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginTop: '2px' }}>Click avatar to upload · Max 5MB</p>
-                  </div>
-                </div>
-                <button className="s-btn s-btn-full" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>
-                  {avatarUploading
-                    ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'rgba(255,255,255,0.7)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />Uploading…</>
-                    : <><Upload size={13} />Upload Profile Picture</>}
-                </button>
-              </Section>
-            )}
-
-            {/* PIRATE IDENTITY */}
-            <Section>
-              <SectionLabel icon={<User size={13} />} label="Pirate Identity" />
-              {!user && (
-                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '10px 14px', lineHeight: 1.5 }}>
-                  Sign in to save your identity across devices
-                </p>
-              )}
-              <div className="pirate-tile">
-                <Avatar style={{ width: 50, height: 50, flexShrink: 0, border: '2px solid rgba(255,255,255,0.1)' }}>
-                  {identity?.imagePath && <AvatarImage src={identity.imagePath} alt={identity.name} style={{ objectFit: 'cover' }} />}
-                  <AvatarFallback style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}>{identity ? getInitials(identity.name) : 'GP'}</AvatarFallback>
-                </Avatar>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', margin: 0 }}>{identity?.name || 'Guest Pirate'}</p>
-                  <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>{identity?.role || 'Pirate'}</p>
-                  {identity?.bounty && <p style={{ fontSize: '0.72rem', color: 'var(--primary, #a78bfa)', fontWeight: 600, marginTop: '3px' }}>💰 {identity.bounty}</p>}
-                </div>
-              </div>
-              <button className="s-btn s-btn-full" onClick={handleRegenerateIdentity} disabled={isRegenerating}>
-                <RefreshCw size={13} style={{ animation: isRegenerating ? 'spin 1s linear infinite' : 'none' }} />
-                {isRegenerating ? 'Getting new identity…' : 'Get New Pirate Identity'}
-              </button>
-              <WatchActivity />
-            </Section>
-
-          </div>
-
-          {/* ══ RIGHT COLUMN ══ */}
-          <div className="settings-col-right">
-
-            {/* PLAYBACK */}
-            <Section>
-              <SectionLabel icon={<Zap size={13} />} label="Playback" />
-              <SettingRow
-                label="Autoplay next episode"
-                description="Automatically start the next episode when one ends"
-                right={<Switch checked={autoplay} onCheckedChange={v => { setAutoplay(v); ls('pirateone_autoplay', String(v)); toast({ title: v ? 'Autoplay enabled' : 'Autoplay disabled' }); }} />}
-              />
-              <div style={{ padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                  <div>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#fff', margin: 0 }}>Default Quality</p>
-                    <p style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>Preferred streaming resolution</p>
-                  </div>
-                  <Select value={defaultQuality} onValueChange={v => { setDefaultQuality(v); ls('pirateone_quality', v); toast({ title: 'Default quality updated' }); }}>
-                    <SelectTrigger style={{ width: 108, height: 36, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '0.84rem' }}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {['auto', '1080p', '720p', '480p', '360p'].map(q => <SelectItem key={q} value={q}>{q === 'auto' ? 'Auto' : q}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </Section>
-
-            {/* NOTIFICATIONS */}
-            <Section>
-              <SectionLabel icon={<Bell size={13} />} label="Notifications" />
-              <SettingRow
-                label="Welcome notification"
-                description={showWelcomeNotification ? 'Will show on your next visit' : 'Already dismissed — click Reset to show again'}
-                right={
-                  <button className="s-btn" onClick={() => { try { localStorage.removeItem('pirateone_welcome_shown'); } catch {} setShowWelcomeNotification(true); toast({ title: 'Welcome notification reset' }); }} disabled={showWelcomeNotification}>
-                    Reset
+                  <button className="s-btn s-btn-full" onClick={() => fileInputRef.current?.click()} disabled={avatarUploading}>
+                    {avatarUploading
+                      ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.2)', borderTopColor: 'rgba(255,255,255,0.7)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />Uploading…</>
+                      : <><Upload size={13} />Upload Profile Picture</>}
                   </button>
-                }
-              />
-            </Section>
+                </Section>
+              )}
 
-            {/* PRIVACY */}
-            <Section>
-              <SectionLabel icon={<Shield size={13} />} label="Privacy & Data" />
-              <SettingRow
-                label="Save watch history"
-                description="Track what you've watched for resume & recommendations"
-                right={<Switch checked={saveWatchHistory} onCheckedChange={v => { setSaveWatchHistory(v); ls('pirateone_save_history', String(v)); toast({ title: v ? 'Watch history enabled' : 'Watch history disabled' }); }} />}
-              />
-              <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button className="s-btn s-btn-full" onClick={() => { try { localStorage.removeItem('pirateone_watchlist'); } catch {} toast({ title: 'Watchlist cleared' }); }}>
-                  <Trash2 size={13} />Clear Watchlist
+              {/* PIRATE IDENTITY */}
+              <Section>
+                <SectionLabel icon={<User size={13} />} label="Pirate Identity" />
+                {!user && (
+                  <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)', marginBottom: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', padding: '10px 14px', lineHeight: 1.5 }}>
+                    Sign in to save your identity across devices
+                  </p>
+                )}
+                <div className="pirate-tile">
+                  <Avatar style={{ width: 50, height: 50, flexShrink: 0, border: '2px solid rgba(255,255,255,0.1)' }}>
+                    {identity?.imagePath && <AvatarImage src={identity.imagePath} alt={identity.name} style={{ objectFit: 'cover' }} />}
+                    <AvatarFallback style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.55)' }}>{identity ? getInitials(identity.name) : 'GP'}</AvatarFallback>
+                  </Avatar>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', margin: 0 }}>{identity?.name || 'Guest Pirate'}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>{identity?.role || 'Pirate'}</p>
+                    {identity?.bounty && <p style={{ fontSize: '0.72rem', color: 'var(--primary, #a78bfa)', fontWeight: 600, marginTop: '3px' }}>💰 {identity.bounty}</p>}
+                  </div>
+                </div>
+                <button className="s-btn s-btn-full" onClick={handleRegenerateIdentity} disabled={isRegenerating}>
+                  <RefreshCw size={13} style={{ animation: isRegenerating ? 'spin 1s linear infinite' : 'none' }} />
+                  {isRegenerating ? 'Getting new identity…' : 'Get New Pirate Identity'}
                 </button>
-                <button className="s-dbtn" onClick={() => setConfirmClearAll(true)}>
-                  <Trash2 size={13} />Clear All Data
-                </button>
-              </div>
-            </Section>
+                <WatchActivity />
+              </Section>
 
+            </div>
 
+            {/* ══ RIGHT COLUMN ══ */}
+            <div className="settings-col-right">
+
+              {/* PLAYBACK */}
+              <Section>
+                <SectionLabel icon={<Zap size={13} />} label="Playback" />
+                <SettingRow
+                  label="Autoplay next episode"
+                  description="Automatically start the next episode when one ends"
+                  right={<Switch checked={autoplay} onCheckedChange={v => { setAutoplay(v); ls('pirateone_autoplay', String(v)); toast({ title: v ? 'Autoplay enabled' : 'Autoplay disabled' }); }} />}
+                />
+                <div style={{ padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <div className="quality-row">
+                    <div>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#fff', margin: 0 }}>Default Quality</p>
+                      <p style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>Preferred streaming resolution</p>
+                    </div>
+                    <Select value={defaultQuality} onValueChange={v => { setDefaultQuality(v); ls('pirateone_quality', v); toast({ title: 'Default quality updated' }); }}>
+                      <SelectTrigger className="quality-select" style={{ width: 108, height: 36, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '0.84rem' }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['auto', '1080p', '720p', '480p', '360p'].map(q => <SelectItem key={q} value={q}>{q === 'auto' ? 'Auto' : q}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </Section>
+
+              {/* NOTIFICATIONS */}
+              <Section>
+                <SectionLabel icon={<Bell size={13} />} label="Notifications" />
+                <SettingRow
+                  label="Welcome notification"
+                  description={showWelcomeNotification ? 'Will show on your next visit' : 'Already dismissed — click Reset to show again'}
+                  right={
+                    <button className="s-btn" onClick={() => { try { localStorage.removeItem('pirateone_welcome_shown'); } catch {} setShowWelcomeNotification(true); toast({ title: 'Welcome notification reset' }); }} disabled={showWelcomeNotification}>
+                      Reset
+                    </button>
+                  }
+                />
+              </Section>
+
+              {/* PRIVACY */}
+              <Section>
+                <SectionLabel icon={<Shield size={13} />} label="Privacy & Data" />
+                <SettingRow
+                  label="Save watch history"
+                  description="Track what you've watched for resume & recommendations"
+                  right={<Switch checked={saveWatchHistory} onCheckedChange={v => { setSaveWatchHistory(v); ls('pirateone_save_history', String(v)); toast({ title: v ? 'Watch history enabled' : 'Watch history disabled' }); }} />}
+                />
+                <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button className="s-btn s-btn-full" onClick={() => { try { localStorage.removeItem('pirateone_watchlist'); } catch {} toast({ title: 'Watchlist cleared' }); }}>
+                    <Trash2 size={13} />Clear Watchlist
+                  </button>
+                  <button className="s-dbtn" onClick={() => setConfirmClearAll(true)}>
+                    <Trash2 size={13} />Clear All Data
+                  </button>
+                </div>
+              </Section>
+
+            </div>
           </div>
-        </div>
 
-        {/* ── Footer — outside grid, full width centered ── */}
-        <div style={{ width: '100%', maxWidth: '900px', marginTop: '64px', paddingTop: '28px', borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-          <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontWeight: 500, margin: 0 }}>
-            ⚓ &nbsp;PirateOne · Your data stays yours
-          </p>
-        </div>
+          {/* ── Footer — outside grid, full width centered ── */}
+          <div className="settings-footer">
+            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontWeight: 500, margin: 0 }}>
+              ⚓ &nbsp;PirateOne · Your data stays yours
+            </p>
+          </div>
 
+        </div>
       </div>
     </>
   );
