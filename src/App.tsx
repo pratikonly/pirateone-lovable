@@ -20,6 +20,7 @@ import Watch from "./pages/Watch";
 import Sports from "./pages/Sports";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PirateBrawl from "./components/PirateBrawl";
 
 const queryClient = new QueryClient();
 
@@ -31,24 +32,25 @@ const App = () => (
           <PirateIdentityProvider>
             <Toaster />
             <Sonner />
+            <PirateBrawl />
             <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route element={<Layout />}>
-                <Route path="/" element={<Index />} />
-                <Route path="/movies" element={<Movies />} />
-                <Route path="/series" element={<Series />} />
-                <Route path="/anime" element={<Anime />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/watchlist" element={<Watchlist />} />
-                <Route path="/library" element={<Library />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/help" element={<Help />} />
-                <Route path="/sports" element={<Sports />} />
-                <Route path="/watch/:type/:id" element={<Watch />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/movies" element={<Movies />} />
+                  <Route path="/series" element={<Series />} />
+                  <Route path="/anime" element={<Anime />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/watchlist" element={<Watchlist />} />
+                  <Route path="/library" element={<Library />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/help" element={<Help />} />
+                  <Route path="/sports" element={<Sports />} />
+                  <Route path="/watch/:type/:id" element={<Watch />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </BrowserRouter>
           </PirateIdentityProvider>
         </BackdropProvider>
