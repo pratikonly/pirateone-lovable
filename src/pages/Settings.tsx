@@ -71,19 +71,235 @@ const SettingRow = ({ label, description, right, danger = false }: {
 const WatchActivity = () => {
   const WEEKS = 26;
   const DAYS = 7;
+  const CELL = 11;   // px square size
+  const GAP  = 3;    // px gap between cells
   const today = new Date();
 
-  // Generate deterministic-looking fake activity data seeded from date
-  const cells = Array.from({ length: WEEKS * DAYS }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - (WEEKS * DAYS - 1 - i));
-    const seed = d.getDate() * 7 + d.getMonth() * 31;
-    const rand = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    const rand2 = (((seed + 99) * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    const level = rand > 0.72 ? (rand > 0.88 ? (rand > 0.95 ? 4 : 3) : 2) : (rand > 0.55 ? 1 : 0);
-    // type: 0=empty, 1=movie(purple), 2=episode(teal)
-    const type = level === 0 ? 0 : rand2 > 0.45 ? 1 : 2;
-    return { date: new Date(d), level, type };
+  // Build week columns starting from Sunday 26 weeks ago
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (WEEKS * DAYS - 1));
+
+  const weeks = Array.from({ length: WEEKS }, (_, w) => {
+    return Array.from({ length: DAYS }, (_, d) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + w * DAYS + d);
+      const seed  = date.getDate() * 7 + date.getMonth() * 31 + date.getFullYear();
+      const rand  = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const rand2 = (((seed + 99) * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const level = rand > 0.72 ? (rand > 0.88 ? (rand > 0.95 ? 4 : 3) : 2) : (rand > 0.55 ? 1 : 0);
+      const type  = level === 0 ? 0 : rand2 > 0.45 ? 1 : 2;
+      return { date, level, type };
+    });
+  });
+
+  // Compute which week index each month label should appear at
+  // (when a new month first appears in that week's column)
+  const monthLabels: { weekIdx: number; label: string }[] = [];
+  let lastMonth = -1;
+  weeks.forEach((week, w) => {
+    const month = week[0].date.getMonth();
+    if (month !== lastMonth) {
+      // Only add if there's enough room (not the very last week)
+      if (w < WEEKS - 1) {
+        monthLabels.push({
+          weekIdx: w,
+          label: week[0].date.toLocaleString('default', { month: 'short' }),
+        });
+      }
+      lastMonth = month;
+    }
+  });
+
+  const allCells = weeks.flat();
+  const totalMovies   = allCells.filter(c => c.type === 1).length;
+  const totalEpisodes = allCells.filter(c => c.type === 2).length;
+
+  const movieColor = (level: number) => {
+    const alpha = [0, 0.22, 0.45, 0.68, 1][level];
+    return `rgba(168,85,247,${alpha})`;
+  };
+  const episodeColor = (level: number) => {
+    const alpha = [0, 0.22, 0.45, 0.68, 1][level];
+    return `rgba(20,184,166,${alpha})`;
+  };
+  const cellBg = (level: number, type: number) => {
+    if (level === 0) return 'rgba(255,255,255,0.05)';
+    return type === 1 ? movieColor(level) : episodeColor(level);
+  };
+  const cellBorder = (level: number, type: number) => {
+    if (level === 0) return '1px solid rgba(255,255,255,0.08)';
+    const base = type === 1 ? '168,85,247' : '20,184,166';
+    return `1px solid rgba(${base},${0.2 + level * 0.12})`;
+  };
+
+  const DAY_LABEL_W = 24; // px reserved for day labels column
+  const CELL_STEP   = CELL + GAP;
+
+  return (
+    <div style={{ marginTop: '22px', paddingTop: '22px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}><Film size={13}/></span>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Watch Activity</span>
+          <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.18)', fontWeight: 400 }}>· last 6 months</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.67rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+            <span style={{ width: 9, height: 9, borderRadius: '2px', background: 'rgba(168,85,247,0.85)', display: 'inline-block', flexShrink: 0 }}/>
+            {totalMovies} movies
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.67rem', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+            <span style={{ width: 9, height: 9, borderRadius: '2px', background: 'rgba(20,184,166,0.85)', display: 'inline-block', flexShrink: 0 }}/>
+            {totalEpisodes} episodes
+          </span>
+        </div>
+      </div>
+
+      {/* ── Graph container: overflow scroll on mobile ── */}
+      <div style={{ overflowX: 'auto', overflowY: 'visible', paddingBottom: '4px' }}>
+        <div style={{ minWidth: `${DAY_LABEL_W + WEEKS * CELL_STEP}px`, position: 'relative' }}>
+
+          {/* Month labels row — absolutely positioned per week column */}
+          <div style={{ position: 'relative', height: '16px', marginLeft: `${DAY_LABEL_W}px`, marginBottom: '4px' }}>
+            {monthLabels.map(({ weekIdx, label }) => (
+              <span
+                key={label + weekIdx}
+                style={{
+                  position: 'absolute',
+                  left: `${weekIdx * CELL_STEP}px`,
+                  fontSize: '0.62rem',
+                  fontWeight: 600,
+                  color: 'rgba(255,255,255,0.35)',
+                  letterSpacing: '0.02em',
+                  lineHeight: '16px',
+                  whiteSpace: 'nowrap',
+                }}
+              >{label}</span>
+            ))}
+          </div>
+
+          {/* Thin month separator lines on the grid */}
+          <div style={{ position: 'relative', marginLeft: `${DAY_LABEL_W}px`, height: `${DAYS * CELL_STEP - GAP}px` }}>
+            {monthLabels.slice(1).map(({ weekIdx, label }) => (
+              <div
+                key={'sep' + label + weekIdx}
+                style={{
+                  position: 'absolute',
+                  left: `${weekIdx * CELL_STEP - GAP}px`,
+                  top: 0,
+                  width: '1px',
+                  height: '100%',
+                  background: 'rgba(255,255,255,0.08)',
+                  pointerEvents: 'none',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Grid row: day labels + week columns */}
+          <div style={{ display: 'flex', gap: `${GAP}px`, marginTop: `-${DAYS * CELL_STEP - GAP}px` }}>
+
+            {/* Day labels */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: `${GAP}px`,
+              width: `${DAY_LABEL_W}px`, flexShrink: 0, paddingTop: '1px',
+            }}>
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
+                <div key={day} style={{
+                  height: `${CELL}px`, lineHeight: `${CELL}px`,
+                  fontSize: '0.55rem', fontWeight: 600,
+                  color: i === 0 || i === 6 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.28)',
+                  whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '5px',
+                  letterSpacing: '0.02em',
+                }}>{day}</div>
+              ))}
+            </div>
+
+            {/* Week columns */}
+            {weeks.map((week, w) => {
+              // detect if this week starts a new month (for subtle bg stripe)
+              const isMonthStart = monthLabels.some(ml => ml.weekIdx === w && w > 0);
+              return (
+                <div
+                  key={w}
+                  style={{
+                    display: 'flex', flexDirection: 'column', gap: `${GAP}px`,
+                    width: `${CELL}px`, flexShrink: 0,
+                    borderRadius: '3px',
+                    outline: isMonthStart ? '1px solid transparent' : 'none',
+                  }}
+                >
+                  {week.map((cell, d) => {
+                    const isToday = cell.date.toDateString() === today.toDateString();
+                    const label = cell.date.toLocaleDateString('default', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+                    const activity = cell.level === 0
+                      ? 'No activity'
+                      : cell.type === 1
+                        ? `${cell.level} movie${cell.level > 1 ? 's' : ''} watched`
+                        : `${cell.level} episode${cell.level > 1 ? 's' : ''} watched`;
+                    return (
+                      <div
+                        key={d}
+                        title={`${label}  ·  ${activity}`}
+                        style={{
+                          width: `${CELL}px`, height: `${CELL}px`,
+                          borderRadius: '2.5px',
+                          background: cellBg(cell.level, cell.type),
+                          border: isToday
+                            ? '1.5px solid rgba(255,255,255,0.55)'
+                            : cellBorder(cell.level, cell.type),
+                          boxShadow: cell.level >= 3
+                            ? cell.type === 1
+                              ? '0 0 5px rgba(168,85,247,0.35)'
+                              : '0 0 5px rgba(20,184,166,0.35)'
+                            : 'none',
+                          transition: 'transform 0.12s, box-shadow 0.12s',
+                          cursor: cell.level > 0 ? 'pointer' : 'default',
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.transform = 'scale(1.35)';
+                          if (cell.level > 0) el.style.boxShadow = cell.type === 1 ? '0 0 8px rgba(168,85,247,0.6)' : '0 0 8px rgba(20,184,166,0.6)';
+                        }}
+                        onMouseLeave={e => {
+                          const el = e.currentTarget as HTMLElement;
+                          el.style.transform = 'scale(1)';
+                          el.style.boxShadow = cell.level >= 3 ? (cell.type === 1 ? '0 0 5px rgba(168,85,247,0.35)' : '0 0 5px rgba(20,184,166,0.35)') : 'none';
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Footer: total count + legend ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+        <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.2)' }}>
+          {totalMovies + totalEpisodes} total watches in the last 6 months
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>Less</span>
+          {[0,1,2,3,4].map(l => (
+            <div key={l} style={{
+              width: 10, height: 10, borderRadius: '2px',
+              background: l === 0 ? 'rgba(255,255,255,0.05)' : movieColor(l),
+              border: l === 0 ? '1px solid rgba(255,255,255,0.08)' : `1px solid rgba(168,85,247,${0.2 + l * 0.12})`,
+            }}/>
+          ))}
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>More</span>
+        </div>
+      </div>
+
+    </div>
+  );
+};
   });
 
   const movieColor = (level: number) => {
