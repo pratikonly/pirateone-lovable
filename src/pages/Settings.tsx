@@ -496,12 +496,12 @@ const Settings = () => {
 
       <ConfirmDialog
         open={confirmClearAll}
-        title="Clear All Local Data?"
+        title="Clear All Data?"
         description="This will remove your watchlist, history, preferences, and all other local data. Your account and cloud data remain safe."
         onConfirm={() => {
           try { Object.keys(localStorage).forEach(k => { if (!k.includes('supabase.auth.token')) localStorage.removeItem(k); }); } catch {}
           setConfirmClearAll(false);
-          toast({ title: 'All local data cleared' });
+          toast({ title: 'All data cleared' });
         }}
         onCancel={() => setConfirmClearAll(false)}
       />
@@ -651,7 +651,7 @@ const Settings = () => {
                   <Trash2 size={13} />Clear Watchlist
                 </button>
                 <button className="s-dbtn" onClick={() => setConfirmClearAll(true)}>
-                  <Trash2 size={13} />Clear All Local Data
+                  <Trash2 size={13} />Clear All Data
                 </button>
               </div>
             </Section>
