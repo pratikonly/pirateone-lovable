@@ -10,50 +10,66 @@ const CannonCorner = () => {
     if (isAnimating.current) return;
     isAnimating.current = true;
 
-    // Cannonball — fires from bottom-RIGHT toward top-LEFT
+    // Cannonball — black circle fires top-left
     confetti({
       particleCount: 1,
-      angle: 125,           // top-left direction
+      angle: 125,
       spread: 0,
-      startVelocity: 90,
+      startVelocity: 95,
       decay: 0.96,
       gravity: 1.0,
       origin: { x: 0.97, y: 0.97 },
-      colors: ['#0a0a14'],
+      colors: ['#111111'],
       shapes: ['circle'],
-      scalar: 2.8,
+      scalar: 3.2,
       zIndex: 9999,
     });
 
-    // Heavy smoke cloud
+    // Smoke — dark grey puffs
     confetti({
-      particleCount: 35,
+      particleCount: 40,
       angle: 125,
-      spread: 22,
-      startVelocity: 18,
-      decay: 0.85,
-      gravity: 0.25,
+      spread: 25,
+      startVelocity: 16,
+      decay: 0.84,
+      gravity: 0.2,
       origin: { x: 0.97, y: 0.97 },
-      colors: ['#2a2a3a', '#3a3a4a', '#4a4a5a', '#1a1a2a', '#555566'],
+      colors: ['#222222', '#333333', '#444444', '#555555', '#666666', '#888888'],
       shapes: ['circle'],
-      scalar: 1.4,
-      ticks: 100,
+      scalar: 1.5,
+      ticks: 110,
       zIndex: 9999,
     });
 
-    // Purple muzzle sparks
+    // Muzzle flash — white sparks
     confetti({
-      particleCount: 18,
+      particleCount: 22,
       angle: 125,
-      spread: 35,
-      startVelocity: 40,
-      decay: 0.88,
-      gravity: 1.0,
+      spread: 38,
+      startVelocity: 45,
+      decay: 0.87,
+      gravity: 0.9,
       origin: { x: 0.97, y: 0.97 },
-      colors: ['#a855f7', '#c084fc', '#e9d5ff', '#ffffff', '#7c3aed'],
+      colors: ['#ffffff', '#eeeeee', '#dddddd', '#cccccc', '#aaaaaa'],
       shapes: ['circle', 'square'],
-      scalar: 0.6,
-      ticks: 55,
+      scalar: 0.65,
+      ticks: 50,
+      zIndex: 9999,
+    });
+
+    // Debris chips — small black/white fragments
+    confetti({
+      particleCount: 12,
+      angle: 125,
+      spread: 50,
+      startVelocity: 28,
+      decay: 0.9,
+      gravity: 1.4,
+      origin: { x: 0.97, y: 0.97 },
+      colors: ['#000000', '#ffffff', '#333333'],
+      shapes: ['square'],
+      scalar: 0.5,
+      ticks: 70,
       zIndex: 9999,
     });
 
@@ -75,136 +91,28 @@ const CannonCorner = () => {
   return (
     <div style={{
       position:      'fixed',
-      bottom:        0,
-      right:         0,
+      bottom:        -8,
+      right:         -8,
       zIndex:        9998,
       pointerEvents: 'none',
-      width:         100,
-      height:        74,
+      width:         110,
+      height:        110,
     }}>
-      <svg viewBox="0 0 100 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          {/* Purple glow filter */}
-          <filter id="pglow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <filter id="softglow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <radialGradient id="wheelGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#2d1b4e" />
-            <stop offset="100%" stopColor="#0c0814" />
-          </radialGradient>
-          <radialGradient id="barrelGrad" cx="30%" cy="30%" r="70%">
-            <stop offset="0%"   stopColor="#1e1040" />
-            <stop offset="100%" stopColor="#080510" />
-          </radialGradient>
-          <radialGradient id="groundGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="#a855f7" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#a855f7" stopOpacity="0"    />
-          </radialGradient>
-          <linearGradient id="axleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stopColor="#a855f7" stopOpacity="0.1" />
-            <stop offset="50%"  stopColor="#a855f7" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#a855f7" stopOpacity="0.1" />
-          </linearGradient>
-        </defs>
-
-        {/* Ground glow */}
-        <ellipse cx="55" cy="70" rx="42" ry="5" fill="url(#groundGlow)" />
-
-        {/* ── WHEELS ───────────────────────────────────────────── */}
-        {/* Left (big) wheel */}
-        <circle cx="30" cy="58" r="13" fill="url(#wheelGrad)" filter="url(#pglow)" />
-        <circle cx="30" cy="58" r="13" fill="none" stroke="#a855f7" strokeWidth="1.5" />
-        {/* Spokes */}
-        {[0,60,120,180,240,300].map(deg => (
-          <line key={deg}
-            x1={30 + Math.cos(deg*Math.PI/180)*4}
-            y1={58 + Math.sin(deg*Math.PI/180)*4}
-            x2={30 + Math.cos(deg*Math.PI/180)*11}
-            y2={58 + Math.sin(deg*Math.PI/180)*11}
-            stroke="#a855f7" strokeWidth="1" strokeOpacity="0.7"
-          />
-        ))}
-        <circle cx="30" cy="58" r="4"  fill="#0c0814" stroke="#a855f7" strokeWidth="1" />
-        <circle cx="30" cy="58" r="1.5" fill="#a855f7" />
-
-        {/* Right (small) wheel */}
-        <circle cx="72" cy="62" r="9"  fill="url(#wheelGrad)" filter="url(#pglow)" />
-        <circle cx="72" cy="62" r="9"  fill="none" stroke="#a855f7" strokeWidth="1.5" />
-        {[0,60,120,180,240,300].map(deg => (
-          <line key={deg}
-            x1={72 + Math.cos(deg*Math.PI/180)*2.5}
-            y1={62 + Math.sin(deg*Math.PI/180)*2.5}
-            x2={72 + Math.cos(deg*Math.PI/180)*7.5}
-            y2={62 + Math.sin(deg*Math.PI/180)*7.5}
-            stroke="#a855f7" strokeWidth="0.8" strokeOpacity="0.7"
-          />
-        ))}
-        <circle cx="72" cy="62" r="3"  fill="#0c0814" stroke="#a855f7" strokeWidth="0.8" />
-        <circle cx="72" cy="62" r="1.2" fill="#a855f7" />
-
-        {/* Axle beam */}
-        <rect x="30" y="43" width="42" height="13" rx="2.5"
-          fill="#0f0820" stroke="#a855f7" strokeWidth="1.2" />
-        {/* Axle decorative rivets */}
-        {[38, 48, 58, 64].map(x => (
-          <circle key={x} cx={x} cy="49.5" r="1.2" fill="#a855f7" opacity="0.6" />
-        ))}
-        {/* Axle top edge highlight */}
-        <line x1="32" y1="44.5" x2="70" y2="44.5"
-          stroke="#a855f7" strokeWidth="0.5" strokeOpacity="0.4" />
-
-        {/* ── BARREL — angled top-left ──────────────────────── */}
-        {/* Barrel shadow/depth */}
-        <rect x="12" y="17" width="52" height="20" rx="10"
-          fill="#050308" opacity="0.7"
-          transform="rotate(-32 62 45) translate(2 2)"
-        />
-        {/* Main barrel */}
-        <rect x="12" y="17" width="52" height="20" rx="10"
-          fill="url(#barrelGrad)"
-          stroke="#a855f7" strokeWidth="1.5"
-          filter="url(#pglow)"
-          transform="rotate(-32 62 45)"
-        />
-        {/* Barrel band rings */}
-        {[20, 34, 48].map(x => (
-          <rect key={x}
-            x={x} y="17" width="5" height="20" rx="0"
-            fill="none" stroke="#a855f7" strokeWidth="0.8" strokeOpacity="0.5"
-            transform="rotate(-32 62 45)"
-          />
-        ))}
-        {/* Barrel top highlight */}
-        <rect x="14" y="19" width="48" height="5" rx="4"
-          fill="#a855f7" opacity="0.08"
-          transform="rotate(-32 62 45)"
-        />
-        {/* Muzzle opening — dark circle at top-left end */}
-        <ellipse cx="18" cy="21" rx="8" ry="7"
-          fill="#050308"
-          stroke="#a855f7" strokeWidth="1.2"
-          filter="url(#softglow)"
-          transform="rotate(-32 62 45)"
-        />
-        {/* Muzzle inner glow */}
-        <ellipse cx="18" cy="21" rx="5" ry="4.5"
-          fill="#a855f7" opacity="0.15"
-          transform="rotate(-32 62 45)"
-        />
-
-        {/* Touch hole with fuse glow */}
-        <circle cx="68" cy="39" r="2.5" fill="#a855f7" opacity="0.9" filter="url(#softglow)" />
-        <circle cx="68" cy="39" r="1.2" fill="#e9d5ff" />
-
-        {/* Fuse spark line */}
-        <path d="M68 39 Q72 35 75 37 Q78 39 76 36"
-          stroke="#a855f7" strokeWidth="1" fill="none"
-          strokeDasharray="2 1.5" opacity="0.7"
+      {/* Real cannon SVG from game-icons.net, flipped to face left, b&w */}
+      <svg
+        viewBox="0 0 512 512"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          width:     '100%',
+          height:    '100%',
+          /* flip horizontally so barrel points top-left */
+          transform: 'scaleX(-1)',
+          filter:    'drop-shadow(0 0 6px rgba(255,255,255,0.15)) drop-shadow(0 2px 8px rgba(0,0,0,0.8))',
+        }}
+      >
+        <path
+          fill="#ffffff"
+          d="M406.4 67.25c-2.1 0-4 .8-5.7 1.9-4.3 2.9-7.6 8.4-.8 18.6l53.4 79.85c6.8 10.2 13.2 9.3 17.5 6.4 4.4-2.9 7.7-8.4.9-18.6l-53.5-79.85c-4.2-6.4-8.3-8.4-11.8-8.3zM392 108.4l-141.2 88.5c4.6 12.4 12.1 26.2 21.1 38.8l1.8 2.4a24 24 0 0 1 3.6-.3 24 24 0 0 1 22.2 15h21.6l109.2-87.2zm-156.8 98.3l-99.1 62.2c4.1 17.3 11.5 33.6 21.7 47.9h54.5v-64h42.8a24 24 0 0 1 3-5.4c-.3-.4-.6-.9-.9-1.3-9-12.6-16.7-26.1-22-39.4zm-4.9 64.1v64h-64v64h-64v46h209.1c-6.9-8.5-11.1-19.3-11.1-31 0-23.9 17.3-43.9 40-48.2v-94.8zm-110.2 8.1l-34.2 21.5c-25.6 18.3-12.3 58.4 11.54 80.4h50.86v-46.6c-12.9-16.3-22.6-35.1-28.2-55.3zm309.2 39.9c-17.2 0-31 13.8-31 31 0 5.6 1.4 10.8 4 15.3 10.7 1 20.4 5.6 28 12.5 7-6.4 16-10.8 25.9-12.3 2.6-4.5 4.1-9.8 4.1-15.5 0-17.2-13.8-31-31-31zM66.66 370.9c-3.61 4-8.24 7.8-13.57 11-11.26 6.8-25.19 11.1-35.41 11.4l.58 18c14.31-.5 30.29-5.6 44.18-14 5.38-3.3 10.5-7.1 14.96-11.5-4-4.6-7.61-9.6-10.74-14.9zm282.64 11.9c-17.2 0-31 13.8-31 31s13.8 31 31 31c3.2 0 6.2-.5 9-1.3-6.2-8.3-10-18.6-10-29.7 0-11.1 3.8-21.4 10-29.7-2.8-.8-5.8-1.3-9-1.3zm48 0c-17.2 0-31 13.8-31 31s13.8 31 31 31 31-13.8 31-31-13.8-31-31-31zm66 0c-8.7 0-16.5 3.5-22.1 9.2 3.2 6.6 5.1 14 5.1 21.8 0 7.8-1.9 15.2-5.1 21.8 5.6 5.7 13.4 9.2 22.1 9.2 17.2 0 31-13.8 31-31s-13.8-31-31-31z"
         />
       </svg>
     </div>
