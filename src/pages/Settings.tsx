@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Eye, EyeOff, Trash2, User, RefreshCw, Upload, Camera } from 'lucide-react';
+import { Bell, Eye, EyeOff, Trash2, User, RefreshCw, Upload, Camera, Pencil, Check, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -17,10 +18,15 @@ const Settings = () => {
   const { identity, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user } = useAuth();
 
-  // Avatar state — uses custom_avatar_url column from profiles table
+  // Avatar state
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Name editing state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   // Settings state
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(true);
@@ -33,10 +39,10 @@ const Settings = () => {
     const loadAvatar = async () => {
       if (!user) return;
       try {
-        const { data, error } = await supabase
+      const { data, error } = await supabase
           .from('profiles')
-          .select('custom_avatar_url')
-          .eq('id', user.id)
+          .select('custom_avatar_url, pirate_name')
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (error) {
@@ -45,6 +51,9 @@ const Settings = () => {
         }
         if (data?.custom_avatar_url) {
           setAvatarUrl(data.custom_avatar_url);
+        }
+        if (data?.pirate_name) {
+          setEditName(data.pirate_name);
         }
       } catch (err) {
         console.error('Failed to load avatar:', err);
@@ -110,10 +119,8 @@ const Settings = () => {
       // Save to profiles table using correct column: custom_avatar_url
       const { error: dbError } = await supabase
         .from('profiles')
-        .upsert(
-          { id: user.id, custom_avatar_url: publicUrl, updated_at: new Date().toISOString() },
-          { onConflict: 'id' }
-        );
+        .update({ custom_avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
 
       if (dbError) throw dbError;
 
@@ -229,7 +236,51 @@ const Settings = () => {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{displayName}</p>
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        disabled={savingName || !editName.trim()}
+                        onClick={async () => {
+                          if (!user || !editName.trim()) return;
+                          setSavingName(true);
+                          try {
+                            const { error } = await supabase
+                              .from('profiles')
+                              .update({ pirate_name: editName.trim() })
+                              .eq('user_id', user.id);
+                            if (error) throw error;
+                            toast({ title: 'Name updated!' });
+                            setIsEditingName(false);
+                          } catch {
+                            toast({ title: 'Failed to update name', variant: 'destructive' });
+                          } finally {
+                            setSavingName(false);
+                          }
+                        }}
+                      >
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setIsEditingName(false)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground truncate">{editName || displayName}</p>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => setIsEditingName(true)}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Click avatar to upload · Max 5MB · JPG, PNG, WebP

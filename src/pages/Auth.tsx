@@ -47,15 +47,8 @@ const Auth = () => {
         if (error) {
           toast.error(error.message);
         } else {
-          // Feature B: Auto sign in after signup — no email confirm needed
-          const { error: signInError } = await signIn(email, password);
-          if (signInError) {
-            toast.success('Account created! Please sign in.');
-            setIsLogin(true);
-          } else {
-            toast.success('Welcome aboard, pirate!');
-            navigate('/');
-          }
+          toast.success('Welcome aboard, pirate!');
+          navigate('/');
         }
       }
     } finally {
