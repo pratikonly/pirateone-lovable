@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
-import { 
-  getTrending, 
-  getPopularMovies, 
-  getTopRatedMovies, 
+import {
+  getTrending,
+  getPopularMovies,
+  getTopRatedMovies,
   getNowPlayingMovies,
   getPopularTV,
   getTopRatedTV,
   searchMulti,
-  Movie 
+  Movie
 } from '@/lib/tmdb';
+import { getAllWatchProgress, getProgressPercentage, WatchProgressEntry } from '@/lib/watchProgress';
 import HeroBanner from '@/components/HeroBanner';
 import MovieRow from '@/components/MovieRow';
+import ContinueWatching from '@/components/ContinueWatching';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [trending, setTrending] = useState<Movie[]>([]);
+  const [watchProgress, setWatchProgress] = useState<WatchProgressEntry[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [nowPlaying, setNowPlaying] = useState<Movie[]>([]);
@@ -28,6 +33,21 @@ const Index = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Load watch progress if user is logged in
+        if (user) {
+          try {
+            const progress = await getAllWatchProgress();
+            // Filter to only show incomplete items (< 90% complete)
+            const incompleteProgress = progress
+              .filter(p => !p.completed && getProgressPercentage(p) < 90)
+              .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+              .slice(0, 10); // Limit to 10 items
+            setWatchProgress(incompleteProgress);
+          } catch (error) {
+            console.error('Failed to load watch progress:', error);
+          }
+        }
+
         const [
           trendingData,
           popularMoviesData,
@@ -77,12 +97,19 @@ const Index = () => {
     };
 
     fetchData();
-  }, [toast]);
+  }, [toast, user]);
 
   return (
     <div className="pb-6">
       <HeroBanner movies={trending} />
-      
+
+      {/* Continue Watching Section */}
+      {user && watchProgress.length > 0 && (
+        <div className="px-4 lg:px-6">
+          <ContinueWatching progress={watchProgress} />
+        </div>
+      )}
+
       <div className="px-4 lg:px-6 space-y-2">
         <MovieRow 
           title="Trending Now" 

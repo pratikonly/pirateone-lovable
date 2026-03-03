@@ -1,5 +1,7 @@
 import React, { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
+import { saveWatchProgress, getWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface VideoPlayerProps {
   id: number;
@@ -21,6 +23,12 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const onAdBlockedRef = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
     const [overlayVisible, setOverlayVisible] = useState(true);
+    const { user } = useAuth();
+
+    // Watch progress tracking state
+    const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const lastSaveTimeRef = useRef(0);
+    const lastKnownTimeRef = useRef(0);
 
     useEffect(() => { onAdBlockedRef.current = onAdBlocked; }, [onAdBlocked]);
 
@@ -85,6 +93,109 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       observer.observe(document.documentElement, { childList: true, subtree: true });
       return () => observer.disconnect();
     }, [reportBlock]);
+
+    // ── 5. Watch progress tracking for autoembed server ───────────────────────
+    useEffect(() => {
+      // Only track progress for autoembed server when user is logged in
+      if (server !== 'autoembed' || !user) return;
+
+      const handleMessage = async (event: MessageEvent) => {
+        // Only accept messages from autoembed domain
+        if (!event.origin.includes('autoembed.cc')) return;
+
+        try {
+          const data = JSON.parse(event.data);
+
+          // Handle time update from player
+          if (data.event === 'timeupdate' && typeof data.currentTime === 'number') {
+            lastKnownTimeRef.current = data.currentTime;
+
+            // Save progress every 5 seconds or at 10-second intervals
+            const now = Date.now();
+            if (now - lastSaveTimeRef.current > 5000) {
+              lastSaveTimeRef.current = now;
+              await saveWatchProgress(
+                id,
+                type === 'anime' ? 'tv' : type,
+                data.currentTime,
+                data.duration || 0,
+                server,
+                season,
+                episode
+              );
+            }
+          }
+
+          // Handle duration update
+          if (data.event === 'durationchange' && typeof data.duration === 'number') {
+            await saveWatchProgress(
+              id,
+              type === 'anime' ? 'tv' : type,
+              lastKnownTimeRef.current,
+              data.duration,
+              server,
+              season,
+              episode
+            );
+          }
+
+          // Handle video end
+          if (data.event === 'ended') {
+            await saveWatchProgress(
+              id,
+              type === 'anime' ? 'tv' : type,
+              lastKnownTimeRef.current,
+              lastKnownTimeRef.current,
+              server,
+              season,
+              episode
+            );
+          }
+        } catch (e) {
+          // Ignore non-JSON messages
+        }
+      };
+
+      // Add message listener
+      window.addEventListener('message', handleMessage);
+
+      // Save progress on mount (to track that user started watching)
+      const initialSave = async () => {
+        const existingProgress = await getWatchProgress(
+          id,
+          type === 'anime' ? 'tv' : type,
+          season,
+          episode,
+          server
+        );
+        if (existingProgress && existingProgress.current_time > 0) {
+          lastKnownTimeRef.current = existingProgress.current_time;
+        }
+      };
+      initialSave();
+
+      // Set up periodic save as backup (every 10 seconds)
+      progressIntervalRef.current = setInterval(async () => {
+        if (lastKnownTimeRef.current > 0) {
+          await saveWatchProgress(
+            id,
+            type === 'anime' ? 'tv' : type,
+            lastKnownTimeRef.current,
+            lastKnownTimeRef.current * 1.2, // Estimate duration
+            server,
+            season,
+            episode
+          );
+        }
+      }, 10000);
+
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+      };
+    }, [id, type, server, season, episode, user]);
 
     // ── Overlay click: hide 800ms so click reaches player, then restore ───────
     const handleOverlayClick = useCallback(() => {
