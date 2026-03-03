@@ -154,26 +154,36 @@ const Help = () => {
           .help-mid-right { border-left:none !important; padding-left:0 !important; margin-top:40px; }
         }
 
+        @media(max-width:600px){
+          .help-outer { padding-left:18px !important; padding-right:18px !important; padding-top:56px !important; }
+          .help-title h1 { font-size:1.75rem !important; }
+          .help-title-icon { width:22px !important; height:22px !important; }
+          .help-title-row { gap:7px !important; }
+          .help-title-sub { font-size:0.82rem !important; }
+          .feedback-box { padding:18px 16px !important; border-radius:14px !important; }
+          .name-email-grid { grid-template-columns:1fr !important; gap:10px !important; }
+        }
+
         .faq-row { border-bottom:1px solid rgba(255,255,255,0.06); }
         .faq-btn { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 0; background:none; border:none; cursor:pointer; text-align:left; }
 
         @keyframes spin { to{transform:rotate(360deg)} }
       `}</style>
 
-      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'88px 15% 72px' }}>
+      <div className="help-outer" style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'88px 15% 72px' }}>
 
         {/* ══ 1. CENTERED TITLE ══ */}
-        <div className="hfu" style={{ textAlign:'center', marginBottom:'36px', width:'100%', maxWidth:'100%' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'8px' }}>
-            <Anchor style={{ width:30, height:30, color:'var(--primary)' }} />
+        <div className="hfu help-title" style={{ textAlign:'center', marginBottom:'36px', width:'100%', maxWidth:'100%' }}>
+          <div className="help-title-row" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'10px', marginBottom:'8px' }}>
+            <Anchor className="help-title-icon" style={{ width:30, height:30, color:'var(--primary)' }} />
             <h1 style={{ fontSize:'2.4rem', fontWeight:800, color:'#fff', letterSpacing:'-0.03em', margin:0 }}>Help & Feedback</h1>
           </div>
-          <p style={{ fontSize:'0.95rem', color:'rgba(255,255,255,0.38)', margin:0 }}>Everything you need to sail smoothly on PirateOne</p>
+          <p className="help-title-sub" style={{ fontSize:'0.95rem', color:'rgba(255,255,255,0.38)', margin:0 }}>Everything you need to sail smoothly on PirateOne</p>
         </div>
 
         {/* ══ 2. FEEDBACK BOX — centered, full width ══ */}
         <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'52px' }}>
-          <div style={{
+          <div className="feedback-box" style={{
             background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
             borderRadius:'18px', padding:'28px 32px',
           }}>
@@ -199,7 +209,7 @@ const Help = () => {
             </div>
 
             {/* Name + Email row */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginBottom:'14px' }}>
+            <div className="name-email-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginBottom:'14px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.68rem', fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:'rgba(255,255,255,0.32)', marginBottom:'7px' }}>
                   Name <span style={{ color:'rgba(255,255,255,0.18)', fontWeight:400 }}>(optional)</span>
