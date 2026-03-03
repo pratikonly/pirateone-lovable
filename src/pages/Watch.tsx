@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick } from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, MousePointerClick } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails,
@@ -34,41 +34,16 @@ const watchParamsSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
-// Download sources — these are real public free download aggregators
-const DOWNLOAD_SOURCES = [
-  {
-    name: 'YTS',
-    description: 'High quality movie torrents',
-    icon: '🎬',
-    getUrl: (title: string, year: string, type: string) =>
-      type === 'movie'
-        ? `https://yts.mx/movies/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}-${year}`
-        : null,
-  },
-  {
-    name: 'EZTV',
-    description: 'TV shows torrents',
-    icon: '📺',
-    getUrl: (title: string, _year: string, type: string) =>
-      type === 'tv'
-        ? `https://eztv.re/search/${encodeURIComponent(title)}`
-        : null,
-  },
-  {
-    name: 'Archive.org',
-    description: 'Free public domain movies',
-    icon: '🏛️',
-    getUrl: (title: string) =>
-      `https://archive.org/search?query=${encodeURIComponent(title)}&and[]=mediatype%3A%22movies%22`,
-  },
-  {
-    name: 'Open Subtitles',
-    description: 'Subtitles for any content',
-    icon: '💬',
-    getUrl: (title: string) =>
-      `https://www.opensubtitles.org/en/search2/moviename-${encodeURIComponent(title)}`,
-  },
-];
+// Download via vidsrc.vip
+const getDownloadUrl = (
+  id: number,
+  type: 'movie' | 'tv',
+  season?: number,
+  episode?: number
+) => {
+  if (type === 'movie') return `https://dl.vidsrc.vip/movie/${id}`;
+  return `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
+};
 
 const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
@@ -89,9 +64,7 @@ const Watch = () => {
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen] = useState(false);
   const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
-  const [downloadOpen, setDownloadOpen] = useState(false);
   const serverButtonRef = useRef<HTMLButtonElement>(null);
-  const downloadButtonRef = useRef<HTMLButtonElement>(null);
 
   // FIX: fetchDetails no longer depends on season/episode
   // Those are only used for saveWatchHistory which runs separately
@@ -371,60 +344,21 @@ const Watch = () => {
                     )}
                   </Button>
 
-                  {/* Download button */}
-                  <div className="relative inline-block">
+                  {/* Download button — direct link to vidsrc.vip */}
+                  <a
+                    href={getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button
-                      ref={downloadButtonRef}
                       variant="outline"
                       size="sm"
                       className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
-                      onClick={() => setDownloadOpen(!downloadOpen)}
                     >
                       <Download className="w-4 h-4" />
                       <span className="font-medium">Download</span>
-                      <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", downloadOpen && "rotate-180")} />
                     </Button>
-
-                    {downloadOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setDownloadOpen(false)} />
-                        <div className="absolute right-0 top-full mt-2 z-50 w-72 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl animate-in fade-in-60 zoom-in-95 duration-150">
-                          <div className="p-3 border-b border-zinc-800">
-                            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Download Sources</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">External sites — opens in new tab</p>
-                          </div>
-                          <div className="p-2 space-y-1">
-                            {DOWNLOAD_SOURCES.map((source) => {
-                              const url = source.getUrl(title, year, mediaType);
-                              if (!url) return null;
-                              return (
-                                <a
-                                  key={source.name}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800 transition-colors group"
-                                  onClick={() => setDownloadOpen(false)}
-                                >
-                                  <span className="text-xl">{source.icon}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-white">{source.name}</p>
-                                    <p className="text-xs text-zinc-500">{source.description}</p>
-                                  </div>
-                                  <ExternalLink className="w-3.5 h-3.5 text-zinc-600 group-hover:text-zinc-400 flex-shrink-0" />
-                                </a>
-                              );
-                            })}
-                          </div>
-                          <div className="px-3 pb-3 pt-1">
-                            <p className="text-[10px] text-zinc-600 leading-relaxed">
-                              PirateOne links to external download sites. We don't host any files.
-                            </p>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  </a>
 
                   {/* Server selector */}
                   <div className="relative inline-block">
