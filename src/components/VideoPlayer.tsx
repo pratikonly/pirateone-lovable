@@ -1,5 +1,6 @@
 import React, { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
+import { MousePointerClick } from 'lucide-react';
 
 interface VideoPlayerProps {
   id: number;
@@ -20,9 +21,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const adCountRef = useRef(0);
     const onAdBlockedRef = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
-
-    // Overlay is visible by default — it sits transparently over the iframe
-    // and passes clicks through after killing any popup attempt
     const [overlayVisible, setOverlayVisible] = useState(true);
 
     useEffect(() => { onAdBlockedRef.current = onAdBlocked; }, [onAdBlocked]);
@@ -32,7 +30,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       onAdBlockedRef.current?.(adCountRef.current);
     }, []);
 
-    // ── 1. Kill window.open every 50ms — no popup can survive this ───────────
+    // ── 1. Kill window.open every 50ms ────────────────────────────────────────
     useEffect(() => {
       const kill = () => {
         try { window.open = () => { reportBlock(); return null; }; } catch { /* ignore */ }
@@ -42,7 +40,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => clearInterval(interval);
     }, [reportBlock]);
 
-    // ── 2. Kill beforeunload page hijacks ─────────────────────────────────────
+    // ── 2. Kill beforeunload hijacks ──────────────────────────────────────────
     useEffect(() => {
       const handle = (e: BeforeUnloadEvent) => {
         e.preventDefault();
@@ -52,22 +50,14 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => window.removeEventListener('beforeunload', handle);
     }, []);
 
-    // ── 3. Blur = popup trying to steal focus → refocus immediately ──────────
+    // ── 3. Blur = popup stealing focus → refocus ──────────────────────────────
     useEffect(() => {
       let t: ReturnType<typeof setTimeout> | null = null;
-
       const onBlur = () => {
-        // If blur is within 1.2s of user clicking the overlay → expected, ignore
         if (Date.now() - lastClickTimeRef.current < 1200) return;
-
-        t = setTimeout(() => {
-          window.focus();
-          reportBlock();
-        }, 30);
+        t = setTimeout(() => { window.focus(); reportBlock(); }, 30);
       };
-
       const onFocus = () => { if (t) clearTimeout(t); };
-
       window.addEventListener('blur', onBlur);
       window.addEventListener('focus', onFocus);
       return () => {
@@ -77,7 +67,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       };
     }, [reportBlock]);
 
-    // ── 4. Remove injected ad nodes ──────────────────────────────────────────
+    // ── 4. Remove injected ad nodes ───────────────────────────────────────────
     useEffect(() => {
       const AD = [
         /doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
@@ -98,15 +88,9 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     }, [reportBlock]);
 
     // ── Overlay click handler ─────────────────────────────────────────────────
-    // User clicks the transparent overlay →
-    //   1. Record click time (so blur check ignores the next focus loss)
-    //   2. Hide overlay for 800ms so the click reaches the iframe player
-    //   3. Restore overlay
-    const handleOverlayClick = useCallback((e: React.MouseEvent) => {
+    const handleOverlayClick = useCallback(() => {
       lastClickTimeRef.current = Date.now();
       setOverlayVisible(false);
-
-      // Re-show overlay after 800ms
       setTimeout(() => setOverlayVisible(true), 800);
     }, []);
 
@@ -118,39 +102,41 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     };
 
     return (
-      <div
-        ref={wrapperRef}
-        className="relative w-full rounded-lg overflow-hidden bg-black"
-        style={{ paddingBottom: '56.25%', height: 0 }}
-      >
-        {/* Iframe — NO sandbox attribute so players load fine */}
-        <iframe
-          ref={setIframeRef}
-          src={playerUrl}
-          title={title || 'Video player'}
-          className="absolute top-0 left-0 w-full h-full"
-          allowFullScreen
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-          referrerPolicy="no-referrer"
-          style={{ border: 'none' }}
-        />
-
-        {/*
-          Transparent overlay on top of iframe.
-          - Catches all raw clicks before they hit the iframe
-          - On click: hides itself for 800ms so the real click passes through
-          - This breaks the "user gesture required for window.open" requirement
-            that ad scripts rely on — they wait for a direct iframe click,
-            but our overlay means the iframe never gets a raw trusted click event
-          - Combined with window.open being killed every 50ms, no popup can open
-        */}
-        {overlayVisible && (
-          <div
-            className="absolute inset-0 z-10"
-            style={{ background: 'transparent', cursor: 'pointer' }}
-            onClick={handleOverlayClick}
+      <div ref={wrapperRef} className="w-full space-y-2">
+        {/* Player wrapper */}
+        <div
+          className="relative w-full rounded-lg overflow-hidden bg-black"
+          style={{ paddingBottom: '56.25%', height: 0 }}
+        >
+          <iframe
+            ref={setIframeRef}
+            src={playerUrl}
+            title={title || 'Video player'}
+            className="absolute top-0 left-0 w-full h-full"
+            allowFullScreen
+            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            referrerPolicy="no-referrer"
+            style={{ border: 'none' }}
           />
-        )}
+
+          {overlayVisible && (
+            <div
+              className="absolute inset-0 z-10"
+              style={{ background: 'transparent', cursor: 'pointer' }}
+              onClick={handleOverlayClick}
+            />
+          )}
+        </div>
+
+        {/* Yellow hint note below the player */}
+        <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
+          <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-yellow-300/90 leading-relaxed">
+            <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
+            <span className="font-semibold">click twice</span> to interact with the video player —
+            the first click activates it, the second performs the action (play, pause, fullscreen, etc).
+          </p>
+        </div>
       </div>
     );
   }
