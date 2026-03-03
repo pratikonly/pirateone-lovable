@@ -41,15 +41,47 @@ const POSTER_COLS = [
     'https://image.tmdb.org/t/p/w300/A3ZbZsmsvNGdprRi2lKgGEeVLEH.jpg',
     'https://image.tmdb.org/t/p/w300/xmbU4JTUm4GYKE56n9TXjyHbCGw.jpg',
   ],
+  [
+    'https://image.tmdb.org/t/p/w300/74xTEgt7R36Fpooo50r9T25onhq.jpg',
+    'https://image.tmdb.org/t/p/w300/aosm8NMQ3UyoBVpSxyimorCQykC.jpg',
+    'https://image.tmdb.org/t/p/w300/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
+    'https://image.tmdb.org/t/p/w300/6DrHO1jr3qVrViUO6s6kFiAGM7.jpg',
+    'https://image.tmdb.org/t/p/w300/wTnV3PCVW5O92JMrFvvrRcV39RU.jpg',
+    'https://image.tmdb.org/t/p/w300/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
+  ],
+  [
+    'https://image.tmdb.org/t/p/w300/qNBAXBIQlnOThrVvA6mA2B5ggkl.jpg',
+    'https://image.tmdb.org/t/p/w300/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
+    'https://image.tmdb.org/t/p/w300/sv1xJUazXeYqALzczSZ3O6nkH75.jpg',
+    'https://image.tmdb.org/t/p/w300/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
+    'https://image.tmdb.org/t/p/w300/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
+    'https://image.tmdb.org/t/p/w300/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg',
+  ],
+  [
+    'https://image.tmdb.org/t/p/w300/velWPhVMQeQKcxggNEU8YmIo52R.jpg',
+    'https://image.tmdb.org/t/p/w300/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
+    'https://image.tmdb.org/t/p/w300/8kSerJrhrJWKLk1LViesGcnrVPE.jpg',
+    'https://image.tmdb.org/t/p/w300/hek3koDUyRQk7FIhPXsa6mT2Zbo.jpg',
+    'https://image.tmdb.org/t/p/w300/NNxYkU70HPurnNCSiCjYAmacwm.jpg',
+    'https://image.tmdb.org/t/p/w300/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg',
+  ],
+  [
+    'https://image.tmdb.org/t/p/w300/fOy2Jurz9k6RnJnMbVOwGKdZx2C.jpg',
+    'https://image.tmdb.org/t/p/w300/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg',
+    'https://image.tmdb.org/t/p/w300/gEjNlhZhyHeto6a68ooh7xDiAhO.jpg',
+    'https://image.tmdb.org/t/p/w300/zdjkLpDuLqFPMzJCFJZjRkz3UBm.jpg',
+    'https://image.tmdb.org/t/p/w300/2CAL2433ZeIihfX1Hb2139CX0pW.jpg',
+    'https://image.tmdb.org/t/p/w300/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
+  ],
 ];
 
 const PosterColumn = ({ images, reverse = false }: { images: string[]; reverse?: boolean }) => (
   <div
-    className={`flex flex-col gap-3 ${reverse ? 'animate-scroll-up' : 'animate-scroll-down'}`}
-    style={{ animationDuration: reverse ? '35s' : '28s' }}
+    className={`flex flex-col gap-2 flex-1 min-w-0 ${reverse ? 'animate-scroll-up' : 'animate-scroll-down'}`}
+    style={{ animationDuration: reverse ? '38s' : '30s' }}
   >
     {[...images, ...images].map((src, i) => (
-      <div key={i} className="w-28 h-40 rounded-lg overflow-hidden flex-shrink-0 opacity-60 hover:opacity-80 transition-opacity duration-500">
+      <div key={i} className="w-full rounded-md overflow-hidden flex-shrink-0 opacity-55 hover:opacity-75 transition-opacity duration-500" style={{ aspectRatio: '2/3' }}>
         <img
           src={src}
           alt=""
@@ -156,7 +188,7 @@ const Auth = () => {
       <div className="relative min-h-screen flex overflow-hidden" style={{ background: '#080808' }}>
 
         {/* ── Scrolling poster background ── */}
-        <div className="absolute inset-0 flex gap-3 px-3 overflow-hidden pointer-events-none select-none">
+        <div className="absolute inset-0 flex gap-2 p-2 overflow-hidden pointer-events-none select-none" style={{ width: '100%' }}>
           {POSTER_COLS.map((col, i) => (
             <PosterColumn key={i} images={col} reverse={i % 2 === 1} />
           ))}
