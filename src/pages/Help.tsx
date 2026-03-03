@@ -225,6 +225,7 @@ const Help = () => {
               { icon: <TrendingUp className="w-4 h-4" />, name: 'Trending Content', desc: "Discover what's hot this week" },
               { icon: <Award className="w-4 h-4" />, name: 'Top Rated & Popular', desc: 'Browse highest rated and most popular titles' },
               { icon: <ThumbsUp className="w-4 h-4" />, name: 'Recommendations', desc: 'Similar content suggestions on every watch page' },
+              { icon: <MessageSquare className="w-4 h-4" />, name: 'Community Reviews', desc: 'Real audience reviews powered by TMDB shown on every movie and show page' },
             ]
           },
         ].map((group) => (
