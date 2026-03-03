@@ -1,972 +1,607 @@
 import { useEffect, useRef } from 'react';
 
-/*
-  PirateCorner.tsx
-  ─────────────────
-  A single highly-detailed pirate silhouette stands permanently
-  in the bottom-right corner. Every few seconds he winds up and
-  hurls his sword across the screen. The sword flies, sticks into
-  a random spot (with a thud shake), hangs there on a glowing
-  chain/rope, then gets slowly yanked back. The pirate reacts to
-  each phase with subtle body animations.
-
-  Colors match the PirateOne site palette:
-    • Silhouette body  : deep dark  rgba(12, 8, 20, 0.92)
-    • Accent / glow    : purple     #a855f7
-    • Sword highlight  : white      rgba(255,255,255,0.9)
-    • Rope             : purple → white gradient
-
-  Add to App.tsx (already done if you used the previous step):
-    import PirateCorner from "./components/PirateCorner";
-    <PirateCorner />
-*/
-
-// ─── Math helpers ────────────────────────────────────────────────────────────
-const PI  = Math.PI;
-const TAU = PI * 2;
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const PI    = Math.PI;
+const TAU   = PI * 2;
+const lerp  = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-const easeOut  = (t: number) => 1 - Math.pow(1 - t, 3);
-const easeIn   = (t: number) => t * t * t;
-const easeInOut= (t: number) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+const easeOut   = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeIn    = (t: number) => t * t * t;
+const easeInOut = (t: number) => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const C = {
-  body:       'rgba(12,8,20,0.93)',
-  bodyEdge:   'rgba(168,85,247,0.18)',
-  purple:     '#a855f7',
-  purpleGlow: 'rgba(168,85,247,0.55)',
-  purpleDim:  'rgba(168,85,247,0.25)',
-  white:      'rgba(255,255,255,0.92)',
-  whiteDim:   'rgba(255,255,255,0.35)',
-  blade:      'rgba(255,255,255,0.88)',
-  bladeGlow:  'rgba(168,85,247,0.7)',
-  spark:      ['#fff','#e9d5ff','#a855f7','#f0abfc','rgba(255,255,255,0.6)'],
-};
+const BODY   = '#0c0814';
+const BODY2  = '#140c24';
+const EDGE   = 'rgba(168,85,247,0.25)';
+const PURPLE = '#a855f7';
+const PDIM   = 'rgba(168,85,247,0.3)';
+const WHITE  = 'rgba(255,255,255,0.92)';
+const BLADE  = 'rgba(230,220,255,0.95)';
+const SKIN   = '#1a0f2e';
 
-// ─── Sword state machine ──────────────────────────────────────────────────────
-type Phase =
-  | 'idle'       // standing, idle breathing
-  | 'windup'     // arm pulls back
-  | 'throw'      // sword flies through air
-  | 'stuck'      // sword embedded, rope taut, pirate pulls
-  | 'pulling'    // sword slides back along rope
-  | 'catch'      // sword returns to hand
-  | 'cooldown';  // brief pause before next cycle
+type Phase = 'idle'|'windup'|'throw'|'stuck'|'recall'|'catch'|'cooldown';
 
-interface SwordState {
-  // world position of sword tip
-  x: number; y: number;
-  // velocity during throw
-  vx: number; vy: number;
-  // rotation of sword
-  angle: number;
-  spinRate: number;
-  // stuck position
-  stuckX: number; stuckY: number;
-  stuckAngle: number;
-  // rope sag points (catenary approximation via bezier)
-  sagAmount: number;
-  // phase timing
-  phase: Phase;
-  phaseT: number;   // 0→1 normalised progress within current phase
-  phaseMs: number;  // duration of current phase in ms
-  elapsed: number;  // ms since phase start
+interface Particle {
+  x: number; y: number; vx: number; vy: number;
+  life: number; maxLife: number; size: number; color: string;
 }
 
-interface Spark {
-  x: number; y: number;
-  vx: number; vy: number;
-  life: number; size: number;
-  color: string;
+function glow(ctx: CanvasRenderingContext2D, color: string, blur: number) {
+  ctx.shadowColor = color; ctx.shadowBlur = blur;
+}
+function noGlow(ctx: CanvasRenderingContext2D) {
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
 }
 
-// ─── Pirate draw ─────────────────────────────────────────────────────────────
-// Origin is feet-centre. Y grows upward in logical coords, but canvas is
-// flipped so we pass negative Y for "up". Scale = px per unit.
-// The pirate is ~130 units tall (feet to hat tip).
-interface PirateOpts {
-  ctx:       CanvasRenderingContext2D;
-  ox:        number;   // foot-centre X on canvas
-  oy:        number;   // foot-centre Y on canvas
-  scale:     number;
-  // animation params
-  breathT:   number;   // breathing cycle 0..TAU
-  windupT:   number;   // 0 = relaxed, 1 = fully wound up
-  throwT:    number;   // 0 = at rest post-throw, arm follows through
-  pullT:     number;   // 0→1 pulling-rope lean
-  // hand position (world canvas coords) for rope anchor
-  handX:     number;
-  handY:     number;
-}
-
-function drawPirate(o: PirateOpts) {
-  const { ctx, ox, oy, scale: sc, breathT, windupT, throwT, pullT } = o;
-
-  // Subtle body lean: windup leans back, throw follows through, pull leans forward
-  const leanAngle = windupT * -0.12 + throwT * 0.08 + pullT * 0.1;
-  const breathY   = Math.sin(breathT) * 0.6; // subtle vertical bob
-
+function drawSword(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, sc: number, glowPow = 0) {
   ctx.save();
-  ctx.translate(ox, oy + breathY * sc);
-  ctx.rotate(leanAngle);
-  ctx.fillStyle   = C.body;
-  ctx.strokeStyle = C.bodyEdge;
-  ctx.lineWidth   = 0.6;
-  ctx.lineJoin    = 'round';
-  ctx.lineCap     = 'round';
-
-  const s = sc;
-  const fill = () => { ctx.fill(); ctx.stroke(); };
-
-  // ── Boots ──────────────────────────────────────────────────────────────
-  // Left boot
-  ctx.beginPath();
-  ctx.moveTo(-8*s, 0);
-  ctx.lineTo(-9*s, -18*s);
-  ctx.lineTo(-7*s, -20*s);
-  ctx.lineTo(-4*s, -18*s);
-  ctx.lineTo(-3*s, 0);
-  // boot toe
-  ctx.lineTo(-14*s, 1*s);
-  ctx.lineTo(-14*s, -2*s);
-  ctx.lineTo(-3*s, -2*s);
-  ctx.closePath(); fill();
-
-  // Right boot
-  ctx.beginPath();
-  ctx.moveTo(3*s, 0);
-  ctx.lineTo(4*s, -18*s);
-  ctx.lineTo(7*s, -20*s);
-  ctx.lineTo(9*s, -18*s);
-  ctx.lineTo(8*s, 0);
-  ctx.lineTo(14*s, 1*s);
-  ctx.lineTo(14*s, -2*s);
-  ctx.lineTo(3*s, -2*s);
-  ctx.closePath(); fill();
-
-  // boot cuffs
-  for (const bx of [-6.5, 5.5]) {
-    ctx.beginPath();
-    ctx.ellipse(bx*s, -18*s, 3*s, 1.8*s, 0, 0, TAU);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo((bx-3)*s, -18*s);
-    ctx.lineTo((bx+3)*s, -18*s);
-    ctx.strokeStyle = C.purpleDim;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    ctx.strokeStyle = C.bodyEdge;
-    ctx.lineWidth = 0.6;
-  }
-
-  // ── Breeches ──────────────────────────────────────────────────────────
-  ctx.beginPath();
-  ctx.moveTo(-10*s, -18*s);
-  ctx.bezierCurveTo(-12*s,-28*s, -10*s,-36*s, -6*s,-38*s);
-  ctx.lineTo(6*s,-38*s);
-  ctx.bezierCurveTo(10*s,-36*s, 12*s,-28*s, 10*s,-18*s);
-  ctx.closePath(); fill();
-  // breeches centre split
-  ctx.beginPath();
-  ctx.moveTo(0,-38*s); ctx.lineTo(0,-20*s);
-  ctx.strokeStyle='rgba(168,85,247,0.12)'; ctx.lineWidth=1.5; ctx.stroke();
-  ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-
-  // ── Long coat body ────────────────────────────────────────────────────
-  ctx.beginPath();
-  // left skirt flare
-  ctx.moveTo(-18*s, -20*s);
-  ctx.bezierCurveTo(-22*s,-30*s, -20*s,-44*s, -16*s,-52*s);
-  ctx.lineTo(-14*s,-80*s);
-  ctx.lineTo(-12*s,-88*s);
-  // left shoulder
-  ctx.lineTo(-18*s,-92*s);
-  ctx.lineTo(-15*s,-96*s);
-  // collar left
-  ctx.lineTo(-8*s,-96*s);
-  ctx.lineTo(-6*s,-92*s);
-  ctx.lineTo(0*s,-90*s);
-  ctx.lineTo(6*s,-92*s);
-  ctx.lineTo(8*s,-96*s);
-  // collar right
-  ctx.lineTo(15*s,-96*s);
-  ctx.lineTo(18*s,-92*s);
-  // right shoulder
-  ctx.lineTo(12*s,-88*s);
-  ctx.lineTo(14*s,-80*s);
-  ctx.lineTo(16*s,-52*s);
-  ctx.bezierCurveTo(20*s,-44*s, 22*s,-30*s, 18*s,-20*s);
-  ctx.closePath(); fill();
-
-  // coat front split / lapels
-  ctx.beginPath();
-  ctx.moveTo(-4*s,-96*s);
-  ctx.lineTo(-6*s,-68*s);
-  ctx.lineTo(-10*s,-38*s);
-  ctx.lineTo(-8*s,-38*s);
-  ctx.lineTo(-4*s,-62*s);
-  ctx.lineTo(-2*s,-96*s);
-  ctx.closePath(); fill();
-  ctx.beginPath();
-  ctx.moveTo(4*s,-96*s);
-  ctx.lineTo(6*s,-68*s);
-  ctx.lineTo(10*s,-38*s);
-  ctx.lineTo(8*s,-38*s);
-  ctx.lineTo(4*s,-62*s);
-  ctx.lineTo(2*s,-96*s);
-  ctx.closePath(); fill();
-
-  // coat buttons (purple glow dots)
-  ctx.strokeStyle = C.purple;
-  ctx.lineWidth   = 0.5;
-  for (let i = 0; i < 5; i++) {
-    const by = (-58 - i * 7) * s;
-    ctx.beginPath();
-    ctx.arc(0, by, 1.2*s, 0, TAU);
-    ctx.fillStyle = C.purple;
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.fillStyle   = C.body;
-  ctx.strokeStyle = C.bodyEdge;
-  ctx.lineWidth   = 0.6;
-
-  // belt
-  ctx.beginPath();
-  ctx.moveTo(-16*s,-38*s); ctx.lineTo(16*s,-38*s);
-  ctx.strokeStyle='rgba(168,85,247,0.4)'; ctx.lineWidth=2.5; ctx.stroke();
-  // belt buckle
-  ctx.fillStyle=C.purple;
-  ctx.strokeStyle=C.white;
-  ctx.lineWidth=0.7;
-  ctx.beginPath();
-  ctx.roundRect(-3*s,-40.5*s, 6*s,4*s, 0.8*s);
-  ctx.fill(); ctx.stroke();
-  // buckle pin
-  ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=0.6;
-  ctx.beginPath(); ctx.moveTo(0,-40.5*s); ctx.lineTo(0,-36.5*s); ctx.stroke();
-  ctx.fillStyle=C.body; ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-
-  // coat back tail left
-  ctx.beginPath();
-  ctx.moveTo(-18*s,-20*s);
-  ctx.bezierCurveTo(-26*s,-16*s, -28*s,-8*s, -22*s, 2*s);
-  ctx.lineTo(-16*s, 0*s);
-  ctx.lineTo(-18*s,-20*s);
-  ctx.closePath(); fill();
-
-  // coat back tail right
-  ctx.beginPath();
-  ctx.moveTo(18*s,-20*s);
-  ctx.bezierCurveTo(26*s,-16*s, 28*s,-8*s, 22*s, 2*s);
-  ctx.lineTo(16*s, 0*s);
-  ctx.lineTo(18*s,-20*s);
-  ctx.closePath(); fill();
-
-  // ── Left arm (non-sword, at side/slightly bent) ───────────────────────
-  // Lean forward when pulling rope
-  const leftArmRotate = pullT * 0.35;
-  ctx.save();
-  ctx.translate(-16*s, -88*s);
-  ctx.rotate(0.15 + leftArmRotate);
-  // upper arm
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.bezierCurveTo(-7*s,5*s, -10*s,16*s, -9*s,26*s);
-  ctx.lineTo(-5*s,26*s);
-  ctx.bezierCurveTo(-6*s,16*s, -3*s,5*s, 4*s,2*s);
-  ctx.closePath(); fill();
-  // cuff detail
-  ctx.beginPath();
-  ctx.ellipse(-7*s,25*s, 4*s,2.5*s, -0.3,0,TAU);
-  ctx.fillStyle=C.purple; ctx.fill();
-  ctx.fillStyle=C.body;
-  // fist
-  ctx.beginPath();
-  ctx.ellipse(-8*s,30*s, 4.5*s,3.8*s, -0.2,0,TAU);
-  ctx.fill(); ctx.stroke();
-  // knuckle lines
-  ctx.strokeStyle='rgba(168,85,247,0.3)'; ctx.lineWidth=0.5;
-  for (let k=0;k<3;k++) ctx.strokeRect((-11+k*2)*s,29*s,1.5*s,2*s);
-  ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-  ctx.restore();
-
-  // ── Right arm (sword arm) ─────────────────────────────────────────────
-  // windup: arm sweeps back; throw: snaps forward; pull: holds rope upward
-  const windupRot  = windupT  * (-PI / 2.2);
-  const throwRot   = throwT   * (PI / 2.8);
-  const pullRot    = pullT    * (-PI / 3.5);
-  const swordArmR  = windupRot + throwRot + pullRot - 0.2;
-
-  ctx.save();
-  ctx.translate(16*s, -88*s);
-  ctx.rotate(swordArmR);
-  // upper arm
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.bezierCurveTo(8*s,4*s, 12*s,15*s, 10*s,26*s);
-  ctx.lineTo(6*s,26*s);
-  ctx.bezierCurveTo(8*s,15*s, 4*s,4*s, -3*s,2*s);
-  ctx.closePath(); fill();
-  // cuff
-  ctx.beginPath();
-  ctx.ellipse(8*s,25*s, 4*s,2.5*s, 0.3,0,TAU);
-  ctx.fillStyle=C.purple; ctx.fill();
-  ctx.fillStyle=C.body;
-  // hand / fist
-  ctx.beginPath();
-  ctx.ellipse(9*s,30*s, 4.5*s,4*s, 0.15,0,TAU);
-  ctx.fill(); ctx.stroke();
-
-  // ── Sword in hand (only when NOT thrown) ─────────────────────────────
-  // sword is drawn in arm-local coords when phase is idle/windup
-  // During throw/stuck/pull the sword is drawn separately in world coords
-  if (windupT > 0 || throwT < 0.3) {
-    // grip
-    ctx.beginPath();
-    ctx.roundRect(7*s,30*s, 4.5*s,13*s, 1*s);
-    ctx.fillStyle=C.body; ctx.fill();
-    // grip wrap (purple thread)
-    ctx.strokeStyle=C.purple; ctx.lineWidth=1;
-    for (let w=0;w<4;w++) {
-      ctx.beginPath();
-      ctx.moveTo(7*s,(33+w*2.5)*s); ctx.lineTo(11.5*s,(33+w*2.5)*s);
-      ctx.stroke();
-    }
-    // crossguard
-    ctx.fillStyle=C.body;
-    ctx.strokeStyle=C.white; ctx.lineWidth=0.8;
-    ctx.beginPath();
-    ctx.roundRect(3.5*s,42*s, 11*s,4*s, 1*s);
-    ctx.fill(); ctx.stroke();
-    // pommel
-    ctx.beginPath();
-    ctx.arc(9*s,31*s, 2.5*s,0,TAU);
-    ctx.fillStyle=C.purple; ctx.fill();
-    ctx.strokeStyle=C.white; ctx.lineWidth=0.5; ctx.stroke();
-    // blade
-    ctx.beginPath();
-    ctx.moveTo(8*s,46*s);
-    ctx.lineTo(10*s,46*s);
-    ctx.lineTo(9.5*s,90*s);
-    ctx.closePath();
-    ctx.fillStyle=C.blade; ctx.fill();
-    // blade fuller
-    ctx.strokeStyle='rgba(168,85,247,0.5)'; ctx.lineWidth=0.5;
-    ctx.beginPath();
-    ctx.moveTo(9*s,48*s); ctx.lineTo(9*s,82*s); ctx.stroke();
-    // blade edge glint
-    ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=0.4;
-    ctx.beginPath();
-    ctx.moveTo(8.5*s,48*s); ctx.lineTo(8*s,78*s); ctx.stroke();
-  }
-
-  ctx.restore(); // sword arm
-
-  // ── Neck ─────────────────────────────────────────────────────────────
-  ctx.fillStyle=C.body; ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-  ctx.beginPath();
-  ctx.moveTo(-5*s,-96*s); ctx.lineTo(5*s,-96*s);
-  ctx.lineTo(4*s,-104*s); ctx.lineTo(-4*s,-104*s);
-  ctx.closePath(); fill();
-  // cravat / neckerchief
-  ctx.beginPath();
-  ctx.moveTo(-5*s,-98*s); ctx.lineTo(0,-102*s); ctx.lineTo(5*s,-98*s);
-  ctx.lineTo(3*s,-96*s); ctx.lineTo(0,-99*s); ctx.lineTo(-3*s,-96*s);
-  ctx.closePath();
-  ctx.fillStyle=C.white; ctx.fill();
-
-  // ── Head ─────────────────────────────────────────────────────────────
-  ctx.fillStyle=C.body; ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-  ctx.beginPath();
-  ctx.ellipse(1*s,-112*s, 11*s,13*s, 0.04,0,TAU);
-  ctx.fill(); ctx.stroke();
-
-  // jaw / chin detail
-  ctx.beginPath();
-  ctx.moveTo(-8*s,-104*s);
-  ctx.bezierCurveTo(-10*s,-102*s,-9*s,-100*s,-6*s,-100*s);
-  ctx.bezierCurveTo(-2*s,-99*s, 2*s,-99*s, 6*s,-100*s);
-  ctx.bezierCurveTo(9*s,-100*s,10*s,-102*s, 8*s,-104*s);
-  ctx.strokeStyle='rgba(168,85,247,0.15)'; ctx.lineWidth=0.7; ctx.stroke();
-
-  // eye (white highlight)
-  ctx.beginPath();
-  ctx.arc(4*s,-113*s, 1.8*s,0,TAU);
-  ctx.fillStyle=C.white; ctx.fill();
-  ctx.beginPath();
-  ctx.arc(4.5*s,-113*s, 0.9*s,0,TAU);
-  ctx.fillStyle='rgba(12,8,20,1)'; ctx.fill();
-  // eye gleam
-  ctx.beginPath();
-  ctx.arc(4*s,-113.5*s, 0.35*s,0,TAU);
-  ctx.fillStyle=C.white; ctx.fill();
-
-  // eyepatch (left eye)
-  ctx.beginPath();
-  ctx.arc(-3*s,-113*s, 2.5*s,0,TAU);
-  ctx.fillStyle='rgba(12,8,20,1)'; ctx.fill();
-  ctx.strokeStyle=C.purple; ctx.lineWidth=0.7; ctx.stroke();
-  // patch strap
-  ctx.strokeStyle=C.purple; ctx.lineWidth=0.6;
-  ctx.beginPath();
-  ctx.moveTo(-5.5*s,-112*s); ctx.lineTo(-9*s,-110*s); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(-0.5*s,-112*s); ctx.lineTo(3*s,-111*s); ctx.stroke();
-
-  // nose
-  ctx.strokeStyle=C.body; ctx.lineWidth=0.4;
-  ctx.beginPath();
-  ctx.moveTo(2*s,-110*s);
-  ctx.quadraticCurveTo(4*s,-109*s, 3*s,-107.5*s);
-  ctx.strokeStyle='rgba(168,85,247,0.2)'; ctx.stroke();
-
-  // mouth / smirk
-  ctx.strokeStyle=C.white; ctx.lineWidth=0.8;
-  ctx.beginPath();
-  ctx.arc(2*s,-106*s, 3.5*s, 0.15, PI-0.15);
-  ctx.stroke();
-  // teeth
-  ctx.fillStyle=C.white;
-  ctx.beginPath(); ctx.roundRect(-0.5*s,-106.2*s,1.5*s,1.2*s,0.3*s); ctx.fill();
-  ctx.beginPath(); ctx.roundRect(1.2*s,-106*s,1.5*s,1.1*s,0.3*s); ctx.fill();
-
-  // scar on cheek
-  ctx.strokeStyle='rgba(168,85,247,0.35)'; ctx.lineWidth=0.5;
-  ctx.beginPath();
-  ctx.moveTo(6*s,-109*s); ctx.lineTo(8*s,-106*s); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(7*s,-108*s); ctx.lineTo(9*s,-107*s); ctx.stroke();
-
-  // stubble dots
-  ctx.fillStyle='rgba(168,85,247,0.18)';
-  for (let i=0;i<8;i++) {
-    const bx=(Math.sin(i*2.4)*4-1)*s;
-    const by=(-105+Math.cos(i*1.7)*2)*s;
-    ctx.beginPath(); ctx.arc(bx,by,0.4*s,0,TAU); ctx.fill();
-  }
-
-  // ── Tricorn hat ───────────────────────────────────────────────────────
-  ctx.fillStyle=C.body; ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-
-  // hat base / brim
-  ctx.beginPath();
-  ctx.ellipse(1*s,-122*s, 16.5*s,4.5*s, 0,0,TAU);
-  ctx.fill(); ctx.stroke();
-  // hat band (purple)
-  ctx.strokeStyle=C.purple; ctx.lineWidth=1.8;
-  ctx.beginPath();
-  ctx.ellipse(1*s,-122*s, 16*s,4*s, 0,0,TAU);
-  ctx.stroke();
-  ctx.strokeStyle=C.bodyEdge; ctx.lineWidth=0.6;
-
-  // hat crown body
-  ctx.beginPath();
-  ctx.moveTo(-12*s,-122*s);
-  ctx.bezierCurveTo(-14*s,-130*s, -10*s,-140*s, 1*s,-142*s);
-  ctx.bezierCurveTo(12*s,-140*s, 14*s,-130*s, 12*s,-122*s);
-  ctx.closePath(); fill();
-
-  // left brim upturn
-  ctx.beginPath();
-  ctx.moveTo(-12*s,-122*s);
-  ctx.bezierCurveTo(-20*s,-126*s, -22*s,-136*s, -15*s,-140*s);
-  ctx.bezierCurveTo(-10*s,-142*s, -8*s,-136*s, -10*s,-130*s);
-  ctx.closePath(); fill();
-
-  // right brim upturn
-  ctx.beginPath();
-  ctx.moveTo(12*s,-122*s);
-  ctx.bezierCurveTo(20*s,-126*s, 22*s,-136*s, 16*s,-140*s);
-  ctx.bezierCurveTo(11*s,-142*s, 9*s,-136*s, 10*s,-130*s);
-  ctx.closePath(); fill();
-
-  // hat buckle (purple)
-  ctx.fillStyle=C.purple; ctx.strokeStyle=C.white; ctx.lineWidth=0.5;
-  ctx.beginPath(); ctx.roundRect(-2.5*s,-125*s, 5*s,3.5*s, 0.6*s); ctx.fill(); ctx.stroke();
-
-  // skull & crossbones on hat
-  ctx.fillStyle=C.white; ctx.strokeStyle='rgba(12,8,20,0.4)'; ctx.lineWidth=0.3;
-  ctx.beginPath(); ctx.arc(1*s,-134*s, 2.5*s,0,TAU); ctx.fill(); ctx.stroke();
-  // skull eyes
-  ctx.fillStyle='rgba(12,8,20,0.9)';
-  ctx.beginPath(); ctx.arc(-0.6*s,-134.3*s,0.6*s,0,TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(2.6*s,-134.3*s,0.6*s,0,TAU); ctx.fill();
-  // crossbones
-  ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=0.8;
-  ctx.beginPath(); ctx.moveTo(-3*s,-130*s); ctx.lineTo(5*s,-138*s); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(5*s,-130*s); ctx.lineTo(-3*s,-138*s); ctx.stroke();
-
-  // feather in hat (sweeping up-left)
-  ctx.fillStyle=C.body; ctx.strokeStyle=C.purpleDim; ctx.lineWidth=0.6;
-  ctx.beginPath();
-  ctx.moveTo(-10*s,-138*s);
-  ctx.bezierCurveTo(-20*s,-150*s,-16*s,-165*s,-8*s,-162*s);
-  ctx.bezierCurveTo(-4*s,-160*s,-8*s,-152*s,-10*s,-146*s);
-  ctx.bezierCurveTo(-12*s,-140*s,-11*s,-138*s,-10*s,-138*s);
-  ctx.fill(); ctx.stroke();
-  // feather spine
-  ctx.strokeStyle=C.purpleDim; ctx.lineWidth=0.4;
-  ctx.beginPath();
-  ctx.moveTo(-10*s,-138*s); ctx.bezierCurveTo(-18*s,-152*s,-14*s,-163*s,-8*s,-161*s);
-  ctx.stroke();
-
-  ctx.restore(); // whole pirate
-}
-
-// ─── Sword draw (world coords) ────────────────────────────────────────────────
-function drawSword(
-  ctx: CanvasRenderingContext2D,
-  sx: number, sy: number,
-  angle: number,
-  glowPulse: number   // 0→1 glow intensity when stuck
-) {
-  ctx.save();
-  ctx.translate(sx, sy);
+  ctx.translate(x, y);
   ctx.rotate(angle);
-
-  // blade glow when stuck
-  if (glowPulse > 0) {
-    ctx.shadowColor = C.purple;
-    ctx.shadowBlur  = 8 + glowPulse * 14;
-  }
+  const b = sc;
+  if (glowPow > 0) glow(ctx, PURPLE, 8 + glowPow * 24);
 
   // blade
   ctx.beginPath();
-  ctx.moveTo(-1.5, 0);
-  ctx.lineTo(1.5, 0);
-  ctx.lineTo(1, 50);
-  ctx.lineTo(-1, 50);
+  ctx.moveTo(0, -b*0.5);
+  ctx.lineTo(b*0.9, b*14);
+  ctx.lineTo(-b*0.9, b*14);
   ctx.closePath();
-  ctx.fillStyle = C.blade;
-  ctx.fill();
+  ctx.fillStyle = BLADE; ctx.fill();
 
-  // fuller line
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(168,85,247,0.55)';
-  ctx.lineWidth   = 0.6;
+  // fuller
   ctx.beginPath();
-  ctx.moveTo(0, 2); ctx.lineTo(0, 42); ctx.stroke();
-
-  // glint edge
-  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-  ctx.lineWidth   = 0.5;
-  ctx.beginPath();
-  ctx.moveTo(-1, 2); ctx.lineTo(-1.2, 38); ctx.stroke();
+  ctx.moveTo(0, b*2); ctx.lineTo(0, b*11);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = b*0.25; ctx.globalAlpha = 0.5; ctx.stroke(); ctx.globalAlpha = 1;
 
   // crossguard
-  ctx.fillStyle   = C.body;
-  ctx.strokeStyle = C.white;
-  ctx.lineWidth   = 0.8;
   ctx.beginPath();
-  ctx.roundRect(-7, -2, 14, 4, 1.2);
-  ctx.fill(); ctx.stroke();
-
-  // guard decorative inlay
-  ctx.fillStyle = C.purple;
-  ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, TAU); ctx.fill();
+  ctx.moveTo(-b*4.5, b*1.5); ctx.lineTo(b*4.5, b*1.5);
+  ctx.lineTo(b*4, b*3); ctx.lineTo(-b*4, b*3);
+  ctx.closePath();
+  ctx.fillStyle = BODY; ctx.fill();
+  ctx.strokeStyle = EDGE; ctx.lineWidth = 0.5; ctx.stroke();
 
   // grip
-  ctx.fillStyle   = C.body;
-  ctx.strokeStyle = C.bodyEdge;
-  ctx.lineWidth   = 0.5;
   ctx.beginPath();
-  ctx.roundRect(-2, -14, 4, 12, 1);
-  ctx.fill(); ctx.stroke();
+  ctx.roundRect(-b*1.1, b*3, b*2.2, b*6, b*0.5);
+  ctx.fillStyle = BODY2; ctx.fill();
+  ctx.strokeStyle = EDGE; ctx.lineWidth = 0.5; ctx.stroke();
+
   // grip wrap
-  ctx.strokeStyle = C.purple;
-  ctx.lineWidth   = 0.8;
   for (let i = 0; i < 4; i++) {
     ctx.beginPath();
-    ctx.moveTo(-2, -3 - i*2.5);
-    ctx.lineTo(2,  -3 - i*2.5);
-    ctx.stroke();
+    ctx.moveTo(-b*1.1, b*(3.8+i*1.2)); ctx.lineTo(b*1.1, b*(3.8+i*1.2));
+    ctx.strokeStyle = PURPLE; ctx.lineWidth = b*0.35; ctx.globalAlpha = 0.6; ctx.stroke(); ctx.globalAlpha = 1;
   }
 
   // pommel
-  ctx.fillStyle   = C.purple;
-  ctx.strokeStyle = C.white;
-  ctx.lineWidth   = 0.5;
-  ctx.beginPath();
-  ctx.arc(0, -16, 3, 0, TAU);
-  ctx.fill(); ctx.stroke();
-  // pommel gem
-  ctx.fillStyle = C.white;
-  ctx.beginPath(); ctx.arc(0, -16, 1, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, b*9.5, b*1.5, 0, TAU);
+  ctx.fillStyle = PURPLE; ctx.fill();
+  ctx.strokeStyle = WHITE; ctx.lineWidth = 0.4; ctx.stroke();
 
-  ctx.shadowBlur = 0;
+  noGlow(ctx);
   ctx.restore();
 }
 
-// ─── Rope / chain draw ────────────────────────────────────────────────────────
-function drawRope(
-  ctx: CanvasRenderingContext2D,
-  x1: number, y1: number,   // pirate hand
-  x2: number, y2: number,   // sword hilt
-  sag: number,               // sag amount (0 = taut)
-  tension: number            // 0=loose 1=taut (affects color)
-) {
-  const mx = (x1+x2)/2;
-  const my = (y1+y2)/2 + sag;
+interface PirateProps {
+  ctx: CanvasRenderingContext2D;
+  ox: number; oy: number;
+  sc: number;
+  breathT: number;
+  windupT: number;
+  throwT: number;
+  recallT: number;
+  hasSword: boolean;
+}
 
-  // rope glow
-  const grad = ctx.createLinearGradient(x1,y1, x2,y2);
-  grad.addColorStop(0,   `rgba(168,85,247,${0.15+tension*0.5})`);
-  grad.addColorStop(0.5, `rgba(255,255,255,${0.1+tension*0.3})`);
-  grad.addColorStop(1,   `rgba(168,85,247,${0.15+tension*0.5})`);
+function drawPirate(p: PirateProps) {
+  const { ctx, ox, oy, sc, breathT, windupT, throwT, recallT, hasSword } = p;
+  const breathY = Math.sin(breathT) * sc * 0.3;
+  const lean    = windupT * -0.13 + throwT * 0.09 + recallT * 0.11;
 
-  // outer glow pass
   ctx.save();
-  ctx.strokeStyle = `rgba(168,85,247,${0.08+tension*0.15})`;
-  ctx.lineWidth   = 4;
-  ctx.lineCap     = 'round';
-  ctx.filter      = 'blur(2px)';
+  ctx.translate(ox, oy + breathY);
+  ctx.rotate(lean);
+
+  const fs = (fill: string, str = EDGE, lw = 0.6) => {
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.strokeStyle = str; ctx.lineWidth = lw; ctx.stroke();
+  };
+
+  // ── BOOTS ──────────────────────────────────────────────────────────────────
+  // Left boot
   ctx.beginPath();
-  ctx.moveTo(x1,y1);
-  ctx.quadraticCurveTo(mx,my,x2,y2);
-  ctx.stroke();
-  ctx.filter = 'none';
+  ctx.moveTo(-sc*5.5, 0);
+  ctx.lineTo(-sc*6.5, -sc*11);
+  ctx.lineTo(-sc*4.5, -sc*12.5);
+  ctx.lineTo(-sc*2.5, -sc*11);
+  ctx.lineTo(-sc*2.5, 0);
+  ctx.lineTo(-sc*8.5, sc*0.8);
+  ctx.lineTo(-sc*8.5, -sc*1.5);
+  ctx.lineTo(-sc*2.5, -sc*1.5);
+  ctx.closePath(); fs(BODY);
 
-  // main rope
-  ctx.strokeStyle = grad;
-  ctx.lineWidth   = 1.4;
-  ctx.setLineDash([4,3]);
+  // Right boot
   ctx.beginPath();
-  ctx.moveTo(x1,y1);
-  ctx.quadraticCurveTo(mx,my,x2,y2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.moveTo(sc*2.5, 0);
+  ctx.lineTo(sc*2.5, -sc*11);
+  ctx.lineTo(sc*4.5, -sc*12.5);
+  ctx.lineTo(sc*6.5, -sc*11);
+  ctx.lineTo(sc*5.5, 0);
+  ctx.lineTo(sc*8.5, sc*0.8);
+  ctx.lineTo(sc*8.5, -sc*1.5);
+  ctx.lineTo(sc*2.5, -sc*1.5);
+  ctx.closePath(); fs(BODY);
 
-  // core bright line
-  ctx.strokeStyle = `rgba(255,255,255,${0.08+tension*0.22})`;
-  ctx.lineWidth   = 0.6;
-  ctx.beginPath();
-  ctx.moveTo(x1,y1);
-  ctx.quadraticCurveTo(mx,my,x2,y2);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
-// ─── Spark burst ──────────────────────────────────────────────────────────────
-function spawnSparks(sparks: Spark[], x: number, y: number, n: number) {
-  for (let i = 0; i < n; i++) {
-    const ang = Math.random() * TAU;
-    const spd = 1.5 + Math.random() * 5;
-    sparks.push({
-      x, y,
-      vx: Math.cos(ang) * spd,
-      vy: Math.sin(ang) * spd - Math.random() * 2,
-      life: 1,
-      size: 1.2 + Math.random() * 3,
-      color: C.spark[Math.floor(Math.random() * C.spark.length)],
-    });
+  // Boot cuffs
+  for (const bx of [-sc*4.5, sc*4.5]) {
+    ctx.beginPath();
+    ctx.ellipse(bx, -sc*11.5, sc*2.5, sc*1.5, 0, 0, TAU);
+    fs(BODY2, PURPLE, 0.7);
   }
+
+  // ── BREECHES ────────────────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(-sc*7, -sc*11);
+  ctx.bezierCurveTo(-sc*9, -sc*18, -sc*8, -sc*24, -sc*5, -sc*26);
+  ctx.lineTo(sc*5, -sc*26);
+  ctx.bezierCurveTo(sc*8, -sc*24, sc*9, -sc*18, sc*7, -sc*11);
+  ctx.closePath(); fs(BODY);
+  ctx.beginPath();
+  ctx.moveTo(0, -sc*26); ctx.lineTo(0, -sc*13);
+  ctx.strokeStyle = PDIM; ctx.lineWidth = sc*0.8; ctx.stroke();
+
+  // ── COAT BODY ───────────────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(-sc*11, -sc*13);
+  ctx.bezierCurveTo(-sc*13, -sc*20, -sc*12, -sc*34, -sc*9, -sc*40);
+  ctx.lineTo(-sc*8, -sc*56);
+  ctx.lineTo(-sc*7, -sc*62);
+  ctx.lineTo(-sc*4, -sc*64);
+  ctx.lineTo(-sc*3, -sc*60);
+  ctx.lineTo(0, -sc*58);
+  ctx.lineTo(sc*3, -sc*60);
+  ctx.lineTo(sc*4, -sc*64);
+  ctx.lineTo(sc*7, -sc*62);
+  ctx.lineTo(sc*8, -sc*56);
+  ctx.lineTo(sc*9, -sc*40);
+  ctx.bezierCurveTo(sc*12, -sc*34, sc*13, -sc*20, sc*11, -sc*13);
+  ctx.closePath(); fs(BODY);
+
+  // Coat tails
+  ctx.beginPath();
+  ctx.moveTo(-sc*11, -sc*13);
+  ctx.bezierCurveTo(-sc*17, -sc*10, -sc*18, -sc*4, -sc*14, sc*2);
+  ctx.lineTo(-sc*10, sc*1);
+  ctx.bezierCurveTo(-sc*12, -sc*6, -sc*11, -sc*11, -sc*8, -sc*13);
+  ctx.closePath(); fs(BODY);
+  ctx.beginPath();
+  ctx.moveTo(sc*11, -sc*13);
+  ctx.bezierCurveTo(sc*17, -sc*10, sc*18, -sc*4, sc*14, sc*2);
+  ctx.lineTo(sc*10, sc*1);
+  ctx.bezierCurveTo(sc*12, -sc*6, sc*11, -sc*11, sc*8, -sc*13);
+  ctx.closePath(); fs(BODY);
+
+  // Lapels
+  ctx.beginPath();
+  ctx.moveTo(-sc*3, -sc*60); ctx.lineTo(-sc*5, -sc*38);
+  ctx.lineTo(-sc*8, -sc*26); ctx.lineTo(-sc*6, -sc*26);
+  ctx.lineTo(-sc*3, -sc*35); ctx.lineTo(-sc*1.5, -sc*60);
+  ctx.closePath(); fs(BODY2);
+  ctx.beginPath();
+  ctx.moveTo(sc*3, -sc*60); ctx.lineTo(sc*5, -sc*38);
+  ctx.lineTo(sc*8, -sc*26); ctx.lineTo(sc*6, -sc*26);
+  ctx.lineTo(sc*3, -sc*35); ctx.lineTo(sc*1.5, -sc*60);
+  ctx.closePath(); fs(BODY2);
+
+  // Buttons
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath(); ctx.arc(0, -sc*32 - i*sc*5, sc*0.8, 0, TAU);
+    ctx.fillStyle = PURPLE; ctx.fill();
+  }
+
+  // Belt
+  ctx.fillStyle = PDIM;
+  ctx.fillRect(-sc*12, -sc*27.5, sc*24, sc*2);
+  ctx.beginPath(); ctx.roundRect(-sc*2.5, -sc*29, sc*5, sc*4, sc*0.5);
+  ctx.fillStyle = PURPLE; ctx.fill();
+  ctx.strokeStyle = WHITE; ctx.lineWidth = 0.5; ctx.stroke();
+
+  // Epaulettes
+  for (const ex of [-sc*10, sc*10]) {
+    ctx.beginPath(); ctx.ellipse(ex, -sc*60, sc*3.5, sc*2, 0, 0, TAU);
+    ctx.fillStyle = BODY; ctx.fill(); ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.8; ctx.stroke();
+  }
+
+  // ── LEFT ARM ────────────────────────────────────────────────────────────────
+  const leftLean = recallT * 0.2 - 0.1;
+  ctx.save();
+  ctx.translate(-sc*10, -sc*60);
+  ctx.rotate(0.18 + leftLean);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-sc*5, sc*4, -sc*6, sc*14, -sc*5, sc*20);
+  ctx.lineTo(-sc*2, sc*20);
+  ctx.bezierCurveTo(-sc*3, sc*14, -sc*2, sc*4, sc*3, sc*2);
+  ctx.closePath(); fs(BODY);
+  ctx.beginPath(); ctx.ellipse(-sc*3.5, sc*19.5, sc*3, sc*2, -0.25, 0, TAU);
+  ctx.fillStyle = BODY2; ctx.fill(); ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.7; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-sc*4, sc*24, sc*3.5, sc*3, -0.15, 0, TAU);
+  fs(SKIN, EDGE, 0.5);
+  ctx.restore();
+
+  // ── RIGHT ARM (sword arm) ────────────────────────────────────────────────────
+  const armRot = windupT*(-PI/2.1) + throwT*(PI/2.4) + recallT*(-PI/2.8) - 0.18;
+  ctx.save();
+  ctx.translate(sc*10, -sc*60);
+  ctx.rotate(armRot);
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(sc*5, sc*3, sc*7, sc*14, sc*5.5, sc*20);
+  ctx.lineTo(sc*3, sc*20);
+  ctx.bezierCurveTo(sc*4.5, sc*14, sc*2.5, sc*3, -sc*2, sc*2);
+  ctx.closePath(); fs(BODY);
+
+  ctx.beginPath(); ctx.ellipse(sc*4.5, sc*19.5, sc*3, sc*2, 0.25, 0, TAU);
+  ctx.fillStyle = BODY2; ctx.fill(); ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.7; ctx.stroke();
+
+  ctx.beginPath(); ctx.ellipse(sc*5, sc*24, sc*3.8, sc*3.2, 0.15, 0, TAU);
+  fs(SKIN, EDGE, 0.5);
+
+  // knuckles
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath();
+    ctx.moveTo(sc*3.5+k*sc*0.9, sc*23); ctx.lineTo(sc*3.5+k*sc*0.9, sc*25.5);
+    ctx.strokeStyle = PDIM; ctx.lineWidth = 0.6; ctx.stroke();
+  }
+
+  // sword in hand
+  if (hasSword) {
+    ctx.save();
+    ctx.translate(sc*5.5, sc*24);
+    ctx.rotate(0.12);
+    glow(ctx, PURPLE, 6);
+    drawSword(ctx, 0, sc*3, 0, sc*0.55, 0);
+    noGlow(ctx);
+    ctx.restore();
+  }
+
+  // recall hand glow (Thor moment)
+  if (recallT > 0.05) {
+    const pulse = 0.4 + Math.sin(Date.now()*0.008)*0.3;
+    ctx.beginPath(); ctx.arc(sc*5, sc*24, sc*5*recallT, 0, TAU);
+    ctx.fillStyle = `rgba(168,85,247,${recallT*pulse*0.5})`; ctx.fill();
+    glow(ctx, PURPLE, 18*recallT);
+    ctx.beginPath(); ctx.arc(sc*5, sc*24, sc*3*recallT, 0, TAU);
+    ctx.fillStyle = `rgba(200,160,255,${recallT*0.35})`; ctx.fill();
+    noGlow(ctx);
+  }
+
+  ctx.restore(); // right arm
+
+  // ── NECK ────────────────────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(-sc*3.5, -sc*62); ctx.lineTo(sc*3.5, -sc*62);
+  ctx.lineTo(sc*3, -sc*68); ctx.lineTo(-sc*3, -sc*68);
+  ctx.closePath(); fs(SKIN, EDGE, 0.5);
+
+  // Cravat
+  ctx.beginPath();
+  ctx.moveTo(-sc*3.5, -sc*64); ctx.lineTo(0, -sc*68);
+  ctx.lineTo(sc*3.5, -sc*64); ctx.lineTo(sc*2, -sc*62);
+  ctx.lineTo(0, -sc*65); ctx.lineTo(-sc*2, -sc*62);
+  ctx.closePath(); ctx.fillStyle = WHITE; ctx.fill();
+
+  // ── HEAD ────────────────────────────────────────────────────────────────────
+  ctx.beginPath(); ctx.ellipse(sc*0.5, -sc*76, sc*8, sc*9, 0.03, 0, TAU);
+  fs(SKIN, EDGE, 0.5);
+
+  // right eye
+  ctx.beginPath(); ctx.arc(sc*3, -sc*77, sc*1.5, 0, TAU);
+  ctx.fillStyle = WHITE; ctx.fill();
+  ctx.beginPath(); ctx.arc(sc*3.3, -sc*77, sc*0.85, 0, TAU);
+  ctx.fillStyle = BODY; ctx.fill();
+  ctx.beginPath(); ctx.arc(sc*2.8, -sc*77.5, sc*0.3, 0, TAU);
+  ctx.fillStyle = WHITE; ctx.fill();
+
+  // eyepatch
+  ctx.beginPath(); ctx.arc(-sc*2.5, -sc*77, sc*2.2, 0, TAU);
+  ctx.fillStyle = BODY; ctx.fill(); ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.8; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-sc*4.5, -sc*76); ctx.lineTo(-sc*7.5, -sc*74);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.7; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-sc*0.5, -sc*76); ctx.lineTo(sc*2, -sc*75);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.7; ctx.stroke();
+
+  // nose
+  ctx.beginPath();
+  ctx.moveTo(sc*1.5, -sc*74.5); ctx.quadraticCurveTo(sc*3, -sc*73.5, sc*2.2, -sc*72);
+  ctx.strokeStyle = 'rgba(168,85,247,0.2)'; ctx.lineWidth = 0.6; ctx.stroke();
+
+  // mouth
+  ctx.beginPath(); ctx.arc(sc*1.5, -sc*70, sc*3, 0.2, PI-0.1);
+  ctx.strokeStyle = WHITE; ctx.lineWidth = 0.9; ctx.stroke();
+  ctx.fillStyle = WHITE;
+  ctx.beginPath(); ctx.roundRect(-sc*0.3, -sc*70.3, sc*1.3, sc*1.1, sc*0.2); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(sc*1.2, -sc*70.1, sc*1.3, sc*1, sc*0.2); ctx.fill();
+
+  // scar
+  ctx.strokeStyle = PDIM; ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(sc*5, -sc*73.5); ctx.lineTo(sc*6.5, -sc*71); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sc*5.8, -sc*72.5); ctx.lineTo(sc*7, -sc*72); ctx.stroke();
+
+  // stubble
+  ctx.fillStyle = 'rgba(168,85,247,0.15)';
+  for (let i = 0; i < 10; i++) {
+    ctx.beginPath();
+    ctx.arc(Math.sin(i*2.1)*sc*3.5+sc*0.5, -sc*69.5+Math.cos(i*1.9)*sc*1.2, sc*0.35, 0, TAU);
+    ctx.fill();
+  }
+
+  // ── TRICORN HAT ─────────────────────────────────────────────────────────────
+  ctx.beginPath(); ctx.ellipse(sc*0.5, -sc*84.5, sc*13.5, sc*4, 0, 0, TAU);
+  fs(BODY, EDGE, 0.5);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = sc*1.4;
+  ctx.beginPath(); ctx.ellipse(sc*0.5, -sc*84.5, sc*13, sc*3.5, 0, 0, TAU); ctx.stroke();
+
+  // crown
+  ctx.beginPath();
+  ctx.moveTo(-sc*10, -sc*84.5);
+  ctx.bezierCurveTo(-sc*12, -sc*92, -sc*8, -sc*102, sc*0.5, -sc*104);
+  ctx.bezierCurveTo(sc*9, -sc*102, sc*13, -sc*92, sc*10, -sc*84.5);
+  ctx.closePath(); fs(BODY, EDGE, 0.5);
+
+  // left upturn
+  ctx.beginPath();
+  ctx.moveTo(-sc*10, -sc*84.5);
+  ctx.bezierCurveTo(-sc*17, -sc*88, -sc*19, -sc*98, -sc*13, -sc*102);
+  ctx.bezierCurveTo(-sc*8, -sc*104.5, -sc*6, -sc*98, -sc*8, -sc*92);
+  ctx.closePath(); fs(BODY, EDGE, 0.5);
+
+  // right upturn
+  ctx.beginPath();
+  ctx.moveTo(sc*10, -sc*84.5);
+  ctx.bezierCurveTo(sc*17, -sc*88, sc*19, -sc*98, sc*14, -sc*102);
+  ctx.bezierCurveTo(sc*9, -sc*104.5, sc*7, -sc*98, sc*8, -sc*92);
+  ctx.closePath(); fs(BODY, EDGE, 0.5);
+
+  // hat buckle
+  ctx.beginPath(); ctx.roundRect(-sc*2.5, -sc*88, sc*5, sc*3.5, sc*0.5);
+  ctx.fillStyle = PURPLE; ctx.fill(); ctx.strokeStyle = WHITE; ctx.lineWidth = 0.5; ctx.stroke();
+
+  // skull
+  ctx.fillStyle = WHITE; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.3;
+  ctx.beginPath(); ctx.arc(sc*0.5, -sc*95, sc*2.5, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = BODY;
+  ctx.beginPath(); ctx.arc(-sc*0.8, -sc*95.4, sc*0.65, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(sc*1.8, -sc*95.4, sc*0.65, 0, TAU); ctx.fill();
+  ctx.strokeStyle = WHITE; ctx.lineWidth = sc*0.75; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-sc*3.5, -sc*91.5); ctx.lineTo(sc*4.5, -sc*99); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sc*4.5, -sc*91.5); ctx.lineTo(-sc*3.5, -sc*99); ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // feather
+  ctx.save();
+  ctx.translate(-sc*12, -sc*99); ctx.rotate(-0.3);
+  ctx.beginPath();
+  ctx.moveTo(0, 0); ctx.quadraticCurveTo(sc*2, -sc*8, sc*1, -sc*16);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = 0.8; ctx.stroke();
+  for (let i = 0; i < 10; i++) {
+    const t = i/9;
+    ctx.beginPath();
+    ctx.moveTo(lerp(sc*0.3, sc*0.8, t), lerp(0, -sc*15.5, t));
+    ctx.lineTo(lerp(sc*0.3, sc*0.8, t) - sc*3*(1-t*0.5), lerp(0,-sc*15.5,t) - sc*2);
+    ctx.strokeStyle = `rgba(168,85,247,${0.4-t*0.2})`; ctx.lineWidth = 0.5; ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.restore(); // main
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const SC      = 3.8;
+const TOTAL_H = SC * 110;
+
 const PirateCorner: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef    = useRef(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null!);
+  const rafRef    = useRef<number>(0);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
+    const ctx    = canvas.getContext('2d')!;
 
-    const resize = () => {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+    let breathT  = 0, windupT = 0, throwT = 0, recallT = 0;
+    let shakeAmt = 0;
+    let particles: Particle[] = [];
+    let lastTime = performance.now();
+
+    type SW = {
+      phase: Phase; elapsed: number; phaseMs: number;
+      sx: number; sy: number; svx: number; svy: number;
+      sAngle: number; sSpin: number;
+      tX: number; tY: number; tAngle: number;
     };
+
+    const sw: SW = {
+      phase:'idle', elapsed:0, phaseMs:2500,
+      sx:0, sy:0, svx:0, svy:0, sAngle:-PI/2, sSpin:0,
+      tX:0, tY:0, tAngle:0,
+    };
+
+    const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
     resize();
     window.addEventListener('resize', resize);
 
-    // ── Pirate anchor (bottom-right, peeking in) ──────────────────────────
-    const PIRATE_SCALE = 0.62; // scale factor → ~80px tall character
-    const getPiratePos = () => ({
-      x: canvas.width  - 52,
-      y: canvas.height - 8,
-    });
+    const foot = () => ({ x: canvas.width - TOTAL_H*0.55, y: canvas.height - 10 });
 
-    // ── Sword state ───────────────────────────────────────────────────────
-    let sw: SwordState = {
-      x: 0, y: 0, vx: 0, vy: 0,
-      angle: 0, spinRate: 0,
-      stuckX: 0, stuckY: 0, stuckAngle: 0,
-      sagAmount: 0,
-      phase: 'idle', phaseT: 0, phaseMs: 3500,
-      elapsed: 0,
+    const swordHandPos = () => {
+      const f = foot();
+      const top = f.y - TOTAL_H;
+      const baseX = f.x + SC*10, baseY = top + TOTAL_H*0.44;
+      const rot = windupT*(-PI/2.1) + throwT*(PI/2.4) + recallT*(-PI/2.8) - 0.18;
+      return { hx: baseX + Math.sin(rot)*SC*30, hy: baseY + Math.cos(rot)*SC*30 };
     };
 
-    // ── Sparks ────────────────────────────────────────────────────────────
-    let sparks: Spark[] = [];
+    const setPhase = (ph: Phase, ms: number) => { sw.phase=ph; sw.elapsed=0; sw.phaseMs=ms; };
 
-    // ── Screen shake ──────────────────────────────────────────────────────
-    let shakeAmt   = 0;
-    let shakeDecay = 0;
-
-    // ── Anim params ───────────────────────────────────────────────────────
-    let breathT  = 0;
-    let windupT  = 0;
-    let throwT   = 0;
-    let pullT    = 0;
-    let lastTime = performance.now();
-
-    // ── Compute sword hand world position ─────────────────────────────────
-    // (approximate — right shoulder of pirate, adjusted by arm rotation)
-    const getSwordHandPos = (): { hx: number; hy: number } => {
-      const pp = getPiratePos();
-      const sc = PIRATE_SCALE;
-      // right arm base in world coords
-      const armBaseX = pp.x + 16 * sc;
-      const armBaseY = pp.y - 88 * sc;
-      // arm rotated by current sword-arm angle
-      const swordArmR = windupT * (-PI/2.2) + throwT * (PI/2.8) + pullT * (-PI/3.5) - 0.2;
-      const handDist  = 30 * sc; // approx distance to hand tip
-      return {
-        hx: armBaseX + Math.sin(swordArmR) * handDist,
-        hy: armBaseY + Math.cos(swordArmR) * handDist,
-      };
-    };
-
-    // ── Phase transition ──────────────────────────────────────────────────
-    const setPhase = (p: Phase, ms: number) => {
-      sw.phase   = p;
-      sw.elapsed = 0;
-      sw.phaseMs = ms;
-      sw.phaseT  = 0;
-    };
-
-    // ── Pick a random target for the sword to stick ───────────────────────
     const pickTarget = () => {
-      const W = canvas.width, H = canvas.height;
-      const pp = getPiratePos();
-      // avoid throwing into the pirate itself; pick somewhere on screen
-      const tx = Math.random() * (W * 0.75) + W * 0.05;
-      const ty = Math.random() * (H * 0.65) + H * 0.1;
-      const dx = tx - pp.x;
-      const dy = ty - pp.y;
-      const dist = Math.hypot(dx, dy);
-      const speed = 8 + Math.random() * 5;
-      sw.vx = (dx / dist) * speed;
-      sw.vy = (dy / dist) * speed - 2; // slight upward arc
-      sw.spinRate = (Math.random() > 0.5 ? 1 : -1) * (0.18 + Math.random() * 0.12);
-      sw.stuckX = tx;
-      sw.stuckY = ty;
-      sw.stuckAngle = Math.atan2(dy, dx) + PI / 2 + (Math.random() - 0.5) * 0.3;
+      const { hx, hy } = swordHandPos();
+      const tx = Math.random()*canvas.width*0.72 + canvas.width*0.04;
+      const ty = Math.random()*canvas.height*0.6 + canvas.height*0.06;
+      const dx = tx-hx, dy = ty-hy, dist = Math.hypot(dx,dy);
+      const spd = 14+Math.random()*8;
+      sw.svx=dx/dist*spd; sw.svy=dy/dist*spd-3;
+      sw.sSpin=(Math.random()>.5?1:-1)*(0.14+Math.random()*0.12);
+      sw.tX=tx; sw.tY=ty;
+      sw.tAngle=Math.atan2(dy,dx)+PI/2+(Math.random()-.5)*0.5;
+      sw.sx=hx; sw.sy=hy;
     };
 
-    // ── Main tick ─────────────────────────────────────────────────────────
+    const burst = (x: number, y: number, n: number, big=false) => {
+      const colors=['#fff','#e9d5ff','#a855f7','#f0abfc'];
+      for(let i=0;i<n;i++){
+        const a=Math.random()*TAU, sp=(big?2:1)+Math.random()*(big?6:3.5);
+        particles.push({ x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-(big?2:1),
+          life:1, maxLife:0.5+Math.random()*(big?.8:.5),
+          size:(big?2.5:1.5)+Math.random()*(big?3:2),
+          color:colors[Math.floor(Math.random()*colors.length)] });
+      }
+    };
+
     const tick = (now: number) => {
-      const dt  = Math.min(now - lastTime, 50);
-      lastTime  = now;
-      breathT  += dt * 0.0018;
+      const dt = Math.min(now-lastTime,50);
+      lastTime = now; breathT += dt*0.0019;
 
-      const pp = getPiratePos();
-      const { hx, hy } = getSwordHandPos();
-
-      // ── Phase logic ────────────────────────────────────────────────────
+      const f = foot();
+      const { hx, hy } = swordHandPos();
       sw.elapsed += dt;
-      sw.phaseT   = clamp(sw.elapsed / sw.phaseMs, 0, 1);
+      const rawT = clamp(sw.elapsed/sw.phaseMs,0,1);
 
-      switch (sw.phase) {
-
-        case 'idle': {
-          windupT = 0; throwT = 0; pullT = 0;
-          sw.x = hx; sw.y = hy;
-          if (sw.phaseT >= 1) {
-            setPhase('windup', 600 + Math.random() * 300);
-          }
+      switch(sw.phase) {
+        case 'idle':
+          windupT=0; throwT=0; recallT=0; sw.sx=hx; sw.sy=hy;
+          if(rawT>=1) setPhase('windup',500+Math.random()*300);
           break;
-        }
-
-        case 'windup': {
-          windupT = easeInOut(sw.phaseT);
-          throwT  = 0; pullT = 0;
-          sw.x = hx; sw.y = hy;
-          if (sw.phaseT >= 1) {
-            pickTarget();
-            sw.x = hx; sw.y = hy;
-            setPhase('throw', 800 + Math.random() * 200);
-          }
+        case 'windup':
+          windupT=easeInOut(rawT); throwT=0; recallT=0; sw.sx=hx; sw.sy=hy;
+          if(rawT>=1){ pickTarget(); setPhase('throw',900+Math.random()*300); }
           break;
-        }
-
         case 'throw': {
-          throwT  = easeOut(sw.phaseT);
-          windupT = 1 - sw.phaseT; // arm relaxes as throw progresses
-          pullT   = 0;
-
-          // physics step
-          sw.x     += sw.vx;
-          sw.y     += sw.vy;
-          sw.vy    += 0.15; // gravity
-          sw.angle += sw.spinRate;
-
-          // spawn brief trail sparks
-          if (Math.random() < 0.25) {
-            sparks.push({
-              x: sw.x, y: sw.y,
-              vx: (Math.random()-0.5)*0.5, vy:(Math.random()-0.5)*0.5,
-              life: 0.4, size: 1+Math.random()*1.5,
-              color: C.spark[Math.floor(Math.random()*C.spark.length)],
-            });
-          }
-
-          // check arrival
-          const d = Math.hypot(sw.x - sw.stuckX, sw.y - sw.stuckY);
-          if (d < 18 || sw.phaseT >= 1) {
-            sw.x = sw.stuckX; sw.y = sw.stuckY;
-            sw.angle = sw.stuckAngle;
-            sw.vx = 0; sw.vy = 0;
-            shakeAmt   = 5;
-            shakeDecay = 0.82;
-            spawnSparks(sparks, sw.stuckX, sw.stuckY, 28);
-            setPhase('stuck', 1800 + Math.random() * 1000);
+          throwT=easeOut(rawT); windupT=1-rawT; recallT=0;
+          sw.sx+=sw.svx; sw.sy+=sw.svy; sw.svy+=0.22; sw.sAngle+=sw.sSpin;
+          if(Math.random()<.35) particles.push({x:sw.sx,y:sw.sy,
+            vx:(Math.random()-.5)*.7,vy:(Math.random()-.5)*.7,
+            life:1,maxLife:.35+Math.random()*.2,size:1.5+Math.random()*2,
+            color:Math.random()>.5?PURPLE:'#fff'});
+          if(Math.hypot(sw.sx-sw.tX,sw.sy-sw.tY)<24||rawT>=1){
+            sw.sx=sw.tX; sw.sy=sw.tY; sw.sAngle=sw.tAngle; sw.svx=0; sw.svy=0;
+            shakeAmt=8; burst(sw.tX,sw.tY,40,true);
+            setPhase('stuck',2000+Math.random()*1200);
           }
           break;
         }
-
-        case 'stuck': {
-          windupT = 0; throwT = 0;
-          pullT   = easeInOut(Math.min(sw.phaseT * 2, 1)); // ramp up pull
-          sw.x = sw.stuckX; sw.y = sw.stuckY;
-          sw.angle = sw.stuckAngle;
-          // sag: rope starts loose, tightens as pirate pulls
-          sw.sagAmount = lerp(40, 5, easeIn(sw.phaseT));
-          if (sw.phaseT >= 1) {
-            setPhase('pulling', 1200 + Math.random() * 400);
-          }
+        case 'stuck':
+          windupT=0; throwT=0;
+          recallT=easeInOut(Math.min(rawT*1.5,1))*0.5;
+          sw.sx=sw.tX; sw.sy=sw.tY; sw.sAngle=sw.tAngle;
+          if(rawT>=1) setPhase('recall',1000+Math.random()*300);
+          break;
+        case 'recall': {
+          recallT=easeInOut(rawT); throwT=0; windupT=0;
+          const t=easeIn(rawT);
+          sw.sx=lerp(sw.tX,hx,t); sw.sy=lerp(sw.tY,hy,t);
+          const ta=Math.atan2(hy-sw.tY,hx-sw.tX)+PI/2;
+          sw.sAngle=lerp(sw.tAngle,ta,easeOut(rawT));
+          if(Math.random()>.45) particles.push({
+            x:lerp(sw.tX,hx,t+(Math.random()*.15))+(Math.random()-.5)*8,
+            y:lerp(sw.tY,hy,t+(Math.random()*.15))+(Math.random()-.5)*8,
+            vx:(Math.random()-.5)*.5, vy:(Math.random()-.5)*.5-.3,
+            life:1, maxLife:.3+Math.random()*.3,
+            size:1.5+Math.random()*2.5,
+            color:Math.random()>.5?PURPLE:'#e9d5ff'});
+          if(Math.hypot(sw.sx-hx,sw.sy-hy)<20&&rawT>=.9){ burst(hx,hy,18); setPhase('catch',250); }
+          if(rawT>=1) setPhase('catch',250);
           break;
         }
-
-        case 'pulling': {
-          pullT = 1;
-          // sword slides back toward hand
-          const t  = easeInOut(sw.phaseT);
-          sw.x     = lerp(sw.stuckX, hx, t);
-          sw.y     = lerp(sw.stuckY, hy, t);
-          sw.angle = lerp(sw.stuckAngle, -PI/2.5, t); // rotate to hand angle
-          sw.sagAmount = lerp(5, 0, t);
-          if (sw.phaseT >= 1) {
-            setPhase('catch', 300);
-          }
+        case 'catch':
+          recallT=1-easeOut(rawT);
+          if(rawT<.1) burst(hx,hy,12);
+          sw.sx=hx; sw.sy=hy;
+          if(rawT>=1) setPhase('cooldown',1000+Math.random()*800);
           break;
-        }
-
-        case 'catch': {
-          // small spark burst on catch
-          if (sw.elapsed < dt * 2) {
-            spawnSparks(sparks, hx, hy, 8);
-          }
-          pullT = 1 - easeOut(sw.phaseT);
-          sw.x = hx; sw.y = hy;
-          if (sw.phaseT >= 1) {
-            setPhase('cooldown', 1200 + Math.random() * 800);
-          }
+        case 'cooldown':
+          windupT=0; throwT=0; recallT=0; sw.sx=hx; sw.sy=hy;
+          if(rawT>=1) setPhase('idle',1800+Math.random()*2000);
           break;
-        }
-
-        case 'cooldown': {
-          windupT = 0; throwT = 0; pullT = 0;
-          sw.x = hx; sw.y = hy;
-          if (sw.phaseT >= 1) setPhase('idle', 2000 + Math.random() * 2000);
-          break;
-        }
       }
 
-      // ── Screen shake decay ─────────────────────────────────────────────
-      shakeAmt *= shakeDecay;
-      const shakeX = shakeAmt > 0.3 ? (Math.random()-0.5)*shakeAmt : 0;
-      const shakeY = shakeAmt > 0.3 ? (Math.random()-0.5)*shakeAmt : 0;
+      shakeAmt*=0.82;
+      const sk=(v: number) => shakeAmt>.3?(Math.random()-.5)*v:0;
 
-      // ── Clear ──────────────────────────────────────────────────────────
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.save();
-      ctx.translate(shakeX, shakeY);
+      ctx.translate(sk(shakeAmt),sk(shakeAmt));
 
-      // ── Sparks ─────────────────────────────────────────────────────────
-      sparks = sparks.filter(sp => sp.life > 0.02);
-      for (const sp of sparks) {
-        sp.x   += sp.vx;
-        sp.y   += sp.vy;
-        sp.vy  += 0.06;
-        sp.life -= 0.022;
-        ctx.save();
-        ctx.globalAlpha = sp.life * 0.85;
-        ctx.fillStyle   = sp.color;
-        if (sp.color === C.purple || sp.color.includes('168')) {
-          ctx.shadowColor = C.purple; ctx.shadowBlur = 4;
-        }
-        const sz = sp.size * sp.life;
-        ctx.fillRect(sp.x-sz/2, sp.y-sz/2, sz, sz);
+      // particles
+      particles=particles.filter(pt=>pt.life>0.01);
+      for(const pt of particles){
+        pt.x+=pt.vx; pt.y+=pt.vy; pt.vy+=0.08;
+        pt.life-=dt/(pt.maxLife*1000);
+        ctx.save(); ctx.globalAlpha=clamp(pt.life,0,1)*0.9;
+        ctx.fillStyle=pt.color;
+        if(pt.color===PURPLE||pt.color.includes('168')){ctx.shadowColor=PURPLE;ctx.shadowBlur=5;}
+        ctx.beginPath(); ctx.arc(pt.x,pt.y,pt.size*pt.life,0,TAU); ctx.fill();
         ctx.restore();
       }
 
-      // ── Rope (only during stuck / pulling / catch) ────────────────────
-      if (sw.phase === 'stuck' || sw.phase === 'pulling' || sw.phase === 'catch') {
-        const tension = sw.phase === 'pulling' ? easeInOut(sw.phaseT)
-                      : sw.phase === 'catch'   ? 1
-                      : easeIn(sw.phaseT);
-        drawRope(ctx, hx, hy, sw.x, sw.y, sw.sagAmount, tension);
+      // recall energy beam
+      if(sw.phase==='recall'){
+        const grd=ctx.createLinearGradient(hx,hy,sw.sx,sw.sy);
+        grd.addColorStop(0,'rgba(168,85,247,0.9)');
+        grd.addColorStop(0.5,'rgba(200,160,255,0.5)');
+        grd.addColorStop(1,'rgba(168,85,247,0)');
+        ctx.save();
+        ctx.globalAlpha=0.7+easeIn(rawT)*0.2;
+        ctx.strokeStyle=grd; ctx.lineWidth=2+easeOut(rawT)*3;
+        ctx.shadowColor=PURPLE; ctx.shadowBlur=12;
+        ctx.beginPath(); ctx.moveTo(hx,hy); ctx.lineTo(sw.sx,sw.sy); ctx.stroke();
+        ctx.lineWidth=0.8; ctx.globalAlpha=0.3; ctx.stroke();
+        ctx.restore();
       }
 
-      // ── Sword (world space, when thrown / stuck / pulling) ───────────
-      const showWorldSword = sw.phase === 'throw' || sw.phase === 'stuck' || sw.phase === 'pulling';
-      if (showWorldSword) {
-        const glowPulse = sw.phase === 'stuck'
-          ? 0.5 + Math.sin(now * 0.004) * 0.5
-          : sw.phase === 'pulling' ? 1 - sw.phaseT : 0;
-        drawSword(ctx, sw.x, sw.y, sw.angle, glowPulse);
+      // stuck glow
+      if(sw.phase==='stuck'){
+        const pulse=0.4+Math.sin(now*.004)*.3;
+        ctx.save(); ctx.globalAlpha=pulse*.25;
+        ctx.shadowColor=PURPLE; ctx.shadowBlur=30;
+        ctx.beginPath(); ctx.arc(sw.sx,sw.sy,20,0,TAU);
+        ctx.fillStyle=PURPLE; ctx.fill(); ctx.restore();
       }
 
-      // ── Pirate ────────────────────────────────────────────────────────
-      drawPirate({
-        ctx,
-        ox: pp.x, oy: pp.y,
-        scale: PIRATE_SCALE,
-        breathT,
-        windupT,
-        throwT,
-        pullT,
-        handX: hx, handY: hy,
-      });
+      // world sword
+      const inHand=sw.phase==='idle'||sw.phase==='windup'||sw.phase==='catch'||sw.phase==='cooldown'||(sw.phase==='throw'&&rawT<.08);
+      if(!inHand){
+        const gp=sw.phase==='stuck'?.4+Math.sin(now*.004)*.3:sw.phase==='recall'?easeOut(rawT)*.8:0;
+        drawSword(ctx,sw.sx,sw.sy,sw.sAngle,SC*0.6,gp);
+      }
 
-      // ── Subtle ground shadow under pirate ─────────────────────────────
-      ctx.save();
-      ctx.globalAlpha = 0.1;
-      const sgrd = ctx.createRadialGradient(pp.x, pp.y+2, 0, pp.x, pp.y+2, 28);
-      sgrd.addColorStop(0,   'rgba(168,85,247,0.5)');
-      sgrd.addColorStop(1,   'rgba(168,85,247,0)');
-      ctx.fillStyle = sgrd;
-      ctx.beginPath();
-      ctx.ellipse(pp.x, pp.y+2, 28, 6, 0, 0, TAU);
-      ctx.fill();
+      // ground shadow
+      ctx.save(); ctx.globalAlpha=0.08;
+      const sg=ctx.createRadialGradient(f.x,f.y+4,0,f.x,f.y+4,TOTAL_H*.28);
+      sg.addColorStop(0,'rgba(168,85,247,.6)'); sg.addColorStop(1,'rgba(168,85,247,0)');
+      ctx.fillStyle=sg; ctx.beginPath();
+      ctx.ellipse(f.x,f.y+4,TOTAL_H*.28,TOTAL_H*.07,0,0,TAU); ctx.fill(); ctx.restore();
+
+      // pirate
+      drawPirate({ ctx, ox:f.x, oy:f.y, sc:SC, breathT, windupT, throwT, recallT, hasSword:inHand });
+
       ctx.restore();
-
-      ctx.restore(); // shake
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current=requestAnimationFrame(tick);
     };
 
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
+    rafRef.current=requestAnimationFrame(tick);
+    return ()=>{ cancelAnimationFrame(rafRef.current); window.removeEventListener('resize',resize); };
+  },[]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9990,
-        pointerEvents: 'none',
-      }}
-    />
-  );
+  return <canvas ref={canvasRef} style={{position:'fixed',inset:0,zIndex:9990,pointerEvents:'none'}} />;
 };
 
 export default PirateCorner;
