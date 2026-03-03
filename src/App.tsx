@@ -20,7 +20,7 @@ import Watch from "./pages/Watch";
 import Sports from "./pages/Sports";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import PirateBrawl from "./components/PirateBrawl";
+import PirateCorner from "./components/PirateCorner";
 
 const queryClient = new QueryClient();
 
@@ -32,7 +32,7 @@ const App = () => (
           <PirateIdentityProvider>
             <Toaster />
             <Sonner />
-            <PirateBrawl />
+            <PirateCorner />
             <BrowserRouter>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
