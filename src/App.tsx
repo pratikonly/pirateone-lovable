@@ -20,7 +20,7 @@ import Watch from "./pages/Watch";
 import Sports from "./pages/Sports";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import PirateCorner from "./components/PirateCorner";
+import PirateCorner from "./components/PirateBrawl";
 
 const queryClient = new QueryClient();
 
