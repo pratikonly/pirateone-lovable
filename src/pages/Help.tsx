@@ -168,7 +168,39 @@ const Help = () => {
         .faq-btn { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 0; background:none; border:none; cursor:pointer; text-align:left; }
 
         @keyframes spin { to{transform:rotate(360deg)} }
+
+        /* ── Cinematic grain background ── */
+        .help-bg {
+          position:fixed; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+        }
+        .help-bg::before {
+          content:'';
+          position:absolute; top:-10%; left:50%; transform:translateX(-50%);
+          width:70%; height:55%;
+          background: radial-gradient(ellipse at center, rgba(139,92,246,0.13) 0%, rgba(109,40,217,0.06) 45%, transparent 75%);
+          filter: blur(40px);
+        }
+        .help-bg::after {
+          content:'';
+          position:absolute; bottom:-5%; right:5%;
+          width:45%; height:40%;
+          background: radial-gradient(ellipse at center, rgba(168,85,247,0.09) 0%, transparent 70%);
+          filter: blur(50px);
+        }
+        .help-grain {
+          position:fixed; inset:0; z-index:1; pointer-events:none;
+          opacity:0.038;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+          background-repeat: repeat;
+          background-size: 180px 180px;
+          mix-blend-mode: overlay;
+        }
+        .help-outer { position:relative; z-index:2; }
       `}</style>
+
+      {/* grain + glow layers */}
+      <div className="help-bg" aria-hidden="true"/>
+      <div className="help-grain" aria-hidden="true"/>
 
       <div className="help-outer" style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', padding:'88px 15% 72px' }}>
 
