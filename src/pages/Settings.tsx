@@ -12,6 +12,7 @@ import { getInitials } from '@/lib/pirateIdentity';
 import { usePirateIdentity } from '@/contexts/PirateIdentityContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllWatchProgress } from '@/lib/watchProgress';
 
 const ConfirmDialog = ({ open, title, description, onConfirm, onCancel }: {
   open: boolean; title: string; description: string; onConfirm: () => void; onCancel: () => void;
@@ -62,8 +63,10 @@ const SettingRow = ({ label, description, right, danger = false }: {
 
 /* ── Watch Activity: self-sizing, never overflows ── */
 const WatchActivity = () => {
+  const { user } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [watchData, setWatchData] = useState<Map<string, { movies: number; episodes: number }>>(new Map());
 
   useEffect(() => {
     const el = containerRef.current;
@@ -73,6 +76,39 @@ const WatchActivity = () => {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Fetch real watch data from database
+  useEffect(() => {
+    const loadWatchData = async () => {
+      if (!user) {
+        setWatchData(new Map());
+        return;
+      }
+      try {
+        const progress = await getAllWatchProgress();
+        const dataMap = new Map<string, { movies: number; episodes: number }>();
+
+        progress.forEach(entry => {
+          const date = new Date(entry.updated_at).toDateString();
+          const existing = dataMap.get(date) || { movies: 0, episodes: 0 };
+
+          if (entry.media_type === 'movie') {
+            existing.movies += 1;
+          } else {
+            existing.episodes += 1;
+          }
+
+          dataMap.set(date, existing);
+        });
+
+        setWatchData(dataMap);
+      } catch (err) {
+        console.error('Failed to load watch activity:', err);
+      }
+    };
+
+    loadWatchData();
+  }, [user]);
 
   const CELL = 11, GAP = 3, CELL_STEP = 14, DAY_LABEL_W = 26;
   const WEEKS = containerWidth > 0 ? Math.max(8, Math.min(26, Math.floor((containerWidth - DAY_LABEL_W - 4) / CELL_STEP))) : 26;
@@ -85,12 +121,28 @@ const WatchActivity = () => {
     Array.from({ length: DAYS }, (_, d) => {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + w * DAYS + d);
-      const seed = date.getDate() * 7 + date.getMonth() * 31 + date.getFullYear();
-      const rand  = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-      const rand2 = (((seed + 99) * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-      const level = rand > 0.72 ? (rand > 0.88 ? (rand > 0.95 ? 4 : 3) : 2) : (rand > 0.55 ? 1 : 0);
-      const type  = level === 0 ? 0 : rand2 > 0.45 ? 1 : 2;
-      return { date, level, type };
+
+      // Get real data for this date
+      const dateKey = date.toDateString();
+      const dayData = watchData.get(dateKey) || { movies: 0, episodes: 0 };
+
+      // Determine level based on activity
+      const total = dayData.movies + dayData.episodes;
+      let level = 0;
+      if (total > 0) {
+        if (total >= 4) level = 4;
+        else if (total >= 3) level = 3;
+        else if (total >= 2) level = 2;
+        else level = 1;
+      }
+
+      // Type: 1 = movie, 2 = episode, 0 = no activity
+      let type = 0;
+      if (level > 0) {
+        type = dayData.movies > 0 ? 1 : 2;
+      }
+
+      return { date, level, type, movies: dayData.movies, episodes: dayData.episodes };
     })
   );
 
@@ -104,9 +156,10 @@ const WatchActivity = () => {
     }
   });
 
+  // Calculate totals from real data
   const allCells = weeks.flat();
-  const totalMovies   = allCells.filter(c => c.type === 1).length;
-  const totalEpisodes = allCells.filter(c => c.type === 2).length;
+  const totalMovies = Array.from(watchData.values()).reduce((sum, d) => sum + d.movies, 0);
+  const totalEpisodes = Array.from(watchData.values()).reduce((sum, d) => sum + d.episodes, 0);
 
   const movieColor   = (l: number) => `rgba(168,85,247,${[0,0.22,0.45,0.68,1][l]})`;
   const episodeColor = (l: number) => `rgba(20,184,166,${[0,0.22,0.45,0.68,1][l]})`;
@@ -162,7 +215,7 @@ const WatchActivity = () => {
                     const isToday = cell.date.toDateString() === today.toDateString();
                     return (
                       <div key={d}
-                        title={`${cell.date.toLocaleDateString('default',{weekday:'short',month:'short',day:'numeric'})} · ${cell.level===0?'No activity':cell.type===1?`${cell.level} movie${cell.level>1?'s':''} watched`:`${cell.level} episode${cell.level>1?'s':''} watched`}`}
+                        title={`${cell.date.toLocaleDateString('default',{weekday:'short',month:'short',day:'numeric'})} · ${cell.level===0?'No activity':cell.movies>0&&cell.episodes>0?`${cell.movies} movie${cell.movies>1?'s':''}, ${cell.episodes} episode${cell.episodes>1?'s':''}`:cell.movies>0?`${cell.movies} movie${cell.movies>1?'s':''} watched`:`${cell.episodes} episode${cell.episodes>1?'s':''} watched`}`}
                         style={{ width:`${CELL}px`, height:`${CELL}px`, borderRadius:'2.5px', background:cellBg(cell.level,cell.type), border:isToday?'1.5px solid rgba(255,255,255,0.55)':cellBorder(cell.level,cell.type), boxShadow:cell.level>=3?(cell.type===1?'0 0 5px rgba(168,85,247,0.35)':'0 0 5px rgba(20,184,166,0.35)'):'none', transition:'transform 0.12s,box-shadow 0.12s', cursor:cell.level>0?'pointer':'default', flexShrink:0 }}
                         onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.transform='scale(1.35)'; if(cell.level>0) el.style.boxShadow=cell.type===1?'0 0 8px rgba(168,85,247,0.6)':'0 0 8px rgba(20,184,166,0.6)'; }}
                         onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.transform='scale(1)'; el.style.boxShadow=cell.level>=3?(cell.type===1?'0 0 5px rgba(168,85,247,0.35)':'0 0 5px rgba(20,184,166,0.35)'):'none'; }}

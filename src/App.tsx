@@ -16,7 +16,6 @@ const Series = lazy(() => import("./pages/Series"));
 const Anime = lazy(() => import("./pages/Anime"));
 const Search = lazy(() => import("./pages/Search"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
-const Library = lazy(() => import("./pages/Library"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Help = lazy(() => import("./pages/Help"));
 const Watch = lazy(() => import("./pages/Watch"));
@@ -51,7 +50,6 @@ const App = () => (
                     <Route path="/anime" element={<Anime />} />
                     <Route path="/search" element={<Search />} />
                     <Route path="/watchlist" element={<Watchlist />} />
-                    <Route path="/library" element={<Library />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
                     <Route path="/sports" element={<Sports />} />
