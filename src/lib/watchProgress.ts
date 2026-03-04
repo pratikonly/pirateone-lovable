@@ -26,6 +26,9 @@ const getUserId = async (): Promise<string | null> => {
   return session?.user?.id ?? null;
 };
 
+// FIX: added title, poster_path, backdrop_path, overview, vote_average params
+// The DB schema requires these columns — omitting them caused silent upsert
+// failures which is why watch_progress always had 0 rows.
 export const saveWatchProgress = async (
   tmdbId: number,
   mediaType: 'movie' | 'tv',
@@ -33,7 +36,13 @@ export const saveWatchProgress = async (
   duration: number,
   server: string,
   season?: number,
-  episode?: number
+  episode?: number,
+  // Media metadata — required by DB schema
+  title?: string,
+  posterPath?: string | null,
+  backdropPath?: string | null,
+  overview?: string | null,
+  voteAverage?: number | null,
 ): Promise<void> => {
   const userId = await getUserId();
   if (!userId) return;
@@ -41,17 +50,23 @@ export const saveWatchProgress = async (
   const completed = duration > 0 && currentTime >= duration * 0.9;
 
   const { error } = await supabase.from('watch_progress').upsert({
-    user_id: userId,
-    tmdb_id: tmdbId,
-    media_type: mediaType,
-    season: season || null,
-    episode: episode || null,
+    user_id:       userId,
+    tmdb_id:       tmdbId,
+    media_type:    mediaType,
+    season:        season  ?? null,
+    episode:       episode ?? null,
     duration,
     progress_time: currentTime,
     completed,
     server,
+    // Metadata columns required by schema
+    title:         title        ?? '',
+    poster_path:   posterPath   ?? null,
+    backdrop_path: backdropPath ?? null,
+    overview:      overview     ?? null,
+    vote_average:  voteAverage  ?? null,
   }, {
-    onConflict: 'user_id,tmdb_id,media_type,season,episode,server'
+    onConflict: 'user_id,tmdb_id,media_type,season,episode,server',
   });
 
   if (error) {
