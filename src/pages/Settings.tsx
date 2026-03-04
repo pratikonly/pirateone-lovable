@@ -196,7 +196,7 @@ const WatchActivity = () => {
 const Settings = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { identity, regenerateIdentity, avatarUrl } = usePirateIdentity();
+  const { identity, regenerateIdentity } = usePirateIdentity();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [autoplay, setAutoplay]                 = useState(() => { try { return localStorage.getItem('pirateone_autoplay') !== 'false'; } catch { return true; } });
@@ -223,7 +223,7 @@ const Settings = () => {
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert:true });
       if (upErr) throw upErr;
       const { data:{ publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const { error: dbErr } = await supabase.from('profiles').update({ avatar_url:publicUrl }).eq('user_id', user.id);
+      const { error: dbErr } = await supabase.from('profiles').update({ custom_avatar_url:publicUrl }).eq('user_id', user.id);
       if (dbErr) throw dbErr;
       toast({ title:'Avatar updated!' });
     } catch { toast({ title:'Failed to upload avatar', variant:'destructive' }); }
@@ -250,7 +250,7 @@ const Settings = () => {
   };
 
   const ls = (key: string, val: string) => { try { localStorage.setItem(key, val); } catch {} };
-  const displayAvatarUrl = avatarUrl || identity?.imagePath || null;
+  const displayAvatarUrl = identity?.imagePath || null;
   const displayName = editName || identity?.name || 'Guest Pirate';
 
   return (
