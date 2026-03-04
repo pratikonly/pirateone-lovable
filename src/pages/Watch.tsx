@@ -41,9 +41,9 @@ const getDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episo
 
 const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
-  const navigate      = useNavigate();
+  const navigate       = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
-  const { user }      = useAuth();
+  const { user }       = useAuth();
 
   const parsed    = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
@@ -66,32 +66,29 @@ const Watch = () => {
     currentTime: number; duration: number; percentage: number;
   } | null>(null);
 
-  // ── Stable refs — message handler reads these, never re-registers ─────────
-  const refs = {
-    movieId:        useRef(movieId),
-    mediaType:      useRef(mediaType),
-    season:         useRef(season),
-    episode:        useRef(episode),
-    selectedServer: useRef(selectedServer),
-    user:           useRef(user),
-    details:        useRef<MovieDetails | null>(null),
-  };
+  // ── Stable refs ───────────────────────────────────────────────────────────
+  const movieIdRef        = useRef(movieId);
+  const mediaTypeRef      = useRef(mediaType);
+  const seasonRef         = useRef(season);
+  const episodeRef        = useRef(episode);
+  const selectedServerRef = useRef(selectedServer);
+  const userRef           = useRef(user);
+  const detailsRef        = useRef<MovieDetails | null>(null);
 
-  useEffect(() => { refs.movieId.current        = movieId;        }, [movieId]);
-  useEffect(() => { refs.mediaType.current      = mediaType;      }, [mediaType]);
-  useEffect(() => { refs.season.current         = season;         }, [season]);
-  useEffect(() => { refs.episode.current        = episode;        }, [episode]);
-  useEffect(() => { refs.selectedServer.current = selectedServer; }, [selectedServer]);
-  useEffect(() => { refs.user.current           = user;           }, [user]);
-  useEffect(() => { refs.details.current        = details;        }, [details]);
+  useEffect(() => { movieIdRef.current        = movieId;        }, [movieId]);
+  useEffect(() => { mediaTypeRef.current      = mediaType;      }, [mediaType]);
+  useEffect(() => { seasonRef.current         = season;         }, [season]);
+  useEffect(() => { episodeRef.current        = episode;        }, [episode]);
+  useEffect(() => { selectedServerRef.current = selectedServer; }, [selectedServer]);
+  useEffect(() => { userRef.current           = user;           }, [user]);
+  useEffect(() => { detailsRef.current        = details;        }, [details]);
 
-  const lastSaveRef = useRef(0); // throttle: one save per 5 s
+  const lastSaveRef = useRef(0);
 
   // ── Fetch details ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!movieId) { setIsLoading(false); return; }
     setIsLoading(true);
-
     const run = async () => {
       try {
         const data = mediaType === 'movie'
@@ -99,43 +96,33 @@ const Watch = () => {
           : await getTVDetails(movieId);
         setDetails(data);
         if (data.backdrop_path) setBackdropUrl(getBackdropUrl(data.backdrop_path, 'original'));
-
         try {
-          const images = mediaType === 'movie'
-            ? await getMovieImages(movieId)
-            : await getTVImages(movieId);
-          const logo = images.logos?.find(l => l.iso_639_1 === 'en') ?? images.logos?.[0];
+          const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
+          const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
           if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
         } catch { /* logo optional */ }
-
-        setInWatchlist(user
-          ? await isInWatchlistDb(movieId, mediaType)
-          : isInWatchlist(movieId, mediaType));
-      } catch (e) {
-        console.error('fetchDetails failed:', e);
-      } finally {
-        setIsLoading(false);
-      }
+        setInWatchlist(user ? await isInWatchlistDb(movieId, mediaType) : isInWatchlist(movieId, mediaType));
+      } catch (e) { console.error('fetchDetails failed:', e); }
+      finally { setIsLoading(false); }
     };
     run();
     return () => { setBackdropUrl(null); };
   }, [movieId, mediaType, setBackdropUrl, user]);
 
-  // ── Save watch history (once per media+episode) ───────────────────────────
+  // ── Save watch history ────────────────────────────────────────────────────
   const savedHistoryKey = useRef('');
   useEffect(() => {
-    const d = refs.details.current;
+    const d = detailsRef.current;
     if (!d || !movieId) return;
     const key = `${movieId}-${mediaType}-${season}-${episode}`;
     if (savedHistoryKey.current === key) return;
     savedHistoryKey.current = key;
     saveWatchHistory({
-      mediaId:    movieId,
-      mediaType,
+      mediaId: movieId, mediaType,
       mediaTitle: d.title || d.name || 'Unknown',
       posterPath: d.poster_path ?? null,
-      season:     mediaType === 'tv' ? season  : undefined,
-      episode:    mediaType === 'tv' ? episode : undefined,
+      season:  mediaType === 'tv' ? season  : undefined,
+      episode: mediaType === 'tv' ? episode : undefined,
     });
   }, [movieId, mediaType, season, episode]);
 
@@ -145,27 +132,19 @@ const Watch = () => {
     getSeasonDetails(movieId, season).then(setSeasonDetails).catch(console.error);
   }, [movieId, mediaType, season]);
 
-  // ── Load saved progress from DB ───────────────────────────────────────────
+  // ── Load saved progress ───────────────────────────────────────────────────
   useEffect(() => {
     if (!user) { setWatchProgress(null); return; }
     let cancelled = false;
     const run = async () => {
       try {
-        const p = await getWatchProgress(
-          movieId, mediaType,
+        const p = await getWatchProgress(movieId, mediaType,
           mediaType === 'tv' ? season  : undefined,
-          mediaType === 'tv' ? episode : undefined,
-        );
+          mediaType === 'tv' ? episode : undefined);
         if (cancelled) return;
         if (p && p.progress_time > 0) {
-          setWatchProgress({
-            currentTime: p.progress_time,
-            duration:    p.duration ?? 0,
-            percentage:  getProgressPercentage(p),
-          });
-        } else {
-          setWatchProgress(null);
-        }
+          setWatchProgress({ currentTime: p.progress_time, duration: p.duration ?? 0, percentage: getProgressPercentage(p) });
+        } else { setWatchProgress(null); }
       } catch { if (!cancelled) setWatchProgress(null); }
     };
     run();
@@ -173,20 +152,27 @@ const Watch = () => {
   }, [movieId, mediaType, season, episode, user]);
 
   // ── Videasy postMessage handler ───────────────────────────────────────────
-  // Payload: { id, type, progress(0–100%), timestamp(s), duration(s), season?, episode? }
-  //
-  // Fixes applied here:
-  //  1. document.hidden guard  — tab-switch events are silently ignored
-  //  2. progress_time          — correct DB column name (not current_time)
-  //  3. all metadata passed    — title, poster_path etc. so INSERT succeeds
-  //  4. show_status updated    — Library page reflects current episode progress
-  //  5. [user] only dep        — handler never re-registers on re-renders
   useEffect(() => {
-    if (!user) return;
+    // DEBUG: log every raw message to confirm player is sending events
+    const debugAll = (event: MessageEvent) => {
+      if (event.data && event.data !== '') {
+        console.log('[Watch] raw postMessage:', event.origin, event.data);
+      }
+    };
+    window.addEventListener('message', debugAll);
+    return () => window.removeEventListener('message', debugAll);
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      console.log('[Watch] no user — progress tracking disabled');
+      return;
+    }
+    console.log('[Watch] registering progress message handler for user:', user.id);
 
     const handleMessage = async (event: MessageEvent) => {
-      if (document.hidden) return;     // ← tab-switch guard
-      if (!refs.user.current) return;
+      if (document.hidden) return;
+      if (!userRef.current) return;
 
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
@@ -196,25 +182,26 @@ const Watch = () => {
           ? data.progress
           : (data.timestamp / data.duration) * 100;
 
+        console.log('[Watch] progress event — timestamp:', data.timestamp, 'duration:', data.duration, 'pct:', pct.toFixed(1));
+
         const now = Date.now();
-        if (pct < 95 && now - lastSaveRef.current < 5000) return;
+        if (pct < 95 && now - lastSaveRef.current < 5000) {
+          console.log('[Watch] throttled — skipping save');
+          return;
+        }
         lastSaveRef.current = now;
 
-        // Update UI banner immediately
-        setWatchProgress({
-          currentTime: data.timestamp,
-          duration:    data.duration,
-          percentage:  Math.min(100, pct),
-        });
+        setWatchProgress({ currentTime: data.timestamp, duration: data.duration, percentage: Math.min(100, pct) });
 
-        const d   = refs.details.current;
-        const mid = refs.movieId.current;
-        const mt  = refs.mediaType.current;
-        const s   = refs.season.current;
-        const ep  = refs.episode.current;
-        const srv = refs.selectedServer.current;
+        const d   = detailsRef.current;
+        const mid = movieIdRef.current;
+        const mt  = mediaTypeRef.current;
+        const s   = seasonRef.current;
+        const ep  = episodeRef.current;
+        const srv = selectedServerRef.current;
 
-        // ── Save to watch_progress ──
+        console.log('[Watch] saving progress — tmdb_id:', mid, 'media_type:', mt, 'season:', s, 'episode:', ep, 'server:', srv);
+
         await saveWatchProgress(
           mid, mt,
           data.timestamp, data.duration, srv,
@@ -227,36 +214,31 @@ const Watch = () => {
           d?.vote_average  ?? null,
         );
 
-        // ── Update show_status so Library page shows current episode ──
-        // Only updates if the show is already tracked — doesn't auto-add.
-        if (d && refs.user.current) {
+        console.log('[Watch] progress saved successfully');
+
+        // Update show_status so Library reflects current episode
+        if (d && userRef.current) {
           try {
             const existing = await getShowStatus(mid, mt);
             if (existing) {
               await setShowStatus(
-                {
-                  id:            mid,
-                  title:         d.title,
-                  name:          d.name,
-                  poster_path:   d.poster_path,
-                  backdrop_path: d.backdrop_path,
-                  overview:      d.overview,
-                  vote_average:  d.vote_average,
-                  media_type:    mt,
-                } as any,
+                { id: mid, title: d.title, name: d.name, poster_path: d.poster_path,
+                  backdrop_path: d.backdrop_path, overview: d.overview,
+                  vote_average: d.vote_average, media_type: mt } as any,
                 existing.status,
                 mt === 'tv' ? s  : undefined,
                 mt === 'tv' ? ep : undefined,
               );
+              console.log('[Watch] show_status updated');
             }
-          } catch { /* best-effort, don't break playback */ }
+          } catch (e) { console.warn('[Watch] show_status update failed (non-critical):', e); }
         }
-      } catch { /* ignore non-JSON / unrelated messages */ }
+      } catch (e) { /* non-JSON messages */ }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [user]); // intentionally [user] only — all state via refs above
+  }, [user]);
 
   // ── Watchlist toggle ──────────────────────────────────────────────────────
   const handleWatchlistToggle = async () => {
@@ -292,14 +274,14 @@ const Watch = () => {
     setServerOpen(v => !v);
   };
 
-  // ── Loading / 404 ─────────────────────────────────────────────────────────
   if (isLoading) return (
     <div className="p-8 pt-20">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
         <div className="space-y-4">
-          {['aspect-video h-auto', 'h-8 w-64', 'h-4 w-full', 'h-4 w-3/4'].map((c, i) => (
-            <div key={i} className={`${c} bg-zinc-900 rounded animate-pulse`} />
-          ))}
+          <div className="aspect-video bg-zinc-900 rounded-lg animate-pulse" />
+          <div className="h-8 w-64 bg-zinc-900 rounded animate-pulse" />
+          <div className="h-4 w-full bg-zinc-900 rounded animate-pulse" />
+          <div className="h-4 w-3/4 bg-zinc-900 rounded animate-pulse" />
         </div>
         <div className="space-y-4 hidden lg:block">
           <div className="h-48 bg-zinc-900 rounded-lg animate-pulse" />
@@ -323,7 +305,7 @@ const Watch = () => {
   const seasons     = details.number_of_seasons || 0;
   const posterUrl   = getImageUrl(details.poster_path, 'w500');
   const cast        = details.credits?.cast?.slice(0, 10) || [];
-  const director    = details.credits?.crew?.find(c => c.job === 'Director');
+  const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
   const downloadUrl = getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
 
   return (
@@ -336,10 +318,9 @@ const Watch = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
 
-            {/* ── Left column ─────────────────────────────────────────── */}
+            {/* Left column */}
             <div className="space-y-4">
 
-              {/* TV Season/Episode selector */}
               {mediaType === 'tv' && seasons > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
                   <div className="flex flex-wrap items-center gap-4 mb-4">
@@ -348,7 +329,7 @@ const Watch = () => {
                       <Select value={String(season)} onValueChange={v => { setSeason(parseInt(v)); setEpisode(1); }}>
                         <SelectTrigger className="w-32 bg-zinc-900 border-zinc-700 text-white"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
-                          {details.seasons?.filter(s => s.season_number > 0).map(s => (
+                          {details.seasons?.filter((s: any) => s.season_number > 0).map((s: any) => (
                             <SelectItem key={s.season_number} value={String(s.season_number)}>Season {s.season_number}</SelectItem>
                           )) || [...Array(seasons)].map((_, i) => (
                             <SelectItem key={i + 1} value={String(i + 1)}>Season {i + 1}</SelectItem>
@@ -360,7 +341,7 @@ const Watch = () => {
                   </div>
                   <ScrollArea className="h-32">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '' }))).map(ep => (
+                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '' }))).map((ep: any) => (
                         <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
                           className={cn('p-2 rounded-md text-left transition-colors text-sm',
                             episode === ep.episode_number ? 'bg-white/10 text-white' : 'bg-zinc-900/50 hover:bg-zinc-800')}>
@@ -373,7 +354,6 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Click tip */}
               {!noteDismissed && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
                   <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -390,7 +370,6 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Progress banner */}
               {watchProgress && watchProgress.percentage > 0 && watchProgress.percentage < 95 && (
                 <div className="w-full max-w-4xl mx-auto">
                   <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center gap-4">
@@ -411,7 +390,6 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Player */}
               <div className="w-full max-w-4xl mx-auto">
                 <VideoPlayer
                   id={movieId} type={mediaType} title={title}
@@ -422,24 +400,19 @@ const Watch = () => {
                 />
               </div>
 
-              {/* Title + buttons */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                 <div className="flex items-center gap-2 flex-wrap">
-
-                  {/* Watchlist */}
                   <Button variant={inWatchlist ? 'default' : 'outline'} onClick={handleWatchlistToggle} size="sm"
                     className={cn('min-w-[120px] border-zinc-700 hover:bg-zinc-800', inWatchlist && 'bg-white text-black hover:bg-gray-200')}>
                     {inWatchlist ? <><Check className="w-4 h-4 mr-1.5" />In List</> : <><Plus className="w-4 h-4 mr-1.5" />Add to List</>}
                   </Button>
 
-                  {/* Download — direct link, no dropdown */}
                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium border border-zinc-700 bg-transparent text-white hover:bg-zinc-800 transition-colors">
                     <Download className="w-4 h-4" />Download<ExternalLink className="w-3 h-3 opacity-50" />
                   </a>
 
-                  {/* Server picker */}
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
                       className={cn('h-9 px-3 hover:bg-zinc-800 flex items-center gap-2 min-w-[110px]',
@@ -454,13 +427,11 @@ const Watch = () => {
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setServerOpen(false)} />
                         <div className={cn(
-                          'z-50 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl',
-                          'w-[300px] sm:w-[340px]',
+                          'z-50 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl w-[300px] sm:w-[340px]',
                           'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
                           'sm:absolute sm:left-auto sm:top-auto sm:translate-x-0 sm:translate-y-0 sm:right-0',
                           openDirection === 'up' ? 'sm:bottom-full sm:mb-2' : 'sm:top-full sm:mt-2',
                           'animate-in fade-in-60 zoom-in-95 duration-150')}>
-                          {/* Anime servers */}
                           <div className="p-3 border-b border-zinc-800">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -478,7 +449,6 @@ const Watch = () => {
                               ))}
                             </div>
                           </div>
-                          {/* Movie/TV servers */}
                           <div className="p-3">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -503,14 +473,11 @@ const Watch = () => {
                 </div>
               </div>
 
-              {/* Meta */}
               <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-300">
                 <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="font-medium">{rating}</span></div>
                 {year    && <div className="flex items-center gap-1"><Calendar className="w-4 h-4 text-zinc-400" /><span>{year}</span></div>}
                 {runtime && <div className="flex items-center gap-1"><Clock    className="w-4 h-4 text-zinc-400" /><span>{runtime}</span></div>}
-                <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">
-                  {mediaType === 'tv' ? 'TV Series' : 'Movie'}
-                </span>
+                <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{mediaType === 'tv' ? 'TV Series' : 'Movie'}</span>
               </div>
               <p className="text-zinc-400 text-sm leading-relaxed">{details.overview || 'No overview available.'}</p>
               {mediaType === 'movie' && details.belongs_to_collection && (
@@ -518,76 +485,55 @@ const Watch = () => {
               )}
             </div>
 
-            {/* ── Right sidebar ─────────────────────────────────────────── */}
+            {/* Right sidebar */}
             <div className="space-y-4">
               <div className="p-4 flex items-center justify-center min-h-[80px]">
-                {logoUrl
-                  ? <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
+                {logoUrl ? <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
                   : <h2 className="text-xl font-bold text-center">{title}</h2>}
               </div>
-
               <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-3 border border-zinc-800">
                 <div className="flex gap-3">
-                  {posterUrl && (
-                    <div className="flex-shrink-0 w-20 rounded-md overflow-hidden border border-zinc-800">
-                      <img src={posterUrl} alt={title} className="w-full h-auto" />
-                    </div>
-                  )}
+                  {posterUrl && <div className="flex-shrink-0 w-20 rounded-md overflow-hidden border border-zinc-800"><img src={posterUrl} alt={title} className="w-full h-auto" /></div>}
                   <div className="flex-1 space-y-2 text-sm text-zinc-300">
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded">
-                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="font-bold">{rating}</span>
-                      </div>
+                      <div className="flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="font-bold">{rating}</span></div>
                       <span className="text-xs text-zinc-500">/10</span>
                     </div>
                     {year    && <div className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-zinc-400" /><span>{year}</span></div>}
                     {runtime && <div className="flex items-center gap-1"><Clock    className="w-3.5 h-3.5 text-zinc-400" /><span>{runtime}</span></div>}
-                    <span className="inline-block bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">
-                      {mediaType === 'tv' ? 'TV Series' : 'Movie'}
-                    </span>
+                    <span className="inline-block bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{mediaType === 'tv' ? 'TV Series' : 'Movie'}</span>
                   </div>
                 </div>
               </div>
-
               <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800 space-y-3 text-sm text-zinc-300">
                 <h3 className="text-lg font-bold text-white">Details</h3>
                 {details.tagline && <div><span className="text-zinc-500 block">Tagline</span><p className="italic">"{details.tagline}"</p></div>}
                 <div><span className="text-zinc-500 block">Release</span><p>{details.release_date || details.first_air_date || 'Unknown'}</p></div>
                 <div><span className="text-zinc-500 block">Status</span><p>{details.status}</p></div>
-                {mediaType === 'tv' && <>
-                  <div><span className="text-zinc-500 block">Seasons</span><p>{details.number_of_seasons}</p></div>
-                  <div><span className="text-zinc-500 block">Episodes</span><p>{details.number_of_episodes}</p></div>
-                </>}
+                {mediaType === 'tv' && <><div><span className="text-zinc-500 block">Seasons</span><p>{details.number_of_seasons}</p></div><div><span className="text-zinc-500 block">Episodes</span><p>{details.number_of_episodes}</p></div></>}
                 {details.genres?.length > 0 && (
-                  <div>
-                    <span className="text-zinc-500 block">Genres</span>
+                  <div><span className="text-zinc-500 block">Genres</span>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {details.genres.map(g => (
-                        <span key={g.id} className="px-2 py-0.5 bg-zinc-900 rounded-full text-xs border border-zinc-800">{g.name}</span>
-                      ))}
+                      {details.genres.map((g: any) => <span key={g.id} className="px-2 py-0.5 bg-zinc-900 rounded-full text-xs border border-zinc-800">{g.name}</span>)}
                     </div>
                   </div>
                 )}
               </div>
-
               {cast.length > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-4 h-4 text-zinc-300" /><h3 className="text-lg font-bold text-white">Cast</h3>
-                  </div>
+                  <div className="flex items-center gap-2 mb-3"><Users className="w-4 h-4 text-zinc-300" /><h3 className="text-lg font-bold text-white">Cast</h3></div>
                   {director && (
                     <div className="mb-3 pb-3 border-b border-zinc-800">
                       <div className="flex items-center gap-1 text-xs text-zinc-500"><Film className="w-3.5 h-3.5" />Director</div>
-                      <p className="text-sm font-medium text-white">{director.name}</p>
+                      <p className="text-sm font-medium text-white">{(director as any).name}</p>
                     </div>
                   )}
                   <ScrollArea className="h-48">
                     <div className="space-y-3">
-                      {cast.map(member => (
+                      {cast.map((member: any) => (
                         <div key={member.id} className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-900 flex-shrink-0 border border-zinc-800">
-                            {member.profile_path
-                              ? <img src={getImageUrl(member.profile_path, 'w200') || ''} alt={member.name} className="w-full h-full object-cover" />
+                            {member.profile_path ? <img src={getImageUrl(member.profile_path, 'w200') || ''} alt={member.name} className="w-full h-full object-cover" />
                               : <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">{member.name.charAt(0)}</div>}
                           </div>
                           <div className="min-w-0">
@@ -600,20 +546,16 @@ const Watch = () => {
                   </ScrollArea>
                 </div>
               )}
-
               {details.production_companies?.length > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
                   <h3 className="text-sm font-bold mb-2 text-zinc-400">Production</h3>
                   <div className="flex flex-wrap gap-2">
-                    {details.production_companies.slice(0, 3).map(c => (
-                      <span key={c.id} className="text-xs bg-zinc-900 px-2 py-1 rounded border border-zinc-800">{c.name}</span>
-                    ))}
+                    {details.production_companies.slice(0, 3).map((c: any) => <span key={c.id} className="text-xs bg-zinc-900 px-2 py-1 rounded border border-zinc-800">{c.name}</span>)}
                   </div>
                 </div>
               )}
             </div>
           </div>
-
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
           <div className="mt-12 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
         </div>
