@@ -138,9 +138,11 @@ const Watch = () => {
     let cancelled = false;
     const run = async () => {
       try {
+        // Use selectedServerRef to avoid stale closure
         const p = await getWatchProgress(movieId, mediaType,
           mediaType === 'tv' ? season  : undefined,
-          mediaType === 'tv' ? episode : undefined);
+          mediaType === 'tv' ? episode : undefined,
+          selectedServerRef.current);
         if (cancelled) return;
         if (p && p.progress_time > 0) {
           setWatchProgress({ currentTime: p.progress_time, duration: p.duration ?? 0, percentage: getProgressPercentage(p) });
@@ -149,7 +151,7 @@ const Watch = () => {
     };
     run();
     return () => { cancelled = true; };
-  }, [movieId, mediaType, season, episode, user]);
+  }, [movieId, mediaType, season, episode, user, selectedServer]);
 
   // ── Videasy postMessage handler ───────────────────────────────────────────
   // FIX: depend on user?.id (stable string) not user (object reference).
@@ -212,6 +214,16 @@ const Watch = () => {
                   backdrop_path: d.backdrop_path, overview: d.overview,
                   vote_average: d.vote_average, media_type: mt } as any,
                 existing.status,
+                mt === 'tv' ? s  : undefined,
+                mt === 'tv' ? ep : undefined,
+              );
+            } else {
+              // Auto-create library entry with "watching" status
+              await setShowStatus(
+                { id: mid, title: d.title, name: d.name, poster_path: d.poster_path,
+                  backdrop_path: d.backdrop_path, overview: d.overview,
+                  vote_average: d.vote_average, media_type: mt } as any,
+                'watching',
                 mt === 'tv' ? s  : undefined,
                 mt === 'tv' ? ep : undefined,
               );
