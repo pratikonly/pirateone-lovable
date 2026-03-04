@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useCallback, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
 
 interface VideoPlayerProps {
@@ -15,13 +15,28 @@ interface VideoPlayerProps {
 
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
   ({ id, type, season, episode, isDub = false, title, server = 'videasy', progressSeconds, onAdBlocked }, ref) => {
-    const playerUrl = getPlayerUrl(id, type, server, season, episode, isDub, progressSeconds);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const iframeRef  = useRef<HTMLIFrameElement>(null);
     const adCountRef = useRef(0);
     const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
     const [overlayVisible, setOverlayVisible] = useState(true);
+
+    // Track if we've loaded this specific video/episode combination
+    const videoKey = useMemo(() => `${id}-${type}-${season}-${episode}-${server}-${isDub}`, [id, type, season, episode, server, isDub]);
+    const initialProgressRef = useRef<number | null>(null);
+    const lastVideoKeyRef = useRef<string>('');
+
+    // Store progress on initial load for this video, clear it when video changes
+    if (videoKey !== lastVideoKeyRef.current) {
+      initialProgressRef.current = progressSeconds ?? null;
+      lastVideoKeyRef.current = videoKey;
+    }
+
+    // Memoize playerUrl so it only recalculates when video parameters change, not when progressSeconds updates
+    const playerUrl = useMemo(() => {
+      return getPlayerUrl(id, type, server, season, episode, isDub, initialProgressRef.current ?? undefined);
+    }, [id, type, server, season, episode, isDub]);
 
     useEffect(() => { onAdBlockedRef.current = onAdBlocked; }, [onAdBlocked]);
 
