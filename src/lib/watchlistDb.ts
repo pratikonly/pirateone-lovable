@@ -1,14 +1,20 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Movie } from './tmdb';
 
+// Helper: get current user id from session (no extra API call)
+const getUserId = async (): Promise<string | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
+};
+
 export const getWatchlistDb = async (): Promise<Movie[]> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  const userId = await getUserId();
+  if (!userId) return [];
 
   const { data, error } = await supabase
     .from('watchlist')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('added_at', { ascending: false });
 
   if (error) throw error;
@@ -27,11 +33,11 @@ export const getWatchlistDb = async (): Promise<Movie[]> => {
 };
 
 export const addToWatchlistDb = async (movie: Movie): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const userId = await getUserId();
+  if (!userId) throw new Error('Not authenticated');
 
   const { error } = await supabase.from('watchlist').upsert({
-    user_id: user.id,
+    user_id: userId,
     tmdb_id: movie.id,
     media_type: movie.media_type || 'movie',
     title: movie.title || movie.name || 'Unknown',
@@ -47,13 +53,13 @@ export const addToWatchlistDb = async (movie: Movie): Promise<void> => {
 };
 
 export const removeFromWatchlistDb = async (tmdbId: number, mediaType: 'movie' | 'tv'): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const userId = await getUserId();
+  if (!userId) throw new Error('Not authenticated');
 
   const { error } = await supabase
     .from('watchlist')
     .delete()
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('tmdb_id', tmdbId)
     .eq('media_type', mediaType);
 
@@ -61,13 +67,13 @@ export const removeFromWatchlistDb = async (tmdbId: number, mediaType: 'movie' |
 };
 
 export const isInWatchlistDb = async (tmdbId: number, mediaType?: 'movie' | 'tv'): Promise<boolean> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  const userId = await getUserId();
+  if (!userId) return false;
 
   let query = supabase
     .from('watchlist')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('tmdb_id', tmdbId);
 
   if (mediaType) query = query.eq('media_type', mediaType);
@@ -77,7 +83,7 @@ export const isInWatchlistDb = async (tmdbId: number, mediaType?: 'movie' | 'tv'
 };
 
 export const clearWatchlistDb = async (): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase.from('watchlist').delete().eq('user_id', user.id);
+  const userId = await getUserId();
+  if (!userId) return;
+  await supabase.from('watchlist').delete().eq('user_id', userId);
 };

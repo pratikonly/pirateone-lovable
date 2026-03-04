@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Movie } from './tmdb';
 
 export interface WatchProgressEntry {
   id: string;
@@ -21,6 +20,12 @@ export interface WatchProgressEntry {
   created_at: string;
 }
 
+// Helper: get user id from session (no extra API call)
+const getUserId = async (): Promise<string | null> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.id ?? null;
+};
+
 export const saveWatchProgress = async (
   tmdbId: number,
   mediaType: 'movie' | 'tv',
@@ -30,13 +35,13 @@ export const saveWatchProgress = async (
   season?: number,
   episode?: number
 ): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  const userId = await getUserId();
+  if (!userId) return;
 
-  const completed = duration > 0 && currentTime >= duration * 0.9; // Mark as completed at 90%
+  const completed = duration > 0 && currentTime >= duration * 0.9;
 
   const { error } = await supabase.from('watch_progress').upsert({
-    user_id: user.id,
+    user_id: userId,
     tmdb_id: tmdbId,
     media_type: mediaType,
     season: season || null,
@@ -59,13 +64,14 @@ export const getWatchProgress = async (
   mediaType: 'movie' | 'tv',
   season?: number,
   episode?: number,
-  server?: string
 ): Promise<WatchProgressEntry | null> => {
   const { data, error } = await supabase
     .from('watch_progress')
     .select('*')
     .eq('tmdb_id', tmdbId)
     .eq('media_type', mediaType)
+    .order('updated_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) {

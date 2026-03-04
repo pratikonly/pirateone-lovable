@@ -129,19 +129,26 @@ const Watch = () => {
   // FIX: removed season and episode from deps — only re-fetch when movie/type changes
   }, [movieId, mediaType, setBackdropUrl, user]);
 
-  // FIX: save watch history separately when season/episode changes, without re-fetching details
+  // FIX: save watch history separately — use a ref for details to avoid re-triggering on object reference changes
+  const detailsRef = useRef<MovieDetails | null>(null);
+  useEffect(() => { detailsRef.current = details; }, [details]);
+
+  const savedHistoryKeyRef = useRef('');
   useEffect(() => {
-    if (!details || !movieId) return;
-    const title = details.title || details.name || 'Unknown';
+    if (!detailsRef.current || !movieId) return;
+    const historyKey = `${movieId}-${mediaType}-${season}-${episode}`;
+    if (savedHistoryKeyRef.current === historyKey) return; // already saved for this combo
+    savedHistoryKeyRef.current = historyKey;
+    const title = detailsRef.current.title || detailsRef.current.name || 'Unknown';
     saveWatchHistory({
       mediaId: movieId,
       mediaType,
       mediaTitle: title,
-      posterPath: details.poster_path || null,
+      posterPath: detailsRef.current.poster_path || null,
       season: mediaType === 'tv' ? season : undefined,
       episode: mediaType === 'tv' ? episode : undefined,
     });
-  }, [movieId, mediaType, season, episode, details]);
+  }, [movieId, mediaType, season, episode]);
 
   useEffect(() => {
     const fetchSeasonDetails = async () => {
