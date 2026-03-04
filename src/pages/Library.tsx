@@ -17,13 +17,13 @@ const statusConfig: Record<ShowStatusType, { label: string; icon: React.ReactNod
 
 const Library = () => {
   const [shows, setShows] = useState<ShowStatusEntry[]>([]);
+  // FIX: store progress keyed by tmdb_id+media_type → best percentage across all episodes
   const [progressData, setProgressData] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('watching');
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Feature D fix: wrap in useCallback so useEffect dep is stable
   const loadShows = useCallback(async () => {
     if (!user) {
       setLoading(false);
@@ -34,12 +34,23 @@ const Library = () => {
       const data = await getAllShowStatuses();
       setShows(data);
 
-      // Load watch progress data
+      // FIX: key by "tmdb_id-media_type" and keep the highest progress % per title.
+      // The old key included season/episode with a || fallback that never matched
+      // the actual keys produced from watch_progress rows.
       const progress = await getAllWatchProgress();
       const progressMap = new Map<string, number>();
       progress.forEach(p => {
-        const key = `${p.tmdb_id}-${p.media_type}-${p.season || 'movie'}-${p.episode || 0}`;
-        progressMap.set(key, getProgressPercentage(p));
+        const key = `${p.tmdb_id}-${p.media_type}`;
+        const pct = getProgressPercentage(p);
+        const existing = progressMap.get(key) ?? 0;
+        // Keep the most-recently-watched episode's progress (already ordered by updated_at desc)
+        // but only update if we haven't set it yet (first entry = most recent)
+        if (!progressMap.has(key)) {
+          progressMap.set(key, pct);
+        } else if (pct > existing) {
+          // Alternatively keep the highest % — useful for "completed" indicator
+          progressMap.set(key, pct);
+        }
       });
       setProgressData(progressMap);
     } catch (err) {
@@ -129,8 +140,9 @@ const Library = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(show => {
-                  const progressKey = `${show.tmdb_id}-${show.media_type}-${show.last_season || 'movie'}-${show.last_episode || 0}`;
-                  const progress = progressData.get(progressKey) || 0;
+                  // FIX: use the corrected simple key — matches what progressMap now stores
+                  const progressKey = `${show.tmdb_id}-${show.media_type}`;
+                  const progress = progressData.get(progressKey) ?? 0;
 
                   return (
                     <div
@@ -150,7 +162,7 @@ const Library = () => {
                             No Poster
                           </div>
                         )}
-                        {/* Progress indicator */}
+                        {/* Progress bar on poster */}
                         {progress > 0 && progress < 95 && (
                           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
                             <div className="h-1 bg-primary/30">
