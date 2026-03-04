@@ -66,6 +66,7 @@ export const getWatchProgress = async (
   mediaType: 'movie' | 'tv',
   season?: number,
   episode?: number,
+  server?: string,
 ): Promise<WatchProgressEntry | null> => {
   const userId = await getUserId();
   if (!userId) return null;
@@ -73,6 +74,21 @@ export const getWatchProgress = async (
   const seasonVal  = (mediaType === 'tv' && season  != null) ? season  : -1;
   const episodeVal = (mediaType === 'tv' && episode != null) ? episode : -1;
 
+  // If server is specified, try to get progress for that specific server first
+  if (server) {
+    const { data, error } = await supabase
+      .from('watch_progress').select('*')
+      .eq('user_id', userId).eq('tmdb_id', tmdbId)
+      .eq('media_type', mediaType).eq('season', seasonVal).eq('episode', episodeVal)
+      .eq('server', server)
+      .order('updated_at', { ascending: false }).limit(1).maybeSingle();
+
+    if (!error && data) {
+      return data as WatchProgressEntry;
+    }
+  }
+
+  // Fallback: get any progress for this content (for backwards compatibility)
   const { data, error } = await supabase
     .from('watch_progress').select('*')
     .eq('user_id', userId).eq('tmdb_id', tmdbId)

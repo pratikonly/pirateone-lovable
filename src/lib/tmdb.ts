@@ -277,7 +277,7 @@ export const getYouTubeEmbedUrl = (key: string) => {
   return `https://www.youtube.com/embed/${key}?autoplay=1&rel=0`;
 };
 
-export type ServerType = 'videasy' | 'autoembed' | 'vidsrc' | 'vidify' | 'movies111' | 'twoembed' | 'embed2' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'vidup' | 'vidsrccc' | 'vidzee' | 'vidking';
+export type ServerType = 'videasy' | 'autoembed' | 'vidsrc' | 'vidify' | 'movies111' | 'twoembed' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'vidup' | 'vidsrccc' | 'vidzee' | 'vidking';
 
 export interface ServerInfo {
   id: ServerType;
@@ -293,7 +293,6 @@ export const MOVIE_TV_SERVERS: ServerInfo[] = [
   { id: 'vidsrc', name: 'VidSrc', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'movies111', name: '111Movies', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'twoembed', name: '2Embed', supportsMovies: true, supportsTV: true, supportsAnime: false },
-  { id: 'embed2', name: 'Embed2', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidrock', name: 'VidRock', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidfast', name: 'VidFast', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidlink', name: 'VidLink', supportsMovies: true, supportsTV: true, supportsAnime: false },
@@ -419,14 +418,6 @@ export const getPlayerUrl = (
 
   // 2Embed
   if (server === 'twoembed') {
-    if (type === 'movie') {
-      return `https://www.2embed.cc/embed/${id}`;
-    }
-    return `https://www.2embed.cc/embedtv/${id}&s=${season || 1}&e=${episode || 1}`;
-  }
-
-  // Embed2 (backup for 2embed)
-  if (server === 'embed2') {
     if (type === 'movie') {
       return `https://www.2embed.cc/embed/${id}`;
     }
