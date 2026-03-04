@@ -10,14 +10,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const statusConfig: Record<ShowStatusType, { label: string; icon: React.ReactNode; color: string }> = {
-  watching: { label: 'Watching', icon: <Eye className="w-4 h-4" />, color: 'text-blue-400' },
-  completed: { label: 'Completed', icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-green-400' },
-  dropped: { label: 'Dropped', icon: <XCircle className="w-4 h-4" />, color: 'text-red-400' },
+  watching:  { label: 'Watching',   icon: <Eye         className="w-4 h-4" />, color: 'text-blue-400'  },
+  completed: { label: 'Completed',  icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-green-400' },
+  dropped:   { label: 'Dropped',    icon: <XCircle     className="w-4 h-4" />, color: 'text-red-400'   },
 };
 
 const Library = () => {
   const [shows, setShows] = useState<ShowStatusEntry[]>([]);
-  // FIX: store progress keyed by tmdb_id+media_type → best percentage across all episodes
+  // Key: "tmdb_id-media_type" → most-recent progress percentage
   const [progressData, setProgressData] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('watching');
@@ -25,31 +25,27 @@ const Library = () => {
   const { user } = useAuth();
 
   const loadShows = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     setLoading(true);
     try {
-      const data = await getAllShowStatuses();
+      const [data, progress] = await Promise.all([
+        getAllShowStatuses(),
+        getAllWatchProgress(),
+      ]);
       setShows(data);
 
-      // FIX: key by "tmdb_id-media_type" and keep the highest progress % per title.
-      // The old key included season/episode with a || fallback that never matched
-      // the actual keys produced from watch_progress rows.
-      const progress = await getAllWatchProgress();
+      // FIX: key by "tmdb_id-media_type" only.
+      // The old key included season/episode with fallback strings that never
+      // matched the actual watch_progress rows, so the map always returned
+      // undefined and progress bars never rendered.
+      // getAllWatchProgress() returns rows ordered by updated_at desc, so the
+      // first entry we encounter for each title is the most recent one.
       const progressMap = new Map<string, number>();
       progress.forEach(p => {
         const key = `${p.tmdb_id}-${p.media_type}`;
-        const pct = getProgressPercentage(p);
-        const existing = progressMap.get(key) ?? 0;
-        // Keep the most-recently-watched episode's progress (already ordered by updated_at desc)
-        // but only update if we haven't set it yet (first entry = most recent)
         if (!progressMap.has(key)) {
-          progressMap.set(key, pct);
-        } else if (pct > existing) {
-          // Alternatively keep the highest % — useful for "completed" indicator
-          progressMap.set(key, pct);
+          // First (most recent) entry wins
+          progressMap.set(key, getProgressPercentage(p));
         }
       });
       setProgressData(progressMap);
@@ -140,9 +136,8 @@ const Library = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(show => {
-                  // FIX: use the corrected simple key — matches what progressMap now stores
-                  const progressKey = `${show.tmdb_id}-${show.media_type}`;
-                  const progress = progressData.get(progressKey) ?? 0;
+                  // FIX: simple key matches what progressMap stores
+                  const progress = progressData.get(`${show.tmdb_id}-${show.media_type}`) ?? 0;
 
                   return (
                     <div
