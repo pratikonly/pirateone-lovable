@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Check, Star, Calendar, Clock, Users, Film, Server, ChevronDown, Download, ExternalLink, MousePointerClick, Play } from 'lucide-react';
 import { z } from 'zod';
@@ -59,7 +59,6 @@ const Watch = () => {
 
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
-  // FIX: separate loading states — initial load vs episode change
   const [isLoading, setIsLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
   const [season, setSeason] = useState(1);
@@ -72,13 +71,37 @@ const Watch = () => {
   const [downloadDirection, setDownloadDirection] = useState<'up' | 'down'>('down');
   const serverButtonRef = useRef<HTMLButtonElement>(null);
   const downloadButtonRef = useRef<HTMLButtonElement>(null);
-  // Note is dismissed per page load only — reappears on refresh (no localStorage)
   const [noteDismissed, setNoteDismissed] = useState(false);
-  // Watch progress state
-  const [watchProgress, setWatchProgress] = useState<{ currentTime: number; duration: number; percentage: number } | null>(null);
 
-  // FIX: fetchDetails no longer depends on season/episode
-  // Those are only used for saveWatchHistory which runs separately
+  // ── FIX: store progress in a ref so state updates don't re-trigger effects ──
+  const [watchProgress, setWatchProgress] = useState<{ currentTime: number; duration: number; percentage: number } | null>(null);
+  const watchProgressRef = useRef<{ currentTime: number; duration: number; percentage: number } | null>(null);
+
+  // Keep ref in sync but don't use state for the message handler
+  const updateWatchProgress = useCallback((p: { currentTime: number; duration: number; percentage: number } | null) => {
+    watchProgressRef.current = p;
+    setWatchProgress(p);
+  }, []);
+
+  // ── Stable refs for message handler to avoid re-registering on every render ──
+  const movieIdRef = useRef(movieId);
+  const mediaTypeRef = useRef(mediaType);
+  const seasonRef = useRef(season);
+  const episodeRef = useRef(episode);
+  const selectedServerRef = useRef(selectedServer);
+  const userRef = useRef(user);
+
+  useEffect(() => { movieIdRef.current = movieId; }, [movieId]);
+  useEffect(() => { mediaTypeRef.current = mediaType; }, [mediaType]);
+  useEffect(() => { seasonRef.current = season; }, [season]);
+  useEffect(() => { episodeRef.current = episode; }, [episode]);
+  useEffect(() => { selectedServerRef.current = selectedServer; }, [selectedServer]);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // ── Throttle tracker — per-component, not global window property ──
+  const lastProgressSaveRef = useRef(0);
+
+  // Fetch details (no season/episode dependency)
   useEffect(() => {
     const fetchDetails = async () => {
       if (!movieId) {
@@ -126,10 +149,9 @@ const Watch = () => {
     return () => {
       setBackdropUrl(null);
     };
-  // FIX: removed season and episode from deps — only re-fetch when movie/type changes
   }, [movieId, mediaType, setBackdropUrl, user]);
 
-  // FIX: save watch history separately — use a ref for details to avoid re-triggering on object reference changes
+  // Save watch history (separate from details fetch)
   const detailsRef = useRef<MovieDetails | null>(null);
   useEffect(() => { detailsRef.current = details; }, [details]);
 
@@ -137,7 +159,7 @@ const Watch = () => {
   useEffect(() => {
     if (!detailsRef.current || !movieId) return;
     const historyKey = `${movieId}-${mediaType}-${season}-${episode}`;
-    if (savedHistoryKeyRef.current === historyKey) return; // already saved for this combo
+    if (savedHistoryKeyRef.current === historyKey) return;
     savedHistoryKeyRef.current = historyKey;
     const title = detailsRef.current.title || detailsRef.current.name || 'Unknown';
     saveWatchHistory({
@@ -150,6 +172,7 @@ const Watch = () => {
     });
   }, [movieId, mediaType, season, episode]);
 
+  // Fetch season details
   useEffect(() => {
     const fetchSeasonDetails = async () => {
       if (mediaType !== 'tv' || !movieId) return;
@@ -163,13 +186,14 @@ const Watch = () => {
     fetchSeasonDetails();
   }, [movieId, mediaType, season]);
 
-  // Load watch progress for logged-in users
+  // Load initial watch progress (only on mount / media+episode change, not on progress save)
   useEffect(() => {
     if (!user) {
-      setWatchProgress(null);
+      updateWatchProgress(null);
       return;
     }
 
+    let cancelled = false;
     const loadProgress = async () => {
       try {
         const progress = await getWatchProgress(
@@ -178,59 +202,70 @@ const Watch = () => {
           mediaType === 'tv' ? season : undefined,
           mediaType === 'tv' ? episode : undefined
         );
+        if (cancelled) return;
         if (progress && progress.progress_time > 0) {
           const percentage = getProgressPercentage(progress);
-          setWatchProgress({
+          updateWatchProgress({
             currentTime: progress.progress_time,
             duration: progress.duration || 0,
-            percentage
+            percentage,
           });
         } else {
-          setWatchProgress(null);
+          updateWatchProgress(null);
         }
       } catch (error) {
-        console.error('Failed to load watch progress:', error);
-        setWatchProgress(null);
+        if (!cancelled) {
+          console.error('Failed to load watch progress:', error);
+          updateWatchProgress(null);
+        }
       }
     };
 
     loadProgress();
-  }, [movieId, mediaType, season, episode, user]);
+    return () => { cancelled = true; };
+  }, [movieId, mediaType, season, episode, user]); // intentionally excludes updateWatchProgress
 
-  // Listen for Videasy player progress messages
+  // ── FIX: message handler uses only refs — never triggers re-renders or re-registration ──
   useEffect(() => {
     if (!user) return;
 
     const handleMessage = async (event: MessageEvent) => {
+      if (!userRef.current) return;
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        
-        // Videasy sends: { id, type, progress, timestamp, duration, season, episode }
+
         if (data && typeof data.timestamp === 'number' && typeof data.duration === 'number' && data.duration > 0) {
           const now = Date.now();
-          // Throttle saves to every 5 seconds
-          if (now - (window as any).__lastProgressSave > 5000 || data.progress >= 95) {
-            (window as any).__lastProgressSave = now;
-            await saveWatchProgress(
-              movieId,
-              mediaType,
-              data.timestamp,
-              data.duration,
-              selectedServer,
-              mediaType === 'tv' ? season : undefined,
-              mediaType === 'tv' ? episode : undefined
-            );
-          }
+          const shouldSave = (now - lastProgressSaveRef.current > 5000) || data.progress >= 95;
+          if (!shouldSave) return;
+
+          lastProgressSaveRef.current = now;
+
+          // Update display via ref — does NOT cause the effect to re-run
+          const percentage = Math.min(100, (data.timestamp / data.duration) * 100);
+          watchProgressRef.current = { currentTime: data.timestamp, duration: data.duration, percentage };
+          // Batch the visual update — React will coalesce this, won't re-trigger effects
+          setWatchProgress({ currentTime: data.timestamp, duration: data.duration, percentage });
+
+          await saveWatchProgress(
+            movieIdRef.current,
+            mediaTypeRef.current,
+            data.timestamp,
+            data.duration,
+            selectedServerRef.current,
+            mediaTypeRef.current === 'tv' ? seasonRef.current : undefined,
+            mediaTypeRef.current === 'tv' ? episodeRef.current : undefined
+          );
         }
       } catch {
         // Ignore non-JSON messages
       }
     };
 
-    (window as any).__lastProgressSave = 0;
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [movieId, mediaType, season, episode, selectedServer, user]);
+    // ── FIX: only depends on user (to register/unregister) — all other values via refs ──
+  }, [user]);
 
   const handleWatchlistToggle = async () => {
     if (!details) return;
@@ -409,7 +444,7 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Yellow click tip — dismissible, reappears on every page refresh */}
+              {/* Yellow click tip */}
               {!noteDismissed && (
                 <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
                   <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -469,7 +504,7 @@ const Watch = () => {
                   season={mediaType === 'tv' ? season : undefined}
                   episode={mediaType === 'tv' ? episode : undefined}
                   server={selectedServer}
-                  progressSeconds={watchProgress?.currentTime}
+                  progressSeconds={watchProgressRef.current?.currentTime}
                 />
               </div>
 
@@ -495,7 +530,7 @@ const Watch = () => {
                     )}
                   </Button>
 
-                  {/* Download button — smart positioned */}
+                  {/* Download button */}
                   <div className="relative inline-block">
                     <Button
                       ref={downloadButtonRef}
@@ -516,7 +551,6 @@ const Watch = () => {
                           className={cn(
                             "absolute z-50 w-72 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl",
                             "animate-in fade-in-60 zoom-in-95 duration-150",
-                            // Smart positioning — same logic as server selector
                             "right-0",
                             downloadDirection === 'up' ? "bottom-full mb-2" : "top-full mt-2"
                           )}
