@@ -66,7 +66,7 @@ const Watch = () => {
     currentTime: number; duration: number; percentage: number;
   } | null>(null);
 
-  // ── Stable refs ───────────────────────────────────────────────────────────
+  // ── All mutable state in refs so the message handler never re-registers ───
   const movieIdRef        = useRef(movieId);
   const mediaTypeRef      = useRef(mediaType);
   const seasonRef         = useRef(season);
@@ -74,6 +74,8 @@ const Watch = () => {
   const selectedServerRef = useRef(selectedServer);
   const userRef           = useRef(user);
   const detailsRef        = useRef<MovieDetails | null>(null);
+  const lastSaveRef       = useRef(0);
+  const handlerRegistered = useRef(false); // prevent double-registration
 
   useEffect(() => { movieIdRef.current        = movieId;        }, [movieId]);
   useEffect(() => { mediaTypeRef.current      = mediaType;      }, [mediaType]);
@@ -82,8 +84,6 @@ const Watch = () => {
   useEffect(() => { selectedServerRef.current = selectedServer; }, [selectedServer]);
   useEffect(() => { userRef.current           = user;           }, [user]);
   useEffect(() => { detailsRef.current        = details;        }, [details]);
-
-  const lastSaveRef = useRef(0);
 
   // ── Fetch details ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -152,25 +152,24 @@ const Watch = () => {
   }, [movieId, mediaType, season, episode, user]);
 
   // ── Videasy postMessage handler ───────────────────────────────────────────
-  // REAL Videasy message format (confirmed from console logs):
-  //   { type: "PLAYER_EVENT", data: { event: "timeupdate", currentTime: 2680, duration: 6221, ... } }
-  //
-  // The old code checked data.timestamp which doesn't exist in this format — 
-  // that's why saves never triggered. Fixed to read data.data.currentTime instead.
+  // FIX: depend on user?.id (stable string) not user (object reference).
+  // The user object is recreated on every auth state tick even when unchanged,
+  // causing useEffect to re-run → component remounts → visible page refresh.
+  // Using user?.id means we only re-register if the actual user changes.
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
-    console.log('[Watch] registering handler for user:', user.id);
+    if (!userId) return;
+    if (handlerRegistered.current) return; // already registered, don't double-up
+    handlerRegistered.current = true;
+    console.log('[Watch] registering handler for user:', userId);
 
     const handleMessage = async (event: MessageEvent) => {
       if (document.hidden) return;
       if (!userRef.current) return;
-      // Only handle messages from Videasy player
       if (event.origin !== 'https://player.videasy.net') return;
 
       try {
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-
-        // Only care about PLAYER_EVENT timeupdate messages
         if (!msg || msg.type !== 'PLAYER_EVENT') return;
         const payload = msg.data;
         if (!payload || payload.event !== 'timeupdate') return;
@@ -180,14 +179,11 @@ const Watch = () => {
         if (typeof currentTime !== 'number' || typeof duration !== 'number' || duration <= 0) return;
 
         const pct = (currentTime / duration) * 100;
-
-        // Save every 10s, or immediately at ≥90%
         const now = Date.now();
         if (pct < 90 && now - lastSaveRef.current < 10000) return;
         lastSaveRef.current = now;
 
         console.log(`[Watch] saving — ${currentTime.toFixed(0)}s / ${duration}s (${pct.toFixed(1)}%)`);
-
         setWatchProgress({ currentTime, duration, percentage: Math.min(100, pct) });
 
         const d   = detailsRef.current;
@@ -198,20 +194,15 @@ const Watch = () => {
         const srv = selectedServerRef.current;
 
         await saveWatchProgress(
-          mid, mt,
-          currentTime, duration, srv,
+          mid, mt, currentTime, duration, srv,
           mt === 'tv' ? s  : undefined,
           mt === 'tv' ? ep : undefined,
           d?.title || d?.name,
-          d?.poster_path   ?? null,
-          d?.backdrop_path ?? null,
-          d?.overview      ?? null,
-          d?.vote_average  ?? null,
+          d?.poster_path ?? null, d?.backdrop_path ?? null,
+          d?.overview ?? null, d?.vote_average ?? null,
         );
-
         console.log('[Watch] saved to DB ✓');
 
-        // Update show_status so Library page shows current episode
         if (d && userRef.current) {
           try {
             const existing = await getShowStatus(mid, mt);
@@ -227,12 +218,15 @@ const Watch = () => {
             }
           } catch { /* best effort */ }
         }
-      } catch { /* ignore non-JSON / unrelated messages */ }
+      } catch { /* ignore non-JSON */ }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [user]);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      handlerRegistered.current = false;
+    };
+  }, [userId]); // ← userId (string), not user (object) — stable, won't re-run spuriously
 
   // ── Watchlist toggle ──────────────────────────────────────────────────────
   const handleWatchlistToggle = async () => {
@@ -311,8 +305,6 @@ const Watch = () => {
 
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
-
-            {/* Left column */}
             <div className="space-y-4">
 
               {mediaType === 'tv' && seasons > 0 && (
@@ -361,26 +353,6 @@ const Watch = () => {
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                   </button>
-                </div>
-              )}
-
-              {watchProgress && watchProgress.percentage > 0 && watchProgress.percentage < 95 && (
-                <div className="w-full max-w-4xl mx-auto">
-                  <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center gap-4">
-                    <Play className="w-5 h-5 text-primary flex-shrink-0" />
-                    <div className="flex-shrink-0">
-                      <p className="text-sm font-medium">Continue watching</p>
-                      <p className="text-xs text-muted-foreground">{Math.round(watchProgress.percentage)}% complete</p>
-                    </div>
-                    <div className="flex-1">
-                      <div className="h-2 bg-primary/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${watchProgress.percentage}%` }} />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground flex-shrink-0">
-                      {watchProgress.duration > 0 ? `${Math.floor((watchProgress.duration - watchProgress.currentTime) / 60)}m left` : 'Resume'}
-                    </p>
-                  </div>
                 </div>
               )}
 
