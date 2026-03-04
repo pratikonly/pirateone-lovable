@@ -107,10 +107,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           src={playerUrl}
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
-          // KEY FIX: sandbox blocks document.domain mutation (the refresh cause)
-          // allow-same-origin keeps postMessage working for progress tracking
-          // NO allow-top-navigation = ads cannot redirect the parent page
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation allow-pointer-lock"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
