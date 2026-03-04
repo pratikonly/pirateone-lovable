@@ -84,7 +84,7 @@ const ContinueWatching = ({ progress }: ContinueWatchingProps) => {
                     <Clock className="w-3 h-3" />
                     <span>{Math.round(percentage)}%</span>
                   </div>
-                  {item.season && item.episode && (
+                  {item.season > 0 && item.episode > 0 && (
                     <span className="text-xs">
                       S{item.season} E{item.episode}
                     </span>
