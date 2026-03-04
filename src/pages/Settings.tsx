@@ -196,7 +196,7 @@ const WatchActivity = () => {
 const Settings = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { identity, regenerateIdentity } = usePirateIdentity();
+  const { identity, regenerateIdentity, refreshFromDb } = usePirateIdentity();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [autoplay, setAutoplay]                 = useState(() => { try { return localStorage.getItem('pirateone_autoplay') !== 'false'; } catch { return true; } });
@@ -225,6 +225,7 @@ const Settings = () => {
       const { data:{ publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       const { error: dbErr } = await supabase.from('profiles').update({ custom_avatar_url:publicUrl }).eq('user_id', user.id);
       if (dbErr) throw dbErr;
+      await refreshFromDb();
       toast({ title:'Avatar updated!' });
     } catch { toast({ title:'Failed to upload avatar', variant:'destructive' }); }
     finally { setAvatarUploading(false); if (fileInputRef.current) fileInputRef.current.value=''; }
@@ -236,6 +237,7 @@ const Settings = () => {
     try {
       const { error } = await supabase.from('profiles').update({ pirate_name:editName.trim() }).eq('user_id', user.id);
       if (error) throw error;
+      await refreshFromDb();
       toast({ title:'Name updated!' });
       setIsEditingName(false);
     } catch { toast({ title:'Failed to update name', variant:'destructive' }); }
