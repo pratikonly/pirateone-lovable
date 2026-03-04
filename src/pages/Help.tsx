@@ -299,17 +299,17 @@ const Help = () => {
                 </div>
                 <div>
                   <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
-                    <span style={{ fontWeight:700, fontSize:'0.95rem', color:'#fff' }}>17 Streaming Servers</span>
+                    <span style={{ fontWeight:700, fontSize:'0.95rem', color:'#fff' }}>15 Streaming Servers</span>
                     <span style={{ fontSize:'0.63rem', background:'rgba(168,85,247,0.15)', color:'var(--primary,#a855f7)', border:'1px solid rgba(168,85,247,0.25)', padding:'2px 8px', borderRadius:'99px', fontWeight:700 }}>NEW</span>
                   </div>
                   <p style={{ fontSize:'0.74rem', color:'rgba(255,255,255,0.38)', margin:0 }}>Switch instantly if one goes down</p>
                 </div>
               </div>
               <p style={{ fontSize:'0.83rem', color:'rgba(255,255,255,0.45)', lineHeight:1.55, marginBottom:'10px', paddingLeft:'50px' }}>
-                Every watch page lets you switch between 17 different servers instantly. If one is slow or broken, another always has you covered.
+                Every watch page lets you switch between 15 different servers instantly. If one is slow or broken, another always has you covered.
               </p>
               <div style={{ paddingLeft:'50px', display:'flex', flexWrap:'wrap', gap:'5px' }}>
-                {Array.from({length:17},(_,i)=>(
+                {Array.from({length:15},(_,i)=>(
                   <span key={i} style={{ fontSize:'0.66rem', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.5)', padding:'2px 8px', borderRadius:'5px', fontFamily:'monospace' }}>S{i+1}</span>
                 ))}
               </div>
