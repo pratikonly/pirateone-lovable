@@ -152,46 +152,43 @@ const Watch = () => {
   }, [movieId, mediaType, season, episode, user]);
 
   // ── Videasy postMessage handler ───────────────────────────────────────────
+  // REAL Videasy message format (confirmed from console logs):
+  //   { type: "PLAYER_EVENT", data: { event: "timeupdate", currentTime: 2680, duration: 6221, ... } }
+  //
+  // The old code checked data.timestamp which doesn't exist in this format — 
+  // that's why saves never triggered. Fixed to read data.data.currentTime instead.
   useEffect(() => {
-    // DEBUG: log every raw message to confirm player is sending events
-    const debugAll = (event: MessageEvent) => {
-      if (event.data && event.data !== '') {
-        console.log('[Watch] raw postMessage:', event.origin, event.data);
-      }
-    };
-    window.addEventListener('message', debugAll);
-    return () => window.removeEventListener('message', debugAll);
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      console.log('[Watch] no user — progress tracking disabled');
-      return;
-    }
-    console.log('[Watch] registering progress message handler for user:', user.id);
+    if (!user) return;
+    console.log('[Watch] registering handler for user:', user.id);
 
     const handleMessage = async (event: MessageEvent) => {
       if (document.hidden) return;
       if (!userRef.current) return;
+      // Only handle messages from Videasy player
+      if (event.origin !== 'https://player.videasy.net') return;
 
       try {
-        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (!data || typeof data.timestamp !== 'number' || typeof data.duration !== 'number' || data.duration <= 0) return;
+        const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-        const pct = typeof data.progress === 'number'
-          ? data.progress
-          : (data.timestamp / data.duration) * 100;
+        // Only care about PLAYER_EVENT timeupdate messages
+        if (!msg || msg.type !== 'PLAYER_EVENT') return;
+        const payload = msg.data;
+        if (!payload || payload.event !== 'timeupdate') return;
 
-        console.log('[Watch] progress event — timestamp:', data.timestamp, 'duration:', data.duration, 'pct:', pct.toFixed(1));
+        const currentTime: number = payload.currentTime;
+        const duration: number    = payload.duration;
+        if (typeof currentTime !== 'number' || typeof duration !== 'number' || duration <= 0) return;
 
+        const pct = (currentTime / duration) * 100;
+
+        // Save every 10s, or immediately at ≥90%
         const now = Date.now();
-        if (pct < 95 && now - lastSaveRef.current < 5000) {
-          console.log('[Watch] throttled — skipping save');
-          return;
-        }
+        if (pct < 90 && now - lastSaveRef.current < 10000) return;
         lastSaveRef.current = now;
 
-        setWatchProgress({ currentTime: data.timestamp, duration: data.duration, percentage: Math.min(100, pct) });
+        console.log(`[Watch] saving — ${currentTime.toFixed(0)}s / ${duration}s (${pct.toFixed(1)}%)`);
+
+        setWatchProgress({ currentTime, duration, percentage: Math.min(100, pct) });
 
         const d   = detailsRef.current;
         const mid = movieIdRef.current;
@@ -200,11 +197,9 @@ const Watch = () => {
         const ep  = episodeRef.current;
         const srv = selectedServerRef.current;
 
-        console.log('[Watch] saving progress — tmdb_id:', mid, 'media_type:', mt, 'season:', s, 'episode:', ep, 'server:', srv);
-
         await saveWatchProgress(
           mid, mt,
-          data.timestamp, data.duration, srv,
+          currentTime, duration, srv,
           mt === 'tv' ? s  : undefined,
           mt === 'tv' ? ep : undefined,
           d?.title || d?.name,
@@ -214,9 +209,9 @@ const Watch = () => {
           d?.vote_average  ?? null,
         );
 
-        console.log('[Watch] progress saved successfully');
+        console.log('[Watch] saved to DB ✓');
 
-        // Update show_status so Library reflects current episode
+        // Update show_status so Library page shows current episode
         if (d && userRef.current) {
           try {
             const existing = await getShowStatus(mid, mt);
@@ -229,11 +224,10 @@ const Watch = () => {
                 mt === 'tv' ? s  : undefined,
                 mt === 'tv' ? ep : undefined,
               );
-              console.log('[Watch] show_status updated');
             }
-          } catch (e) { console.warn('[Watch] show_status update failed (non-critical):', e); }
+          } catch { /* best effort */ }
         }
-      } catch (e) { /* non-JSON messages */ }
+      } catch { /* ignore non-JSON / unrelated messages */ }
     };
 
     window.addEventListener('message', handleMessage);
