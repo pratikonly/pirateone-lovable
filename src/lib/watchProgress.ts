@@ -10,8 +10,8 @@ export interface WatchProgressEntry {
   backdrop_path: string | null;
   overview: string | null;
   vote_average: number | null;
-  season: number | null;
-  episode: number | null;
+  season: number;
+  episode: number;
   duration: number | null;
   progress_time: number;
   completed: boolean;
@@ -42,42 +42,23 @@ export const saveWatchProgress = async (
   const userId = await getUserId();
   if (!userId) return;
 
-  const completed = duration > 0 && currentTime >= duration * 0.9;
-
-  // IMPORTANT: Pass null (not undefined) for season/episode on movies
-  // The unique index uses COALESCE(season, -1) so NULL is fine,
-  // but undefined would be omitted from the payload entirely
-  const seasonVal  = (mediaType === 'tv' && season  != null) ? season  : null;
-  const episodeVal = (mediaType === 'tv' && episode != null) ? episode : null;
+  const completed  = duration > 0 && currentTime >= duration * 0.9;
+  const seasonVal  = (mediaType === 'tv' && season  != null && season  > 0) ? season  : -1;
+  const episodeVal = (mediaType === 'tv' && episode != null && episode > 0) ? episode : -1;
 
   const { error } = await supabase.from('watch_progress').upsert(
     {
-      user_id:       userId,
-      tmdb_id:       tmdbId,
-      media_type:    mediaType,
-      season:        seasonVal,
-      episode:       episodeVal,
-      duration,
-      progress_time: currentTime,
-      completed,
-      server,
-      title:         title        ?? '',
-      poster_path:   posterPath   ?? null,
-      backdrop_path: backdropPath ?? null,
-      overview:      overview     ?? null,
-      vote_average:  voteAverage  ?? null,
+      user_id: userId, tmdb_id: tmdbId, media_type: mediaType,
+      season: seasonVal, episode: episodeVal,
+      duration, progress_time: currentTime, completed, server,
+      title: title ?? '', poster_path: posterPath ?? null,
+      backdrop_path: backdropPath ?? null, overview: overview ?? null,
+      vote_average: voteAverage ?? null,
     },
-    {
-      // Must exactly match the index columns:
-      // watch_progress_unique ON (user_id, tmdb_id, media_type, server, COALESCE(season,-1), COALESCE(episode,-1))
-      // PostgREST accepts the index name when it's a unique index (not just a constraint)
-      onConflict: 'user_id,tmdb_id,media_type,server,season,episode',
-    }
+    { onConflict: 'user_id,tmdb_id,media_type,server,season,episode' }
   );
 
-  if (error) {
-    console.error('[watchProgress] save failed:', error.message, error.details);
-  }
+  if (error) console.error('[watchProgress] save failed:', error.message, error.details);
 };
 
 export const getWatchProgress = async (
@@ -89,29 +70,15 @@ export const getWatchProgress = async (
   const userId = await getUserId();
   if (!userId) return null;
 
-  let query = supabase
-    .from('watch_progress')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('tmdb_id', tmdbId)
-    .eq('media_type', mediaType)
-    .order('updated_at', { ascending: false })
-    .limit(1);
+  const seasonVal  = (mediaType === 'tv' && season  != null) ? season  : -1;
+  const episodeVal = (mediaType === 'tv' && episode != null) ? episode : -1;
 
-  if (mediaType === 'tv' && season != null && episode != null) {
-    query = supabase
-      .from('watch_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('tmdb_id', tmdbId)
-      .eq('media_type', mediaType)
-      .eq('season', season)
-      .eq('episode', episode)
-      .order('updated_at', { ascending: false })
-      .limit(1);
-  }
+  const { data, error } = await supabase
+    .from('watch_progress').select('*')
+    .eq('user_id', userId).eq('tmdb_id', tmdbId)
+    .eq('media_type', mediaType).eq('season', seasonVal).eq('episode', episodeVal)
+    .order('updated_at', { ascending: false }).limit(1).maybeSingle();
 
-  const { data, error } = await query.maybeSingle();
   if (error) { console.error('[watchProgress] get failed:', error); return null; }
   return data as WatchProgressEntry | null;
 };
@@ -119,32 +86,19 @@ export const getWatchProgress = async (
 export const getAllWatchProgress = async (): Promise<WatchProgressEntry[]> => {
   const userId = await getUserId();
   if (!userId) return [];
-
   const { data, error } = await supabase
-    .from('watch_progress')
-    .select('*')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-
+    .from('watch_progress').select('*')
+    .eq('user_id', userId).order('updated_at', { ascending: false });
   if (error) { console.error('[watchProgress] getAll failed:', error); return []; }
   return (data || []) as WatchProgressEntry[];
 };
 
-export const deleteWatchProgress = async (
-  tmdbId: number,
-  mediaType: 'movie' | 'tv'
-): Promise<void> => {
+export const deleteWatchProgress = async (tmdbId: number, mediaType: 'movie' | 'tv'): Promise<void> => {
   const userId = await getUserId();
   if (!userId) return;
-
-  const { error } = await supabase
-    .from('watch_progress')
-    .delete()
-    .eq('user_id', userId)
-    .eq('tmdb_id', tmdbId)
-    .eq('media_type', mediaType);
-
-  if (error) { console.error('[watchProgress] delete failed:', error); }
+  const { error } = await supabase.from('watch_progress').delete()
+    .eq('user_id', userId).eq('tmdb_id', tmdbId).eq('media_type', mediaType);
+  if (error) console.error('[watchProgress] delete failed:', error);
 };
 
 export const getProgressPercentage = (progress: WatchProgressEntry): number => {
