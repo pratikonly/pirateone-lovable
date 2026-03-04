@@ -50,52 +50,70 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => window.removeEventListener('beforeunload', handle);
     }, []);
 
-    // ── 3. Blur → popup-refocus, with tab-switch guard ────────────────────────
-    // ROOT CAUSE of the "tab switch causes refresh" bug:
-    //   - When the user switches to another tab, window fires "blur".
-    //   - The old code called window.focus() after 30 ms — this yanked focus
-    //     back, which caused the React tree to re-render / route to refresh.
-    //   - Fix A: check document.hidden — if the page is hidden the user just
-    //     switched tabs; do nothing.
-    //   - Fix B: visibilitychange cancels any pending timeout immediately.
-    //   - Fix C: keep the 1200 ms recent-click guard for legitimate iframe clicks.
+    // ── 3. Popup-blocker via new-window detection ─────────────────────────────
+    // ROOT CAUSE OF TAB-SWITCH REFRESH:
+    // The previous approach called window.focus() on blur, which forcibly
+    // yanked focus back every time the user switched tabs, causing React
+    // Router to re-run navigation/render logic.
+    //
+    // New approach: we DO NOT call window.focus() at all.
+    // Instead, we detect popup attempts via two signals:
+    //   a) window.open is already killed above (returns null)
+    //   b) We watch for new top-level windows via the 'blur' event ONLY when
+    //      the page is currently visible AND the blur happens within a very
+    //      short window after an iframe interaction (not a tab switch).
+    //
+    // Tab switches are identified by document.hidden becoming true, which fires
+    // on the visibilitychange event BEFORE or simultaneously with blur.
     useEffect(() => {
-      let t: ReturnType<typeof setTimeout> | null = null;
+      let pendingPopupCheck: ReturnType<typeof setTimeout> | null = null;
+
+      const onVisibilityChange = () => {
+        // Tab is being hidden — cancel any pending check immediately
+        if (document.hidden && pendingPopupCheck) {
+          clearTimeout(pendingPopupCheck);
+          pendingPopupCheck = null;
+        }
+      };
 
       const onBlur = () => {
-        // Fix A — tab switch: page is being hidden, not a popup stealing focus
+        // If the page is hidden, this is a tab switch — ignore completely
         if (document.hidden) return;
-        // Fix C — user just clicked the player overlay; this blur is expected
-        if (Date.now() - lastClickTimeRef.current < 1200) return;
 
-        t = setTimeout(() => {
-          // Re-check: only refocus if the page is still visible (real popup)
+        // If user just clicked the overlay, the iframe is naturally receiving
+        // focus — this is expected, not a popup
+        if (Date.now() - lastClickTimeRef.current < 1500) return;
+
+        // Schedule a popup check — but only actually act if the page is STILL
+        // visible after the delay (rules out tab switches that fire blur then
+        // visibilitychange in quick succession)
+        pendingPopupCheck = setTimeout(() => {
+          pendingPopupCheck = null;
+          // Page is still visible but we lost focus → likely a popup
           if (!document.hidden) {
-            window.focus();
             reportBlock();
+            // Do NOT call window.focus() — that's what caused the refresh loop
           }
-          t = null;
-        }, 50);
+        }, 100);
       };
 
       const onFocus = () => {
-        if (t) { clearTimeout(t); t = null; }
+        // We got focus back — cancel popup check
+        if (pendingPopupCheck) {
+          clearTimeout(pendingPopupCheck);
+          pendingPopupCheck = null;
+        }
       };
 
-      // Fix B — cancel pending refocus the moment the tab hides or shows
-      const onVisibilityChange = () => {
-        if (t) { clearTimeout(t); t = null; }
-      };
-
+      document.addEventListener('visibilitychange', onVisibilityChange);
       window.addEventListener('blur', onBlur);
       window.addEventListener('focus', onFocus);
-      document.addEventListener('visibilitychange', onVisibilityChange);
 
       return () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('blur', onBlur);
         window.removeEventListener('focus', onFocus);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-        if (t) clearTimeout(t);
+        if (pendingPopupCheck) clearTimeout(pendingPopupCheck);
       };
     }, [reportBlock]);
 
