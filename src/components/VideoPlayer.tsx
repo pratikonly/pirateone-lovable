@@ -50,19 +50,51 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => window.removeEventListener('beforeunload', handle);
     }, []);
 
-    // ── 3. Blur = popup stealing focus → refocus ──────────────────────────────
+    // ── 3. Blur → popup-refocus, with tab-switch guard ────────────────────────
+    // ROOT CAUSE of the "tab switch causes refresh" bug:
+    //   - When the user switches to another tab, window fires "blur".
+    //   - The old code called window.focus() after 30 ms — this yanked focus
+    //     back, which caused the React tree to re-render / route to refresh.
+    //   - Fix A: check document.hidden — if the page is hidden the user just
+    //     switched tabs; do nothing.
+    //   - Fix B: visibilitychange cancels any pending timeout immediately.
+    //   - Fix C: keep the 1200 ms recent-click guard for legitimate iframe clicks.
     useEffect(() => {
       let t: ReturnType<typeof setTimeout> | null = null;
+
       const onBlur = () => {
+        // Fix A — tab switch: page is being hidden, not a popup stealing focus
+        if (document.hidden) return;
+        // Fix C — user just clicked the player overlay; this blur is expected
         if (Date.now() - lastClickTimeRef.current < 1200) return;
-        t = setTimeout(() => { window.focus(); reportBlock(); }, 30);
+
+        t = setTimeout(() => {
+          // Re-check: only refocus if the page is still visible (real popup)
+          if (!document.hidden) {
+            window.focus();
+            reportBlock();
+          }
+          t = null;
+        }, 50);
       };
-      const onFocus = () => { if (t) clearTimeout(t); };
+
+      const onFocus = () => {
+        if (t) { clearTimeout(t); t = null; }
+      };
+
+      // Fix B — cancel pending refocus the moment the tab hides or shows
+      const onVisibilityChange = () => {
+        if (t) { clearTimeout(t); t = null; }
+      };
+
       window.addEventListener('blur', onBlur);
       window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVisibilityChange);
+
       return () => {
         window.removeEventListener('blur', onBlur);
         window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
         if (t) clearTimeout(t);
       };
     }, [reportBlock]);
