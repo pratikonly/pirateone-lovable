@@ -16,10 +16,10 @@ interface VideoPlayerProps {
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
   ({ id, type, season, episode, isDub = false, title, server = 'videasy', progressSeconds, onAdBlocked }, ref) => {
     const playerUrl = getPlayerUrl(id, type, server, season, episode, isDub, progressSeconds);
-    const iframeRef = useRef<HTMLIFrameElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const iframeRef  = useRef<HTMLIFrameElement>(null);
     const adCountRef = useRef(0);
-    const onAdBlockedRef = useRef(onAdBlocked);
+    const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
     const [overlayVisible, setOverlayVisible] = useState(true);
 
@@ -30,7 +30,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       onAdBlockedRef.current?.(adCountRef.current);
     }, []);
 
-    // ── 1. Kill window.open popups every 50ms ────────────────────────────────
+    // Kill window.open popups
     useEffect(() => {
       const kill = () => {
         try { window.open = () => { reportBlock(); return null; }; } catch { /* cross-origin */ }
@@ -40,46 +40,35 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => clearInterval(interval);
     }, [reportBlock]);
 
-    // ── 2. Kill beforeunload hijacks ─────────────────────────────────────────
+    // Kill beforeunload hijacks
     useEffect(() => {
       const handle = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
       window.addEventListener('beforeunload', handle);
       return () => window.removeEventListener('beforeunload', handle);
     }, []);
 
-    // ── 3. Popup detection — NO window.focus() ───────────────────────────────
-    // window.focus() was causing the refresh loop on tab switch.
-    // Tab switch  → document.hidden goes true before/with blur → ignored
-    // Real popup  → document stays visible, focus lost → count only, don't refocus
+    // Popup detection without window.focus()
     useEffect(() => {
-      let pendingCheck: ReturnType<typeof setTimeout> | null = null;
-
-      const cancel = () => { if (pendingCheck) { clearTimeout(pendingCheck); pendingCheck = null; } };
-
-      const onVisibilityChange = () => { if (document.hidden) cancel(); };
-
+      let pending: ReturnType<typeof setTimeout> | null = null;
+      const cancel = () => { if (pending) { clearTimeout(pending); pending = null; } };
+      const onVis  = () => { if (document.hidden) cancel(); };
       const onBlur = () => {
         if (document.hidden) return;
         if (Date.now() - lastClickTimeRef.current < 1500) return;
-        pendingCheck = setTimeout(() => {
-          pendingCheck = null;
-          if (!document.hidden) reportBlock(); // popup — just count, no focus()
-        }, 80);
+        pending = setTimeout(() => { pending = null; if (!document.hidden) reportBlock(); }, 80);
       };
-
-      document.addEventListener('visibilitychange', onVisibilityChange);
+      document.addEventListener('visibilitychange', onVis);
       window.addEventListener('blur', onBlur);
       window.addEventListener('focus', cancel);
-
       return () => {
-        document.removeEventListener('visibilitychange', onVisibilityChange);
+        document.removeEventListener('visibilitychange', onVis);
         window.removeEventListener('blur', onBlur);
         window.removeEventListener('focus', cancel);
         cancel();
       };
     }, [reportBlock]);
 
-    // ── 4. Remove injected ad nodes ──────────────────────────────────────────
+    // Remove injected ad iframes
     useEffect(() => {
       const AD = [/doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
         /exoclick/i, /trafficjunky/i, /popads/i, /popcash/i,
@@ -118,8 +107,10 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           src={playerUrl}
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
-          // FIX: removed allowFullScreen prop — it conflicts with allow="fullscreen"
-          // and generates the console warning. allow="fullscreen" is sufficient.
+          // KEY FIX: sandbox blocks document.domain mutation (the refresh cause)
+          // allow-same-origin keeps postMessage working for progress tracking
+          // NO allow-top-navigation = ads cannot redirect the parent page
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation allow-pointer-lock"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
