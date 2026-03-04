@@ -10,10 +10,10 @@ export interface WatchProgressEntry {
   backdrop_path: string | null;
   overview: string | null;
   vote_average: number | null;
-  season?: number | null;
-  episode?: number | null;
-  duration?: number | null;
-  progress_time: number;  // DB column is progress_time (was current_time before migration)
+  season: number | null;
+  episode: number | null;
+  duration: number | null;
+  progress_time: number;
   completed: boolean;
   server: string;
   updated_at: string;
@@ -33,7 +33,6 @@ export const saveWatchProgress = async (
   server: string,
   season?: number,
   episode?: number,
-  // Metadata — required by DB schema (NOT NULL for title)
   title?: string,
   posterPath?: string | null,
   backdropPath?: string | null,
@@ -45,20 +44,21 @@ export const saveWatchProgress = async (
 
   const completed = duration > 0 && currentTime >= duration * 0.9;
 
-  // For movies: season=null, episode=null  → matches watch_progress_movie_unique index
-  // For TV:     season=N,    episode=N     → matches watch_progress_tv_unique index
-  // We pick the onConflict columns to match the correct partial index.
-  const isMovie = mediaType === 'movie' || season == null || episode == null;
+  // IMPORTANT: Pass null (not undefined) for season/episode on movies
+  // The unique index uses COALESCE(season, -1) so NULL is fine,
+  // but undefined would be omitted from the payload entirely
+  const seasonVal  = (mediaType === 'tv' && season  != null) ? season  : null;
+  const episodeVal = (mediaType === 'tv' && episode != null) ? episode : null;
 
   const { error } = await supabase.from('watch_progress').upsert(
     {
       user_id:       userId,
       tmdb_id:       tmdbId,
       media_type:    mediaType,
-      season:        isMovie ? null : season,
-      episode:       isMovie ? null : episode,
+      season:        seasonVal,
+      episode:       episodeVal,
       duration,
-      progress_time: currentTime,    // ← correct column name after migration
+      progress_time: currentTime,
       completed,
       server,
       title:         title        ?? '',
@@ -68,10 +68,10 @@ export const saveWatchProgress = async (
       vote_average:  voteAverage  ?? null,
     },
     {
-      // Must match the partial unique index columns exactly
-      onConflict: isMovie
-        ? 'user_id,tmdb_id,media_type,server'
-        : 'user_id,tmdb_id,media_type,season,episode,server',
+      // Must exactly match the index columns:
+      // watch_progress_unique ON (user_id, tmdb_id, media_type, server, COALESCE(season,-1), COALESCE(episode,-1))
+      // PostgREST accepts the index name when it's a unique index (not just a constraint)
+      onConflict: 'user_id,tmdb_id,media_type,server,season,episode',
     }
   );
 
@@ -89,7 +89,6 @@ export const getWatchProgress = async (
   const userId = await getUserId();
   if (!userId) return null;
 
-  // For TV try to load the specific episode; fall back to most-recent entry
   let query = supabase
     .from('watch_progress')
     .select('*')
