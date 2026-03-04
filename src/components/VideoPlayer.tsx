@@ -42,68 +42,51 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
 
     // ── 2. Kill beforeunload hijacks ──────────────────────────────────────────
     useEffect(() => {
-      const handle = (e: BeforeUnloadEvent) => {
-        e.preventDefault();
-        e.returnValue = '';
-      };
+      const handle = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
       window.addEventListener('beforeunload', handle);
       return () => window.removeEventListener('beforeunload', handle);
     }, []);
 
-    // ── 3. Popup-blocker via new-window detection ─────────────────────────────
-    // ROOT CAUSE OF TAB-SWITCH REFRESH:
-    // The previous approach called window.focus() on blur, which forcibly
-    // yanked focus back every time the user switched tabs, causing React
-    // Router to re-run navigation/render logic.
+    // ── 3. Detect popups WITHOUT calling window.focus() ───────────────────────
     //
-    // New approach: we DO NOT call window.focus() at all.
-    // Instead, we detect popup attempts via two signals:
-    //   a) window.open is already killed above (returns null)
-    //   b) We watch for new top-level windows via the 'blur' event ONLY when
-    //      the page is currently visible AND the blur happens within a very
-    //      short window after an iframe interaction (not a tab switch).
+    // ROOT CAUSE of tab-switch refresh:
+    //   Previous code called window.focus() on every blur event, including when
+    //   the user simply switched to another tab. This triggered React Router's
+    //   navigation listeners, causing the Watch page to re-render/refresh.
     //
-    // Tab switches are identified by document.hidden becoming true, which fires
-    // on the visibilitychange event BEFORE or simultaneously with blur.
+    // New approach:
+    //   • Tab switch  → document.hidden becomes true BEFORE or WITH blur → ignore
+    //   • Real popup  → document stays visible but focus is lost → count it
+    //   • Never call window.focus() — that's what caused the loop
     useEffect(() => {
-      let pendingPopupCheck: ReturnType<typeof setTimeout> | null = null;
+      let pendingCheck: ReturnType<typeof setTimeout> | null = null;
+
+      const cancelPending = () => {
+        if (pendingCheck) { clearTimeout(pendingCheck); pendingCheck = null; }
+      };
 
       const onVisibilityChange = () => {
-        // Tab is being hidden — cancel any pending check immediately
-        if (document.hidden && pendingPopupCheck) {
-          clearTimeout(pendingPopupCheck);
-          pendingPopupCheck = null;
-        }
+        // Tab is hiding — cancel any pending popup check immediately
+        if (document.hidden) cancelPending();
       };
 
       const onBlur = () => {
-        // If the page is hidden, this is a tab switch — ignore completely
+        // Tab switch: page is now hidden → not a popup
         if (document.hidden) return;
-
-        // If user just clicked the overlay, the iframe is naturally receiving
-        // focus — this is expected, not a popup
+        // User just clicked the player overlay → expected focus loss
         if (Date.now() - lastClickTimeRef.current < 1500) return;
 
-        // Schedule a popup check — but only actually act if the page is STILL
-        // visible after the delay (rules out tab switches that fire blur then
-        // visibilitychange in quick succession)
-        pendingPopupCheck = setTimeout(() => {
-          pendingPopupCheck = null;
-          // Page is still visible but we lost focus → likely a popup
+        pendingCheck = setTimeout(() => {
+          pendingCheck = null;
+          // Still visible after delay → a real popup stole focus
           if (!document.hidden) {
             reportBlock();
-            // Do NOT call window.focus() — that's what caused the refresh loop
+            // ← NO window.focus() here — that was the refresh bug
           }
-        }, 100);
+        }, 80);
       };
 
-      const onFocus = () => {
-        // We got focus back — cancel popup check
-        if (pendingPopupCheck) {
-          clearTimeout(pendingPopupCheck);
-          pendingPopupCheck = null;
-        }
-      };
+      const onFocus = () => cancelPending();
 
       document.addEventListener('visibilitychange', onVisibilityChange);
       window.addEventListener('blur', onBlur);
@@ -113,18 +96,18 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
         document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('blur', onBlur);
         window.removeEventListener('focus', onFocus);
-        if (pendingPopupCheck) clearTimeout(pendingPopupCheck);
+        cancelPending();
       };
     }, [reportBlock]);
 
-    // ── 4. Remove injected ad nodes ───────────────────────────────────────────
+    // ── 4. Remove injected ad iframes ─────────────────────────────────────────
     useEffect(() => {
-      const AD = [
+      const AD_PATTERNS = [
         /doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
         /exoclick/i, /trafficjunky/i, /popads/i, /popcash/i,
         /propellerads/i, /adsterra/i, /juicyads/i, /adsystem/i,
       ];
-      const isAd = (src: string) => AD.some(p => p.test(src));
+      const isAd = (src: string) => AD_PATTERNS.some(p => p.test(src));
       const observer = new MutationObserver(mutations => {
         for (const m of mutations)
           for (const node of m.addedNodes)
@@ -137,14 +120,14 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => observer.disconnect();
     }, [reportBlock]);
 
-    // ── Overlay click: hide 800ms so click reaches player, then restore ───────
+    // ── Overlay click: pass click to player, then restore overlay ────────────
     const handleOverlayClick = useCallback(() => {
       lastClickTimeRef.current = Date.now();
       setOverlayVisible(false);
       setTimeout(() => setOverlayVisible(true), 800);
     }, []);
 
-    // Merge refs
+    // Merge forwarded ref with local ref
     const setIframeRef = (el: HTMLIFrameElement | null) => {
       (iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el;
       if (typeof ref === 'function') ref(el);
@@ -167,7 +150,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
         />
-
         {overlayVisible && (
           <div
             className="absolute inset-0 z-10"
