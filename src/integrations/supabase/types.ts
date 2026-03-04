@@ -137,6 +137,66 @@ export type Database = {
         }
         Relationships: []
       }
+      watch_progress: {
+        Row: {
+          backdrop_path: string | null
+          completed: boolean | null
+          created_at: string
+          duration: number | null
+          episode: number | null
+          id: string
+          media_type: string
+          overview: string | null
+          poster_path: string | null
+          progress_time: number | null
+          season: number | null
+          server: string
+          title: string | null
+          tmdb_id: number
+          updated_at: string
+          user_id: string
+          vote_average: number | null
+        }
+        Insert: {
+          backdrop_path?: string | null
+          completed?: boolean | null
+          created_at?: string
+          duration?: number | null
+          episode?: number | null
+          id?: string
+          media_type: string
+          overview?: string | null
+          poster_path?: string | null
+          progress_time?: number | null
+          season?: number | null
+          server?: string
+          title?: string | null
+          tmdb_id: number
+          updated_at?: string
+          user_id: string
+          vote_average?: number | null
+        }
+        Update: {
+          backdrop_path?: string | null
+          completed?: boolean | null
+          created_at?: string
+          duration?: number | null
+          episode?: number | null
+          id?: string
+          media_type?: string
+          overview?: string | null
+          poster_path?: string | null
+          progress_time?: number | null
+          season?: number | null
+          server?: string
+          title?: string | null
+          tmdb_id?: number
+          updated_at?: string
+          user_id?: string
+          vote_average?: number | null
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           added_at: string

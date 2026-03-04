@@ -18,8 +18,9 @@ import {
   MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
+import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
-import { getWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
+import { getWatchProgress, saveWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
@@ -107,7 +108,12 @@ const Watch = () => {
           console.error('Failed to fetch logo:', e);
         }
 
-        setInWatchlist(isInWatchlist(movieId, mediaType));
+        if (user) {
+          const inList = await isInWatchlistDb(movieId, mediaType);
+          setInWatchlist(inList);
+        } else {
+          setInWatchlist(isInWatchlist(movieId, mediaType));
+        }
       } catch (error) {
         console.error('Failed to fetch details:', error);
       } finally {
@@ -121,7 +127,7 @@ const Watch = () => {
       setBackdropUrl(null);
     };
   // FIX: removed season and episode from deps — only re-fetch when movie/type changes
-  }, [movieId, mediaType, setBackdropUrl]);
+  }, [movieId, mediaType, setBackdropUrl, user]);
 
   // FIX: save watch history separately when season/episode changes, without re-fetching details
   useEffect(() => {
@@ -150,9 +156,9 @@ const Watch = () => {
     fetchSeasonDetails();
   }, [movieId, mediaType, season]);
 
-  // Load watch progress for autoembed server
+  // Load watch progress for logged-in users
   useEffect(() => {
-    if (!user || selectedServer !== 'autoembed') {
+    if (!user) {
       setWatchProgress(null);
       return;
     }
@@ -165,10 +171,10 @@ const Watch = () => {
           mediaType === 'tv' ? season : undefined,
           mediaType === 'tv' ? episode : undefined
         );
-        if (progress && progress.current_time > 0) {
+        if (progress && progress.progress_time > 0) {
           const percentage = getProgressPercentage(progress);
           setWatchProgress({
-            currentTime: progress.current_time,
+            currentTime: progress.progress_time,
             duration: progress.duration || 0,
             percentage
           });
@@ -182,27 +188,69 @@ const Watch = () => {
     };
 
     loadProgress();
+  }, [movieId, mediaType, season, episode, user]);
+
+  // Listen for Videasy player progress messages
+  useEffect(() => {
+    if (!user) return;
+
+    const handleMessage = async (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        
+        // Videasy sends: { id, type, progress, timestamp, duration, season, episode }
+        if (data && typeof data.timestamp === 'number' && typeof data.duration === 'number' && data.duration > 0) {
+          const now = Date.now();
+          // Throttle saves to every 5 seconds
+          if (now - (window as any).__lastProgressSave > 5000 || data.progress >= 95) {
+            (window as any).__lastProgressSave = now;
+            await saveWatchProgress(
+              movieId,
+              mediaType,
+              data.timestamp,
+              data.duration,
+              selectedServer,
+              mediaType === 'tv' ? season : undefined,
+              mediaType === 'tv' ? episode : undefined
+            );
+          }
+        }
+      } catch {
+        // Ignore non-JSON messages
+      }
+    };
+
+    (window as any).__lastProgressSave = 0;
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, [movieId, mediaType, season, episode, selectedServer, user]);
 
-  const handleWatchlistToggle = () => {
+  const handleWatchlistToggle = async () => {
     if (!details) return;
-    if (inWatchlist) {
-      removeFromWatchlist(movieId, mediaType);
-      setInWatchlist(false);
-    } else {
-      addToWatchlist({
-        id: movieId,
-        title: details.title,
-        name: details.name,
-        poster_path: details.poster_path,
-        backdrop_path: details.backdrop_path,
-        overview: details.overview,
-        vote_average: details.vote_average,
-        release_date: details.release_date,
-        first_air_date: details.first_air_date,
-        media_type: mediaType,
-      });
-      setInWatchlist(true);
+    const movie = {
+      id: movieId,
+      title: details.title,
+      name: details.name,
+      poster_path: details.poster_path,
+      backdrop_path: details.backdrop_path,
+      overview: details.overview,
+      vote_average: details.vote_average,
+      release_date: details.release_date,
+      first_air_date: details.first_air_date,
+      media_type: mediaType,
+    };
+    try {
+      if (inWatchlist) {
+        if (user) await removeFromWatchlistDb(movieId, mediaType);
+        else removeFromWatchlist(movieId, mediaType);
+        setInWatchlist(false);
+      } else {
+        if (user) await addToWatchlistDb(movie);
+        else addToWatchlist(movie);
+        setInWatchlist(true);
+      }
+    } catch (err) {
+      console.error('Watchlist toggle failed:', err);
     }
   };
 
@@ -375,7 +423,7 @@ const Watch = () => {
                 </div>
               )}
 
-              {/* Watch progress indicator for autoembed */}
+              {/* Watch progress indicator */}
               {watchProgress && watchProgress.percentage > 0 && watchProgress.percentage < 95 && (
                 <div className="w-full max-w-4xl mx-auto mb-4">
                   <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center justify-between">
@@ -414,6 +462,7 @@ const Watch = () => {
                   season={mediaType === 'tv' ? season : undefined}
                   episode={mediaType === 'tv' ? episode : undefined}
                   server={selectedServer}
+                  progressSeconds={watchProgress?.currentTime}
                 />
               </div>
 
@@ -545,14 +594,7 @@ const Watch = () => {
                                       : "bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95"
                                   )}
                                 >
-                                  {server.id === 'autoembed' ? (
-                                    <span className="flex items-center gap-1 justify-center">
-                                      Server 1
-                                      <span className="text-[9px] bg-primary/30 px-1 rounded text-primary-foreground">Progress</span>
-                                    </span>
-                                  ) : (
-                                    `Server ${index + 1}`
-                                  )}
+                                  Server {index + 1}
                                 </button>
                               ))}
                             </div>

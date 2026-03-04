@@ -14,7 +14,7 @@ export interface WatchProgressEntry {
   season?: number;
   episode?: number;
   duration?: number;
-  current_time: number;
+  progress_time: number;
   completed: boolean;
   server: string;
   updated_at: string;
@@ -42,7 +42,7 @@ export const saveWatchProgress = async (
     season: season || null,
     episode: episode || null,
     duration,
-    current_time: currentTime,
+    progress_time: currentTime,
     completed,
     server,
   }, {
@@ -107,5 +107,5 @@ export const deleteWatchProgress = async (
 
 export const getProgressPercentage = (progress: WatchProgressEntry): number => {
   if (!progress.duration || progress.duration <= 0) return 0;
-  return Math.min(100, (progress.current_time / progress.duration) * 100);
+  return Math.min(100, (progress.progress_time / progress.duration) * 100);
 };

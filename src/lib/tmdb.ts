@@ -304,7 +304,6 @@ export const MOVIE_TV_SERVERS: ServerInfo[] = [
 
 // Anime servers (also support movies & TV)
 export const ANIME_SERVERS: ServerInfo[] = [
-  { id: 'autoembed', name: 'AutoEmbed', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidnest', name: 'VidNest', supportsMovies: true, supportsTV: true, supportsAnime: true },
@@ -321,7 +320,8 @@ export const getPlayerUrl = (
   server: ServerType = 'vidnest',
   season?: number,
   episode?: number,
-  isDub: boolean = false
+  isDub: boolean = false,
+  progressSeconds?: number
 ) => {
   const accent = 'FD105E';
 
@@ -436,12 +436,14 @@ export const getPlayerUrl = (
   // Primary: Videasy
   if (type === 'movie') {
     const qs = new URLSearchParams({ overlay: 'true', color: accent });
+    if (progressSeconds && progressSeconds > 0) qs.set('progress', String(Math.floor(progressSeconds)));
     return `https://player.videasy.net/movie/${id}?${qs.toString()}`;
   }
 
   if (type === 'anime') {
     const qs = new URLSearchParams({ color: accent });
     if (isDub) qs.set('dub', 'true');
+    if (progressSeconds && progressSeconds > 0) qs.set('progress', String(Math.floor(progressSeconds)));
     const ep = episode ? `/${episode}` : '';
     const url = `https://player.videasy.net/anime/${id}${ep}`;
     const q = qs.toString();
@@ -456,6 +458,7 @@ export const getPlayerUrl = (
     episodeSelector: 'true',
     color: accent,
   });
+  if (progressSeconds && progressSeconds > 0) qs.set('progress', String(Math.floor(progressSeconds)));
   return `https://player.videasy.net/tv/${id}/${season || 1}/${episode || 1}?${qs.toString()}`;
 };
 
