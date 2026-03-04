@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,20 +15,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser]       = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Track last-seen IDs so we only setState when something actually changes.
+  // This prevents the User object reference from changing on every auth tick,
+  // which was causing Watch.tsx to remount the message handler repeatedly.
+  const lastSessionId = useRef<string | null>(null);
+  const lastUserId    = useRef<string | null>(null);
+
+  const applySession = (s: Session | null) => {
+    const newSessionId = s?.access_token ?? null;
+    const newUserId    = s?.user?.id     ?? null;
+
+    // Only update if something genuinely changed
+    if (newSessionId !== lastSessionId.current) {
+      lastSessionId.current = newSessionId;
+      setSession(s);
+    }
+    if (newUserId !== lastUserId.current) {
+      lastUserId.current = newUserId;
+      setUser(s?.user ?? null);
+    }
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+    // Get current session once on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      applySession(session);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
+    // Listen for auth changes — fires on INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
+    // Without deduplication this fires 2-3 times on load with new object references each time
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
     });
 
     return () => subscription.unsubscribe();
