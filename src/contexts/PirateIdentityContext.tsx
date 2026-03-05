@@ -87,15 +87,32 @@ export function PirateIdentityProvider({ children }: { children: ReactNode }) {
     setIsRegenerating(true);
     try {
       const newIdentity = await regenerateFromAPI();
-      setIdentity(newIdentity);
-      // If authenticated, also save to DB
+      
       if (user) {
+        // Check if user has a custom avatar or custom name — preserve them
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('custom_avatar_url, pirate_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // Only update pirate_role, pirate_bounty, and pirate_image_path
+        // Keep custom_avatar_url and pirate_name untouched if user set them
         await supabase.from('profiles').update({
-          pirate_name: newIdentity.name,
           pirate_role: newIdentity.role,
           pirate_bounty: newIdentity.bounty,
           pirate_image_path: newIdentity.imagePath,
         }).eq('user_id', user.id);
+
+        // Update local state preserving user's custom name/avatar
+        setIdentity({
+          ...newIdentity,
+          name: profile?.pirate_name && profile.pirate_name !== 'Guest Pirate' ? profile.pirate_name : newIdentity.name,
+          imagePath: profile?.custom_avatar_url || newIdentity.imagePath,
+        });
+        await refreshFromDb();
+      } else {
+        setIdentity(newIdentity);
       }
     } catch (error) {
       console.error('Failed to regenerate identity:', error);
@@ -103,7 +120,7 @@ export function PirateIdentityProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsRegenerating(false);
     }
-  }, [user]);
+  }, [user, refreshFromDb]);
 
   return (
     <PirateIdentityContext.Provider value={{ identity, isLoading, isRegenerating, regenerateIdentity, refreshFromDb }}>

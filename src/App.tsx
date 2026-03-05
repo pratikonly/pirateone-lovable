@@ -21,6 +21,7 @@ const Help = lazy(() => import("./pages/Help"));
 const Watch = lazy(() => import("./pages/Watch"));
 const Sports = lazy(() => import("./pages/Sports"));
 const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route element={<Layout />}>
                     <Route path="/" element={<Index />} />
                     <Route path="/movies" element={<Movies />} />
