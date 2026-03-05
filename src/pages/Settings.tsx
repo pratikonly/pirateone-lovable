@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Bell, Trash2, User, RefreshCw, Upload,
-  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film
+  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film, TrendingUp
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -14,23 +14,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllWatchProgress } from '@/lib/watchProgress';
 
-const ConfirmDialog = ({ open, title, description, onConfirm, onCancel }: {
-  open: boolean; title: string; description: string; onConfirm: () => void; onCancel: () => void;
+const ConfirmDialog = ({ open, title, description, onConfirm, onCancel, confirmLabel = 'Confirm' }: {
+  open: boolean; title: string; description: string; onConfirm: () => void; onCancel: () => void; confirmLabel?: string;
 }) => {
   if (!open) return null;
   return (
     <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px' }}>
-      <div style={{ background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'16px', padding:'28px 24px', maxWidth:'380px', width:'100%', boxShadow:'0 32px 80px rgba(0,0,0,0.8)' }}>
+      <div style={{ background:'#111', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'16px', padding:'28px 24px', maxWidth:'420px', width:'100%', boxShadow:'0 32px 80px rgba(0,0,0,0.8)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px' }}>
           <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(239,68,68,0.15)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <AlertTriangle size={18} style={{ color:'#ef4444' }} />
           </div>
           <h3 style={{ color:'#fff', fontWeight:700, fontSize:'1rem', margin:0 }}>{title}</h3>
         </div>
-        <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.875rem', marginBottom:'24px', lineHeight:1.55 }}>{description}</p>
+        <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'0.875rem', marginBottom:'24px', lineHeight:1.55, whiteSpace:'pre-line' }}>{description}</p>
         <div style={{ display:'flex', gap:'8px' }}>
           <button onClick={onCancel} style={{ flex:1, height:40, borderRadius:'8px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.7)', fontSize:'0.875rem', fontWeight:600, cursor:'pointer' }}>Cancel</button>
-          <button onClick={onConfirm} style={{ flex:1, height:40, borderRadius:'8px', background:'#ef4444', border:'none', color:'#fff', fontSize:'0.875rem', fontWeight:700, cursor:'pointer' }}>Clear All</button>
+          <button onClick={onConfirm} style={{ flex:1, height:40, borderRadius:'8px', background:'#ef4444', border:'none', color:'#fff', fontSize:'0.875rem', fontWeight:700, cursor:'pointer' }}>{confirmLabel}</button>
         </div>
       </div>
     </div>
@@ -61,186 +61,67 @@ const SettingRow = ({ label, description, right, danger = false }: {
   </div>
 );
 
-/* ── Watch Activity: self-sizing, never overflows ── */
-const WatchActivity = () => {
+/* ── Watch Stats: simple summary cards ── */
+const WatchStats = () => {
   const { user } = useAuth();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [watchData, setWatchData] = useState<Map<string, { movies: number; episodes: number }>>(new Map());
+  const [stats, setStats] = useState({ totalMovies: 0, totalEpisodes: 0, totalTime: 0, recentCount: 0 });
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    setContainerWidth(el.getBoundingClientRect().width);
-    const ro = new ResizeObserver(e => setContainerWidth(e[0].contentRect.width));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Fetch real watch data from database
-  useEffect(() => {
-    const loadWatchData = async () => {
-      if (!user) {
-        setWatchData(new Map());
-        return;
-      }
+    const load = async () => {
+      if (!user) return;
       try {
         const progress = await getAllWatchProgress();
-        const dataMap = new Map<string, { movies: number; episodes: number }>();
+        let totalMovies = 0, totalEpisodes = 0, totalTime = 0, recentCount = 0;
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
         progress.forEach(entry => {
-          const date = new Date(entry.updated_at).toDateString();
-          const existing = dataMap.get(date) || { movies: 0, episodes: 0 };
-
-          if (entry.media_type === 'movie') {
-            existing.movies += 1;
-          } else {
-            existing.episodes += 1;
-          }
-
-          dataMap.set(date, existing);
+          if (entry.media_type === 'movie') totalMovies++;
+          else totalEpisodes++;
+          totalTime += Number(entry.duration || 0);
+          if (new Date(entry.updated_at).getTime() > weekAgo) recentCount++;
         });
 
-        setWatchData(dataMap);
+        setStats({ totalMovies, totalEpisodes, totalTime, recentCount });
       } catch (err) {
-        console.error('Failed to load watch activity:', err);
+        console.error('Failed to load stats:', err);
       }
     };
-
-    loadWatchData();
+    load();
   }, [user]);
 
-  const CELL = 11, GAP = 3, CELL_STEP = 14, DAY_LABEL_W = 26;
-  const WEEKS = containerWidth > 0 ? Math.max(8, Math.min(26, Math.floor((containerWidth - DAY_LABEL_W - 4) / CELL_STEP))) : 26;
-  const DAYS = 7;
-  const today = new Date();
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - (WEEKS * DAYS - 1));
-
-  const weeks = Array.from({ length: WEEKS }, (_, w) =>
-    Array.from({ length: DAYS }, (_, d) => {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + w * DAYS + d);
-
-      // Get real data for this date
-      const dateKey = date.toDateString();
-      const dayData = watchData.get(dateKey) || { movies: 0, episodes: 0 };
-
-      // Determine level based on activity
-      const total = dayData.movies + dayData.episodes;
-      let level = 0;
-      if (total > 0) {
-        if (total >= 4) level = 4;
-        else if (total >= 3) level = 3;
-        else if (total >= 2) level = 2;
-        else level = 1;
-      }
-
-      // Type: 1 = movie, 2 = episode, 0 = no activity
-      let type = 0;
-      if (level > 0) {
-        type = dayData.movies > 0 ? 1 : 2;
-      }
-
-      return { date, level, type, movies: dayData.movies, episodes: dayData.episodes };
-    })
-  );
-
-  const monthLabels: { weekIdx: number; label: string }[] = [];
-  let lastMonth = -1;
-  weeks.forEach((week, w) => {
-    const month = week[0].date.getMonth();
-    if (month !== lastMonth && w < WEEKS - 2) {
-      monthLabels.push({ weekIdx: w, label: week[0].date.toLocaleString('default', { month: 'short' }) });
-      lastMonth = month;
-    }
-  });
-
-  // Calculate totals from real data
-  const allCells = weeks.flat();
-  const totalMovies = Array.from(watchData.values()).reduce((sum, d) => sum + d.movies, 0);
-  const totalEpisodes = Array.from(watchData.values()).reduce((sum, d) => sum + d.episodes, 0);
-
-  const movieColor   = (l: number) => `rgba(168,85,247,${[0,0.22,0.45,0.68,1][l]})`;
-  const episodeColor = (l: number) => `rgba(20,184,166,${[0,0.22,0.45,0.68,1][l]})`;
-  const cellBg = (l: number, t: number) => l === 0 ? 'rgba(255,255,255,0.05)' : t === 1 ? movieColor(l) : episodeColor(l);
-  const cellBorder = (l: number, t: number) => {
-    if (l === 0) return '1px solid rgba(255,255,255,0.08)';
-    return `1px solid rgba(${t===1?'168,85,247':'20,184,166'},${0.2+l*0.12})`;
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    if (hours > 0) return `${hours}h`;
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m`;
   };
 
-  return (
-    <div ref={containerRef} style={{ marginTop:'22px', paddingTop:'22px', borderTop:'1px solid rgba(255,255,255,0.06)', width:'100%', boxSizing:'border-box' }}>
-      {/* Header */}
-      <div style={{ marginBottom:'14px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:'7px', marginBottom:'8px', flexWrap:'wrap' }}>
-          <span style={{ color:'rgba(255,255,255,0.28)', display:'flex', flexShrink:0 }}><Film size={13}/></span>
-          <span style={{ fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', whiteSpace:'nowrap' }}>Watch Activity</span>
-          <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.18)', whiteSpace:'nowrap' }}>· last {WEEKS >= 24 ? '6 months' : `${WEEKS}w`}</span>
-        </div>
-        {/* Legend always on its own row — never clips */}
-        <div style={{ display:'flex', gap:'12px', flexWrap:'wrap' }}>
-          <span style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'0.67rem', color:'rgba(255,255,255,0.4)', fontWeight:500, whiteSpace:'nowrap' }}>
-            <span style={{ width:9, height:9, borderRadius:'2px', background:'rgba(168,85,247,0.85)', display:'inline-block', flexShrink:0 }}/>{totalMovies} movies
-          </span>
-          <span style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'0.67rem', color:'rgba(255,255,255,0.4)', fontWeight:500, whiteSpace:'nowrap' }}>
-            <span style={{ width:9, height:9, borderRadius:'2px', background:'rgba(20,184,166,0.85)', display:'inline-block', flexShrink:0 }}/>{totalEpisodes} episodes
-          </span>
-        </div>
-      </div>
+  const statCards = [
+    { label: 'Movies', value: stats.totalMovies, color: 'rgba(168,85,247,0.85)', icon: '🎬' },
+    { label: 'Episodes', value: stats.totalEpisodes, color: 'rgba(20,184,166,0.85)', icon: '📺' },
+    { label: 'This Week', value: stats.recentCount, color: 'rgba(251,191,36,0.85)', icon: '🔥' },
+    { label: 'Watch Time', value: stats.totalTime > 0 ? formatTime(stats.totalTime) : '0m', color: 'rgba(96,165,250,0.85)', icon: '⏱' },
+  ];
 
-      {/* Grid — computed width, no horizontal scroll */}
-      <div style={{ width:'100%', overflow:'hidden' }}>
-        {containerWidth > 0 && (
-          <div style={{ width:`${DAY_LABEL_W + WEEKS * CELL_STEP}px`, position:'relative' }}>
-            <div style={{ position:'relative', height:'16px', marginLeft:`${DAY_LABEL_W}px`, marginBottom:'4px' }}>
-              {monthLabels.map(({ weekIdx, label }) => (
-                <span key={label+weekIdx} style={{ position:'absolute', left:`${weekIdx*CELL_STEP}px`, fontSize:'0.6rem', fontWeight:600, color:'rgba(255,255,255,0.35)', lineHeight:'16px', whiteSpace:'nowrap' }}>{label}</span>
-              ))}
-            </div>
-            <div style={{ position:'relative', marginLeft:`${DAY_LABEL_W}px`, height:`${DAYS*CELL_STEP-GAP}px` }}>
-              {monthLabels.slice(1).map(({ weekIdx, label }) => (
-                <div key={'sep'+label+weekIdx} style={{ position:'absolute', left:`${weekIdx*CELL_STEP-GAP}px`, top:0, width:'1px', height:'100%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }} />
-              ))}
-            </div>
-            <div style={{ display:'flex', gap:`${GAP}px`, marginTop:`-${DAYS*CELL_STEP-GAP}px` }}>
-              <div style={{ display:'flex', flexDirection:'column', gap:`${GAP}px`, width:`${DAY_LABEL_W}px`, flexShrink:0, paddingTop:'1px' }}>
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
-                  <div key={day} style={{ height:`${CELL}px`, lineHeight:`${CELL}px`, fontSize:'0.55rem', fontWeight:600, color:i===0||i===6?'rgba(255,255,255,0.14)':'rgba(255,255,255,0.28)', textAlign:'right', paddingRight:'5px', whiteSpace:'nowrap' }}>{day}</div>
-                ))}
-              </div>
-              {weeks.map((week, w) => (
-                <div key={w} style={{ display:'flex', flexDirection:'column', gap:`${GAP}px`, width:`${CELL}px`, flexShrink:0 }}>
-                  {week.map((cell, d) => {
-                    const isToday = cell.date.toDateString() === today.toDateString();
-                    return (
-                      <div key={d}
-                        title={`${cell.date.toLocaleDateString('default',{weekday:'short',month:'short',day:'numeric'})} · ${cell.level===0?'No activity':cell.movies>0&&cell.episodes>0?`${cell.movies} movie${cell.movies>1?'s':''}, ${cell.episodes} episode${cell.episodes>1?'s':''}`:cell.movies>0?`${cell.movies} movie${cell.movies>1?'s':''} watched`:`${cell.episodes} episode${cell.episodes>1?'s':''} watched`}`}
-                        style={{ width:`${CELL}px`, height:`${CELL}px`, borderRadius:'2.5px', background:cellBg(cell.level,cell.type), border:isToday?'1.5px solid rgba(255,255,255,0.55)':cellBorder(cell.level,cell.type), boxShadow:cell.level>=3?(cell.type===1?'0 0 5px rgba(168,85,247,0.35)':'0 0 5px rgba(20,184,166,0.35)'):'none', transition:'transform 0.12s,box-shadow 0.12s', cursor:cell.level>0?'pointer':'default', flexShrink:0 }}
-                        onMouseEnter={e => { const el=e.currentTarget as HTMLElement; el.style.transform='scale(1.35)'; if(cell.level>0) el.style.boxShadow=cell.type===1?'0 0 8px rgba(168,85,247,0.6)':'0 0 8px rgba(20,184,166,0.6)'; }}
-                        onMouseLeave={e => { const el=e.currentTarget as HTMLElement; el.style.transform='scale(1)'; el.style.boxShadow=cell.level>=3?(cell.type===1?'0 0 5px rgba(168,85,247,0.35)':'0 0 5px rgba(20,184,166,0.35)'):'none'; }}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
+  return (
+    <div style={{ marginTop: '22px', paddingTop: '22px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '14px' }}>
+        <span style={{ color: 'rgba(255,255,255,0.28)', display: 'flex' }}><TrendingUp size={13} /></span>
+        <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Watch Stats</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        {statCards.map(card => (
+          <div key={card.label} style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: '10px', padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '10px',
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>{card.icon}</span>
+            <div>
+              <p style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', margin: 0 }}>{card.value}</p>
+              <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', margin: '1px 0 0' }}>{card.label}</p>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Footer — stacked column so legend never clips */}
-      <div style={{ marginTop:'12px', display:'flex', flexDirection:'column', gap:'7px' }}>
-        <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.2)' }}>
-          {totalMovies+totalEpisodes} total watches · last {WEEKS>=24?'6 months':`${WEEKS} weeks`}
-        </span>
-        <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
-          <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', whiteSpace:'nowrap' }}>Less</span>
-          {[0,1,2,3,4].map(l => (
-            <div key={l} style={{ width:10, height:10, borderRadius:'2px', flexShrink:0, background:l===0?'rgba(255,255,255,0.05)':movieColor(l), border:l===0?'1px solid rgba(255,255,255,0.08)':`1px solid rgba(168,85,247,${0.2+l*0.12})` }}/>
-          ))}
-          <span style={{ fontSize:'0.6rem', color:'rgba(255,255,255,0.2)', whiteSpace:'nowrap' }}>More</span>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -257,11 +138,13 @@ const Settings = () => {
   const [saveWatchHistory, setSaveWatchHistory] = useState(() => { try { return localStorage.getItem('pirateone_save_history') !== 'false'; } catch { return true; } });
   const [showWelcomeNotification, setShowWelcomeNotification] = useState(() => { try { return !localStorage.getItem('pirateone_welcome_shown'); } catch { return true; } });
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [confirmClearWatchlist, setConfirmClearWatchlist] = useState(false);
   const [isRegenerating, setIsRegenerating]   = useState(false);
   const [isEditingName, setIsEditingName]     = useState(false);
   const [editName, setEditName]               = useState('');
   const [savingName, setSavingName]           = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => { if (identity?.name) setEditName(identity.name); }, [identity?.name]);
 
@@ -299,9 +182,46 @@ const Settings = () => {
 
   const handleRegenerateIdentity = async () => {
     setIsRegenerating(true);
-    try { await regenerateIdentity(); toast({ title:'New pirate identity assigned!' }); }
+    try { await regenerateIdentity(); toast({ title:'New pirate identity assigned! Your name & avatar are preserved.' }); }
     catch { toast({ title:'Failed to get new identity', variant:'destructive' }); }
     finally { setIsRegenerating(false); }
+  };
+
+  const handleClearWatchlist = async () => {
+    setClearing(true);
+    try {
+      // Clear local
+      try { localStorage.removeItem('pirateone_watchlist'); } catch {}
+      // Clear DB if authenticated
+      if (user) {
+        await supabase.from('watchlist').delete().eq('user_id', user.id);
+      }
+      toast({ title: 'Watchlist cleared!' });
+    } catch { toast({ title: 'Failed to clear watchlist', variant: 'destructive' }); }
+    finally { setClearing(false); setConfirmClearWatchlist(false); }
+  };
+
+  const handleClearAllData = async () => {
+    setClearing(true);
+    try {
+      // Clear all localStorage (except auth token)
+      try {
+        Object.keys(localStorage).forEach(k => {
+          if (!k.includes('supabase.auth.token') && !k.includes('sb-')) localStorage.removeItem(k);
+        });
+      } catch {}
+      // Clear all DB data if authenticated
+      if (user) {
+        await Promise.all([
+          supabase.from('watchlist').delete().eq('user_id', user.id),
+          supabase.from('watch_history').delete().eq('user_id', user.id),
+          supabase.from('watch_progress').delete().eq('user_id', user.id),
+          supabase.from('show_status').delete().eq('user_id', user.id),
+        ]);
+      }
+      toast({ title: 'All data cleared!' });
+    } catch { toast({ title: 'Failed to clear data', variant: 'destructive' }); }
+    finally { setClearing(false); setConfirmClearAll(false); }
   };
 
   const ls = (key: string, val: string) => { try { localStorage.setItem(key, val); } catch {} };
@@ -375,9 +295,13 @@ const Settings = () => {
         @media (max-width:640px) { .settings-footer { margin-top:36px; } }
       `}</style>
 
-      <ConfirmDialog open={confirmClearAll} title="Clear All Data?" description="This will remove your watchlist, history, preferences, and all other local data. Your account and cloud data remain safe."
-        onConfirm={() => { try { Object.keys(localStorage).forEach(k => { if (!k.includes('supabase.auth.token')) localStorage.removeItem(k); }); } catch {} setConfirmClearAll(false); toast({ title:'All data cleared' }); }}
-        onCancel={() => setConfirmClearAll(false)} />
+      <ConfirmDialog open={confirmClearWatchlist} title="Clear Watchlist?" description="This will remove all items from your watchlist (both local and cloud). This cannot be undone."
+        onConfirm={handleClearWatchlist} onCancel={() => setConfirmClearWatchlist(false)} confirmLabel="Clear Watchlist" />
+
+      <ConfirmDialog open={confirmClearAll} title="Clear All Data?"
+        description={"This will permanently delete:\n\n• Your entire watchlist\n• All watch history\n• All watch progress / resume points\n• Show statuses (watching, completed, dropped)\n• Local preferences (autoplay, quality, etc.)\n\nYour account, profile name, and avatar will NOT be affected."}
+        onConfirm={handleClearAllData} onCancel={() => setConfirmClearAll(false)} confirmLabel="Clear Everything" />
+
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={handleAvatarChange} />
 
       <div className="settings-bg" aria-hidden="true"/>
@@ -449,7 +373,10 @@ const Settings = () => {
                   <RefreshCw size={13} style={{ animation:isRegenerating?'spin 1s linear infinite':'none', flexShrink:0 }}/>
                   {isRegenerating?'Getting new identity…':'Get New Pirate Identity'}
                 </button>
-                <WatchActivity />
+                <p style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.25)', marginTop:'8px', lineHeight:1.4 }}>
+                  ℹ️ This only changes your pirate role & bounty. Your profile name and avatar won't be affected.
+                </p>
+                <WatchStats />
               </Section>
             </div>
 
@@ -489,8 +416,15 @@ const Settings = () => {
                 <SettingRow label="Save watch history" description="Track what you've watched for resume & recommendations"
                   right={<Switch checked={saveWatchHistory} onCheckedChange={v => { setSaveWatchHistory(v); ls('pirateone_save_history',String(v)); toast({ title:v?'Watch history enabled':'Watch history disabled' }); }}/>} />
                 <div style={{ marginTop:'18px', display:'flex', flexDirection:'column', gap:'8px' }}>
-                  <button className="s-btn s-btn-full" onClick={() => { try { localStorage.removeItem('pirateone_watchlist'); } catch {} toast({ title:'Watchlist cleared' }); }}><Trash2 size={13}/>Clear Watchlist</button>
-                  <button className="s-dbtn" onClick={() => setConfirmClearAll(true)}><Trash2 size={13}/>Clear All Data</button>
+                  <button className="s-btn s-btn-full" onClick={() => setConfirmClearWatchlist(true)} disabled={clearing}>
+                    <Trash2 size={13}/>Clear Watchlist
+                  </button>
+                  <button className="s-dbtn" onClick={() => setConfirmClearAll(true)} disabled={clearing}>
+                    <Trash2 size={13}/>Clear All Data
+                  </button>
+                  <p style={{ fontSize:'0.68rem', color:'rgba(255,255,255,0.22)', lineHeight:1.4, marginTop:'4px' }}>
+                    "Clear All Data" removes watchlist, history, progress, and show statuses from both local storage and cloud. Your account and profile are safe.
+                  </p>
                 </div>
               </Section>
             </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
 import pirateOneLogo from '@/assets/pirateone-logo.png';
 
 const ALL_POSTERS = [
@@ -93,11 +93,12 @@ const PosterColumn = ({ images, reverse = false, duration = 32, className = '' }
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,6 +109,12 @@ const Auth = () => {
     }
     setLoading(true);
     try {
+      if (isForgotPassword) {
+        const { error } = await resetPassword(email);
+        if (error) toast.error(error.message);
+        else toast.success('Password reset email sent! Check your inbox. 📧');
+        return;
+      }
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) toast.error(error.message);
@@ -322,24 +329,32 @@ const Auth = () => {
             boxSizing: 'border-box',
           }}>
             {/* Tabs */}
-            <div className="fu2 tab-bar">
-              {['Sign In', 'Sign Up'].map((tab) => {
-                const active = (tab === 'Sign In') === isLogin;
-                return (
-                  <button key={tab} onClick={() => setIsLogin(tab === 'Sign In')} className={`tab-btn ${active ? 'tab-active' : 'tab-inactive'}`}>
-                    {tab}
-                  </button>
-                );
-              })}
-            </div>
+            {!isForgotPassword && (
+              <div className="fu2 tab-bar">
+                {['Sign In', 'Sign Up'].map((tab) => {
+                  const active = (tab === 'Sign In') === isLogin;
+                  return (
+                    <button key={tab} onClick={() => setIsLogin(tab === 'Sign In')} className={`tab-btn ${active ? 'tab-active' : 'tab-inactive'}`}>
+                      {tab}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {isForgotPassword && (
+              <button onClick={() => setIsForgotPassword(false)} style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', color:'rgba(255,255,255,0.5)', fontSize:'0.8rem', cursor:'pointer', padding:0, marginBottom:'20px' }}>
+                <ArrowLeft size={14}/> Back to sign in
+              </button>
+            )}
 
             {/* Heading */}
             <div className="fu3" style={{ marginBottom: '24px' }}>
               <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.025em', marginBottom: '6px' }}>
-                {isLogin ? 'Welcome back' : 'Join the crew'}
+                {isForgotPassword ? 'Reset password' : isLogin ? 'Welcome back' : 'Join the crew'}
               </h1>
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.38)' }}>
-                {isLogin ? 'Sign in to continue watching' : 'Create your account to get started'}
+                {isForgotPassword ? "Enter your email and we'll send you a reset link" : isLogin ? 'Sign in to continue watching' : 'Create your account to get started'}
               </p>
             </div>
 
@@ -352,46 +367,58 @@ const Auth = () => {
                 <input type="email" placeholder="pirate@sea.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="auth-input" />
               </div>
 
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', marginBottom: '8px' }}>
-                  Password
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="auth-input auth-input-pr" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.32)', padding: 0, display: 'flex', transition: 'color 0.2s' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.32)')}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+              {!isForgotPassword && (
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.42)', marginBottom: '8px' }}>
+                    Password
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="auth-input auth-input-pr" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.32)', padding: 0, display: 'flex', transition: 'color 0.2s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.32)')}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {!isLogin && <p style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)' }}>Minimum 6 characters</p>}
+                  {isLogin && (
+                    <button type="button" onClick={() => setIsForgotPassword(true)}
+                      style={{ marginTop:'8px', background:'none', border:'none', color:'rgba(255,255,255,0.4)', fontSize:'0.78rem', cursor:'pointer', padding:0, transition:'color 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}>
+                      Forgot password?
+                    </button>
+                  )}
                 </div>
-                {!isLogin && <p style={{ marginTop: '6px', fontSize: '0.75rem', color: 'rgba(255,255,255,0.28)' }}>Minimum 6 characters</p>}
-              </div>
+              )}
 
               <button type="submit" disabled={loading} className="submit-btn">
                 {loading ? (
-                  <><span className="spinner" />{isLogin ? 'Signing in…' : 'Creating account…'}</>
+                  <><span className="spinner" />{isForgotPassword ? 'Sending…' : isLogin ? 'Signing in…' : 'Creating account…'}</>
                 ) : (
-                  <>{isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}{isLogin ? 'Sign In' : 'Create Account'}</>
+                  <>{isForgotPassword ? '📧' : isLogin ? <LogIn size={16} /> : <UserPlus size={16} />}{isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Create Account'}</>
                 )}
               </button>
             </form>
 
             {/* Toggle */}
-            <p style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.875rem', color: 'rgba(255,255,255,0.32)' }}>
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
-              <button
-                onClick={() => setIsLogin(!isLogin)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'rgba(255,255,255,0.7)', transition: 'color 0.2s', padding: 0 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
-              >
-                {isLogin ? 'Sign Up' : 'Sign In'}
-              </button>
-            </p>
+            {!isForgotPassword && (
+              <p style={{ marginTop: '22px', textAlign: 'center', fontSize: '0.875rem', color: 'rgba(255,255,255,0.32)' }}>
+                {isLogin ? "Don't have an account? " : 'Already have an account? '}
+                <button
+                  onClick={() => setIsLogin(!isLogin)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: 'rgba(255,255,255,0.7)', transition: 'color 0.2s', padding: 0 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+                >
+                  {isLogin ? 'Sign Up' : 'Sign In'}
+                </button>
+              </p>
+            )}
           </div>
 
           {/* Footer */}

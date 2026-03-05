@@ -143,13 +143,13 @@ export type Database = {
           completed: boolean | null
           created_at: string
           duration: number | null
-          episode: number | null
+          episode: number
           id: string
           media_type: string
           overview: string | null
           poster_path: string | null
           progress_time: number | null
-          season: number | null
+          season: number
           server: string
           title: string | null
           tmdb_id: number
@@ -162,13 +162,13 @@ export type Database = {
           completed?: boolean | null
           created_at?: string
           duration?: number | null
-          episode?: number | null
+          episode?: number
           id?: string
           media_type: string
           overview?: string | null
           poster_path?: string | null
           progress_time?: number | null
-          season?: number | null
+          season?: number
           server?: string
           title?: string | null
           tmdb_id: number
@@ -181,13 +181,13 @@ export type Database = {
           completed?: boolean | null
           created_at?: string
           duration?: number | null
-          episode?: number | null
+          episode?: number
           id?: string
           media_type?: string
           overview?: string | null
           poster_path?: string | null
           progress_time?: number | null
-          season?: number | null
+          season?: number
           server?: string
           title?: string | null
           tmdb_id?: number
