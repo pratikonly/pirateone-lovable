@@ -59,11 +59,11 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
     loadProfile();
   }, [user, userDropdownOpen]);
 
-  // Track and load visitor count
+  // Track and load global visitor count
   useEffect(() => {
     if (!user) return;
     const trackVisit = async () => {
-      // Try to increment
+      // Increment this user's count
       const { data: existing } = await supabase
         .from('visitor_count')
         .select('count')
@@ -71,18 +71,22 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
         .maybeSingle();
 
       if (existing) {
-        const newCount = (existing.count || 0) + 1;
         await supabase
           .from('visitor_count')
-          .update({ count: newCount, last_visited_at: new Date().toISOString() })
+          .update({ count: (existing.count || 0) + 1, last_visited_at: new Date().toISOString() })
           .eq('user_id', user.id);
-        setVisitorCount(newCount);
       } else {
         await supabase
           .from('visitor_count')
           .insert({ user_id: user.id, count: 1 });
-        setVisitorCount(1);
       }
+
+      // Fetch global total across all users
+      const { data: allCounts } = await supabase
+        .from('visitor_count')
+        .select('count');
+      const total = (allCounts || []).reduce((sum, row) => sum + (row.count || 0), 0);
+      setVisitorCount(total);
     };
     trackVisit();
   }, [user]);
