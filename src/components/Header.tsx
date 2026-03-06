@@ -1,8 +1,9 @@
 import { Button } from './ui/button';
-import { Menu, Settings, RefreshCw, LogIn, LogOut } from 'lucide-react';
+import { Menu, Settings, RefreshCw, LogIn, LogOut, Eye } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Badge } from './ui/badge';
 import { getInitials } from '@/lib/pirateIdentity';
 import { usePirateIdentity } from '@/contexts/PirateIdentityContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +17,7 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
+  const [visitorCount, setVisitorCount] = useState<number>(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { identity, isLoading, isRegenerating, regenerateIdentity } = usePirateIdentity();
@@ -57,6 +59,34 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
     loadProfile();
   }, [user, userDropdownOpen]);
 
+  // Track and load visitor count
+  useEffect(() => {
+    if (!user) return;
+    const trackVisit = async () => {
+      // Try to increment
+      const { data: existing } = await supabase
+        .from('visitor_count')
+        .select('count')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        const newCount = (existing.count || 0) + 1;
+        await supabase
+          .from('visitor_count')
+          .update({ count: newCount, last_visited_at: new Date().toISOString() })
+          .eq('user_id', user.id);
+        setVisitorCount(newCount);
+      } else {
+        await supabase
+          .from('visitor_count')
+          .insert({ user_id: user.id, count: 1 });
+        setVisitorCount(1);
+      }
+    };
+    trackVisit();
+  }, [user]);
+
   const handleSettingsClick = () => {
     setUserDropdownOpen(false);
     navigate('/settings');
@@ -95,19 +125,25 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
           </Button>
         ) : (
           <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-              className="rounded-full border-2 border-primary/50 hover:border-primary transition-colors overflow-hidden"
-            >
-              <Avatar className="w-9 h-9">
-                {displayAvatarUrl ? (
-                  <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" />
-                ) : null}
-                <AvatarFallback className="bg-muted text-muted-foreground text-xs">
-                  {isLoading ? '...' : getInitials(displayName)}
-                </AvatarFallback>
-              </Avatar>
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground">
+                <Eye className="w-3 h-3" />
+                <span>{visitorCount}</span>
+              </div>
+              <button
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                className="rounded-full border-2 border-primary/50 hover:border-primary transition-colors overflow-hidden"
+              >
+                <Avatar className="w-9 h-9">
+                  {displayAvatarUrl ? (
+                    <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" />
+                  ) : null}
+                  <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                    {isLoading ? '...' : getInitials(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
 
             {userDropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-popover border border-border rounded-lg shadow-lg z-50 py-2">
