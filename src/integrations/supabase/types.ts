@@ -101,6 +101,27 @@ export type Database = {
         }
         Relationships: []
       }
+      visitor_count: {
+        Row: {
+          count: number
+          id: string
+          last_visited_at: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          id?: string
+          last_visited_at?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          id?: string
+          last_visited_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       watch_history: {
         Row: {
           episode: number | null
