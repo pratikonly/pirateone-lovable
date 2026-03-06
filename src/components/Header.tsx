@@ -1,9 +1,8 @@
 import { Button } from './ui/button';
-import { Menu, Settings, RefreshCw, LogIn, LogOut, Eye } from 'lucide-react';
+import { Menu, Settings, RefreshCw, LogIn, LogOut } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { Badge } from './ui/badge';
 import { getInitials } from '@/lib/pirateIdentity';
 import { usePirateIdentity } from '@/contexts/PirateIdentityContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,27 +60,28 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
 
   // Track and load global visitor count
   useEffect(() => {
-    if (!user) return;
     const trackVisit = async () => {
-      // Increment this user's count
-      const { data: existing } = await supabase
-        .from('visitor_count')
-        .select('count')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Increment if authenticated
+      if (user) {
+        const { data: existing } = await supabase
+          .from('visitor_count')
+          .select('count')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (existing) {
-        await supabase
-          .from('visitor_count')
-          .update({ count: (existing.count || 0) + 1, last_visited_at: new Date().toISOString() })
-          .eq('user_id', user.id);
-      } else {
-        await supabase
-          .from('visitor_count')
-          .insert({ user_id: user.id, count: 1 });
+        if (existing) {
+          await supabase
+            .from('visitor_count')
+            .update({ count: (existing.count || 0) + 1, last_visited_at: new Date().toISOString() })
+            .eq('user_id', user.id);
+        } else {
+          await supabase
+            .from('visitor_count')
+            .insert({ user_id: user.id, count: 1 });
+        }
       }
 
-      // Fetch global total across all users
+      // Fetch global total (works for anon too)
       const { data: allCounts } = await supabase
         .from('visitor_count')
         .select('count');
@@ -122,6 +122,9 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
       <div className="lg:hidden flex-1" />
 
       <div className="flex items-center gap-2 sm:gap-3">
+        <div className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground">
+          {visitorCount} visits
+        </div>
         {!user ? (
           <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
             <LogIn className="w-4 h-4" />
@@ -129,11 +132,6 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
           </Button>
         ) : (
           <div className="relative" ref={dropdownRef}>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground">
-                <Eye className="w-3 h-3" />
-                <span>{visitorCount}</span>
-              </div>
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="rounded-full border-2 border-primary/50 hover:border-primary transition-colors overflow-hidden"
@@ -147,7 +145,6 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
                   </AvatarFallback>
                 </Avatar>
               </button>
-            </div>
 
             {userDropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-popover border border-border rounded-lg shadow-lg z-50 py-2">
