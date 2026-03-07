@@ -101,6 +101,24 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visits: {
+        Row: {
+          id: number
+          total_count: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          total_count?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          total_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       visitor_count: {
         Row: {
           count: number
@@ -268,7 +286,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_site_visits: { Args: never; Returns: number }
     }
     Enums: {
       show_status_enum: "watching" | "completed" | "dropped"

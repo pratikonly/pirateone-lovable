@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { Menu, Settings, RefreshCw, LogIn, LogOut } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { getInitials } from '@/lib/pirateIdentity';
@@ -17,6 +17,10 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [visitorCount, setVisitorCount] = useState<number>(0);
+  const [showVisitorCount, setShowVisitorCount] = useState(false);
+  const [secretInput, setSecretInput] = useState('');
+  const [isListeningForCode, setIsListeningForCode] = useState(false);
+  const secretAreaRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { identity, isLoading, isRegenerating, regenerateIdentity } = usePirateIdentity();
@@ -58,38 +62,53 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
     loadProfile();
   }, [user, userDropdownOpen]);
 
-  // Track and load global visitor count
+  // Track visit and load global count
   useEffect(() => {
     const trackVisit = async () => {
-      // Increment if authenticated
-      if (user) {
-        const { data: existing } = await supabase
-          .from('visitor_count')
-          .select('count')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from('visitor_count')
-            .update({ count: (existing.count || 0) + 1, last_visited_at: new Date().toISOString() })
-            .eq('user_id', user.id);
-        } else {
-          await supabase
-            .from('visitor_count')
-            .insert({ user_id: user.id, count: 1 });
-        }
+      // Increment global counter for ALL visitors (auth or not)
+      try {
+        await supabase.rpc('increment_site_visits');
+      } catch (e) {
+        console.error('Failed to increment visit:', e);
       }
 
-      // Fetch global total (works for anon too)
-      const { data: allCounts } = await supabase
-        .from('visitor_count')
-        .select('count');
-      const total = (allCounts || []).reduce((sum, row) => sum + (row.count || 0), 0);
-      setVisitorCount(total);
+      // Fetch global total
+      const { data } = await supabase
+        .from('site_visits')
+        .select('total_count')
+        .eq('id', 1)
+        .maybeSingle();
+      setVisitorCount(data?.total_count || 0);
     };
     trackVisit();
-  }, [user]);
+  }, []);
+
+  // Listen for secret code "12418" when area is clicked
+  const handleSecretAreaClick = useCallback(() => {
+    if (showVisitorCount) return; // Already visible
+    setIsListeningForCode(true);
+    setSecretInput('');
+  }, [showVisitorCount]);
+
+  useEffect(() => {
+    if (!isListeningForCode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const newInput = secretInput + e.key;
+      if ('12418'.startsWith(newInput)) {
+        setSecretInput(newInput);
+        if (newInput === '12418') {
+          setShowVisitorCount(true);
+          setIsListeningForCode(false);
+          setSecretInput('');
+        }
+      } else {
+        setSecretInput('');
+        setIsListeningForCode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isListeningForCode, secretInput]);
 
   const handleSettingsClick = () => {
     setUserDropdownOpen(false);
@@ -122,8 +141,16 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
       <div className="lg:hidden flex-1" />
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground">
-          {visitorCount} visits
+        <div
+          ref={secretAreaRef}
+          onClick={handleSecretAreaClick}
+          className={`px-2 py-1 rounded-full cursor-pointer select-none transition-all duration-300 ${
+            showVisitorCount
+              ? 'bg-muted/50 border border-border text-xs text-muted-foreground'
+              : 'w-6 h-6'
+          }`}
+        >
+          {showVisitorCount && <span>{visitorCount} visits</span>}
         </div>
         {!user ? (
           <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">

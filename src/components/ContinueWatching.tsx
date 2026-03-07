@@ -34,14 +34,14 @@ const ContinueWatching = ({ progress }: ContinueWatchingProps) => {
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {progress.map((item) => {
           const percentage = getProgressPercentage(item);
           return (
             <button
               key={`${item.tmdb_id}-${item.media_type}-${item.season || 'movie'}-${item.episode || 0}`}
               onClick={() => handleClick(item)}
-              className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
+              className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200 shrink-0 w-[280px] sm:w-[300px] lg:w-[320px] snap-start"
             >
               {/* Poster/Thumbnail */}
               {item.poster_path ? (
