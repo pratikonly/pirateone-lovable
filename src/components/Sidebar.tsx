@@ -68,18 +68,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         <line x1="3" y1="18" x2="3.01" y2="18"/>
       </svg>
     )},
-    { label: 'Collections', path: '/collections', icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-      </svg>
-    )},
-    { label: 'Stats', path: '/stats', icon: (
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="20" x2="18" y2="10"/>
-        <line x1="12" y1="20" x2="12" y2="4"/>
-        <line x1="6" y1="20" x2="6" y2="14"/>
-      </svg>
-    )},
     { label: 'Help', path: '/help', icon: (
       <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/>
@@ -103,14 +91,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       <div className="p-4 lg:p-5 border-b border-sidebar-border">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            {/* New Logo Image - Larger to fit sidebar */}
             <img 
               src={pirateOneLogo} 
               alt="PirateOne" 
               className="h-auto w-full max-w-[180px] object-contain invert dark:invert-0"
             />
-            
-            {/* Close button for mobile */}
             <button 
               onClick={onClose}
               className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
@@ -118,8 +103,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          
-          {/* Made by Pratik button - centered with border */}
           <a
             href="https://xpratik.vercel.app/"
             target="_blank"
@@ -134,21 +117,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
             />
           </a>
         </div>
-        
-        {/* Hidden old logo section - preserved for future use */}
-        {/* 
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-pink-600 flex items-center justify-center animate-pulse-glow">
-            <svg className="w-6 h-6 text-primary-foreground -rotate-45" viewBox="0 0 32 32" fill="currentColor">
-              <path d="M30.592,15.564..."/>
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-pirate text-xl lg:text-2xl text-foreground tracking-wide leading-none">PIRATEONE</h1>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Made by Pratik</p>
-          </div>
-        </div>
-        */}
       </div>
 
       {/* Main Navigation */}
@@ -176,7 +144,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </NavLink>
         ))}
 
-        {/* Sports - Strike themed, separated with glass effect */}
+        {/* Sports */}
         <div className="pt-4 mt-4 border-t border-sidebar-border">
           <NavLink
             to={sportsItem.path}
