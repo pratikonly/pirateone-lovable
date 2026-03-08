@@ -59,6 +59,33 @@ const Search = () => {
     fetchTrending();
   }, []);
 
+  // ── Discover with filters ──
+  useEffect(() => {
+    if (!hasActiveFilters || idMode) return;
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        const params: Record<string, string> = {};
+        if (filters.genre) params.with_genres = filters.genre;
+        if (filters.year) {
+          if (filterMediaType === 'movie') params.primary_release_year = filters.year;
+          else params.first_air_date_year = filters.year;
+        }
+        if (filters.rating) params['vote_average.gte'] = filters.rating;
+        if (filters.sortBy) params.sort_by = filters.sortBy;
+
+        const discoverFn = filterMediaType === 'movie' ? discoverMovies : discoverTV;
+        const data = await discoverFn(params);
+        setFilterResults(data.results);
+      } catch (e) {
+        console.error('Discover error:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    run();
+  }, [filters, filterMediaType, hasActiveFilters, idMode]);
+
   // ── Text search ──
   useEffect(() => {
     if (idMode) return;
