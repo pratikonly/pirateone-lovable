@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search as SearchIcon, Film, Tv, Loader2, Hash, X, ChevronDown } from 'lucide-react';
-import { searchMulti, getBackdropUrl, getTrending, Movie, getMovieDetails, getTVDetails } from '@/lib/tmdb';
+import { searchMulti, getBackdropUrl, getTrending, Movie, getMovieDetails, getTVDetails, discoverMovies, discoverTV } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
+import SearchFilters, { SearchFilterValues } from '@/components/SearchFilters';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
