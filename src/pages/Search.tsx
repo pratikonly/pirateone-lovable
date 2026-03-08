@@ -218,6 +218,17 @@ const Search = () => {
         </button>
       </div>
 
+      {/* ── Filters ── */}
+      {!idMode && (
+        <div className="max-w-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={() => setFilterMediaType('movie')} className={`text-xs px-2 py-1 rounded ${filterMediaType === 'movie' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Movies</button>
+            <button onClick={() => setFilterMediaType('tv')} className={`text-xs px-2 py-1 rounded ${filterMediaType === 'tv' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>TV Shows</button>
+          </div>
+          <SearchFilters filters={filters} onChange={setFilters} mediaType={filterMediaType} />
+        </div>
+      )}
+
       {/* ── NAME SEARCH INPUT ── */}
       {!idMode && (
         <div className="mb-6 lg:mb-8 max-w-2xl">
