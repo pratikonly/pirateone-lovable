@@ -381,8 +381,24 @@ const Search = () => {
           </>
         )}
 
+        {/* Filter results */}
+        {!idMode && hasActiveFilters && !hasQuery && (
+          filterResults.length > 0 ? (
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {filterResults.length} {filterMediaType === 'movie' ? 'movies' : 'TV shows'} found
+              </p>
+              <MovieGrid items={filterResults} />
+            </div>
+          ) : !isLoading ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground text-lg">No results match your filters</p>
+            </div>
+          ) : null
+        )}
+
         {/* Initial state */}
-        {!idMode && !hasQuery && (
+        {!idMode && !hasQuery && !hasActiveFilters && (
           <div className="text-center py-12 lg:py-16">
             <SearchIcon className="w-12 lg:w-16 h-12 lg:h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground text-base lg:text-lg">Search for your favorite movies and TV shows</p>
