@@ -388,6 +388,15 @@ const Watch = () => {
                     {inWatchlist ? <><Check className="w-4 h-4 mr-1.5" />In List</> : <><Plus className="w-4 h-4 mr-1.5" />Add to List</>}
                   </Button>
 
+                  <AddToCollection
+                    tmdbId={movieId}
+                    mediaType={mediaType}
+                    title={title}
+                    posterPath={details?.poster_path || null}
+                    backdropPath={details?.backdrop_path}
+                    voteAverage={details?.vote_average}
+                  />
+
                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium border border-zinc-700 bg-transparent text-white hover:bg-zinc-800 transition-colors">
                     <Download className="w-4 h-4" />Download<ExternalLink className="w-3 h-3 opacity-50" />
