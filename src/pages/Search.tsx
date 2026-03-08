@@ -32,18 +32,22 @@ const Search = () => {
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [idMode, setIdMode] = useState(false);        // user switched to ID mode
-  const [idInput, setIdInput] = useState('');         // raw ID input
+  const [idMode, setIdMode] = useState(false);
+  const [idInput, setIdInput] = useState('');
   const [idType, setIdType] = useState<'both' | 'movie' | 'tv'>('both');
   const [idResult, setIdResult] = useState<Movie | null>(null);
   const [idLoading, setIdLoading] = useState(false);
   const [idError, setIdError] = useState('');
+  const [filters, setFilters] = useState<SearchFilterValues>({ genre: '', year: '', rating: '', sortBy: '' });
+  const [filterResults, setFilterResults] = useState<Movie[]>([]);
+  const [filterMediaType, setFilterMediaType] = useState<'movie' | 'tv'>('movie');
   const currentIndexRef = useRef(0);
   const setBackdropUrl = useSetBackdropUrl();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const debouncedQuery = useDebounce(query.trim(), 300);
   const debouncedId = useDebounce(idInput.trim(), 500);
+  const hasActiveFilters = filters.genre || filters.year || filters.rating || filters.sortBy;
 
   useEffect(() => {
     const fetchTrending = async () => {
