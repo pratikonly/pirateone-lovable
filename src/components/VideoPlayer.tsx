@@ -123,6 +123,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
           allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
         />
