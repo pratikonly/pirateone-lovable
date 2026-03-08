@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
-  ExternalLink, MousePointerClick, Play,
+  ExternalLink, MousePointerClick, Play, FolderPlus, List, Loader2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -22,14 +22,14 @@ import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
-import UserReviews from '@/components/UserReviews';
-import AddToCollection from '@/components/AddToCollection';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const watchParamsSchema = z.object({
   type: z.enum(['movie', 'tv']),
@@ -40,6 +40,112 @@ const getDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episo
   type === 'movie'
     ? `https://dl.vidsrc.vip/movie/${id}`
     : `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
+
+/* ── Smart Add to List Dropdown ── */
+const SmartAddToList = ({ tmdbId, mediaType, title, posterPath, backdropPath, voteAverage, details, inWatchlist, onWatchlistToggle }: {
+  tmdbId: number; mediaType: string; title: string; posterPath: string | null;
+  backdropPath?: string | null; voteAverage?: number | null;
+  details: MovieDetails | null; inWatchlist: boolean; onWatchlistToggle: () => void;
+}) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [collections, setCollections] = useState<{ id: string; name: string; hasItem: boolean }[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadCollections = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data: cols } = await supabase.from('collections').select('id, name').eq('user_id', user.id);
+    if (cols) {
+      const enriched = await Promise.all(cols.map(async (c: any) => {
+        const { count } = await supabase.from('collection_items').select('*', { count: 'exact', head: true }).eq('collection_id', c.id).eq('tmdb_id', tmdbId).eq('media_type', mediaType);
+        return { ...c, hasItem: (count || 0) > 0 };
+      }));
+      setCollections(enriched);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { if (open) loadCollections(); }, [open]);
+
+  const toggleCollectionItem = async (collectionId: string, hasItem: boolean) => {
+    try {
+      if (hasItem) {
+        await supabase.from('collection_items').delete().eq('collection_id', collectionId).eq('tmdb_id', tmdbId).eq('media_type', mediaType);
+      } else {
+        await supabase.from('collection_items').insert({
+          collection_id: collectionId, tmdb_id: tmdbId, media_type: mediaType,
+          title, poster_path: posterPath, backdrop_path: backdropPath, vote_average: voteAverage,
+        });
+      }
+      await loadCollections();
+      toast({ title: hasItem ? 'Removed from collection' : 'Added to collection' });
+    } catch {
+      toast({ title: 'Failed to update collection', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="relative inline-block">
+      <Button
+        variant={inWatchlist ? 'default' : 'outline'}
+        size="sm"
+        className={cn('min-w-[130px] border-zinc-700 hover:bg-zinc-800 flex items-center gap-1.5', inWatchlist && 'bg-white text-black hover:bg-gray-200')}
+        onClick={() => setOpen(!open)}
+      >
+        {inWatchlist ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        Add to List
+        <ChevronDown className={cn('w-3.5 h-3.5 ml-1 transition-transform', open && 'rotate-180')} />
+      </Button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-2 w-64 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl z-50 py-1 animate-in fade-in-60 zoom-in-95 duration-150">
+            {/* Watchlist option */}
+            <button
+              onClick={() => { onWatchlistToggle(); }}
+              className="w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <List className="w-4 h-4 text-zinc-400" />
+                <span className="text-white font-medium">Watchlist</span>
+              </div>
+              {inWatchlist && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
+            </button>
+
+            {/* Divider */}
+            {user && (
+              <>
+                <div className="border-t border-zinc-800 my-1" />
+                <div className="px-3 py-1.5">
+                  <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Collections</span>
+                </div>
+                {loading ? (
+                  <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+                ) : collections.length === 0 ? (
+                  <p className="text-xs text-zinc-500 text-center py-3 px-3">No collections yet. Create one in your Watchlist page.</p>
+                ) : (
+                  collections.map(c => (
+                    <button key={c.id} onClick={() => toggleCollectionItem(c.id, c.hasItem)}
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors">
+                      <div className="flex items-center gap-2">
+                        <FolderPlus className="w-3.5 h-3.5 text-zinc-500" />
+                        <span className="text-zinc-200 truncate">{c.name}</span>
+                      </div>
+                      {c.hasItem && <Check className="w-4 h-4 text-primary flex-shrink-0" />}
+                    </button>
+                  ))
+                )}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
@@ -68,7 +174,6 @@ const Watch = () => {
     currentTime: number; duration: number; percentage: number;
   } | null>(null);
 
-  // ── All mutable state in refs so the message handler never re-registers ───
   const movieIdRef        = useRef(movieId);
   const mediaTypeRef      = useRef(mediaType);
   const seasonRef         = useRef(season);
@@ -77,7 +182,7 @@ const Watch = () => {
   const userRef           = useRef(user);
   const detailsRef        = useRef<MovieDetails | null>(null);
   const lastSaveRef       = useRef(0);
-  const handlerRegistered = useRef(false); // prevent double-registration
+  const handlerRegistered = useRef(false);
 
   useEffect(() => { movieIdRef.current        = movieId;        }, [movieId]);
   useEffect(() => { mediaTypeRef.current      = mediaType;      }, [mediaType]);
@@ -87,7 +192,6 @@ const Watch = () => {
   useEffect(() => { userRef.current           = user;           }, [user]);
   useEffect(() => { detailsRef.current        = details;        }, [details]);
 
-  // ── Fetch details ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!movieId) { setIsLoading(false); return; }
     setIsLoading(true);
@@ -111,7 +215,6 @@ const Watch = () => {
     return () => { setBackdropUrl(null); };
   }, [movieId, mediaType, setBackdropUrl, user]);
 
-  // ── Save watch history ────────────────────────────────────────────────────
   const savedHistoryKey = useRef('');
   useEffect(() => {
     const d = detailsRef.current;
@@ -128,19 +231,16 @@ const Watch = () => {
     });
   }, [movieId, mediaType, season, episode]);
 
-  // ── Fetch season details ──────────────────────────────────────────────────
   useEffect(() => {
     if (mediaType !== 'tv' || !movieId) return;
     getSeasonDetails(movieId, season).then(setSeasonDetails).catch(console.error);
   }, [movieId, mediaType, season]);
 
-  // ── Load saved progress ───────────────────────────────────────────────────
   useEffect(() => {
     if (!user) { setWatchProgress(null); return; }
     let cancelled = false;
     const run = async () => {
       try {
-        // Use selectedServerRef to avoid stale closure
         const p = await getWatchProgress(movieId, mediaType,
           mediaType === 'tv' ? season  : undefined,
           mediaType === 'tv' ? episode : undefined,
@@ -155,17 +255,11 @@ const Watch = () => {
     return () => { cancelled = true; };
   }, [movieId, mediaType, season, episode, user, selectedServer]);
 
-  // ── Videasy postMessage handler ───────────────────────────────────────────
-  // FIX: depend on user?.id (stable string) not user (object reference).
-  // The user object is recreated on every auth state tick even when unchanged,
-  // causing useEffect to re-run → component remounts → visible page refresh.
-  // Using user?.id means we only re-register if the actual user changes.
   const userId = user?.id;
   useEffect(() => {
     if (!userId) return;
-    if (handlerRegistered.current) return; // already registered, don't double-up
+    if (handlerRegistered.current) return;
     handlerRegistered.current = true;
-    console.log('[Watch] registering handler for user:', userId);
 
     const handleMessage = async (event: MessageEvent) => {
       if (document.hidden) return;
@@ -187,7 +281,6 @@ const Watch = () => {
         if (pct < 90 && now - lastSaveRef.current < 10000) return;
         lastSaveRef.current = now;
 
-        console.log(`[Watch] saving — ${currentTime.toFixed(0)}s / ${duration}s (${pct.toFixed(1)}%)`);
         setWatchProgress({ currentTime, duration, percentage: Math.min(100, pct) });
 
         const d   = detailsRef.current;
@@ -205,7 +298,6 @@ const Watch = () => {
           d?.poster_path ?? null, d?.backdrop_path ?? null,
           d?.overview ?? null, d?.vote_average ?? null,
         );
-        console.log('[Watch] saved to DB ✓');
 
         if (d && userRef.current) {
           try {
@@ -220,7 +312,6 @@ const Watch = () => {
                 mt === 'tv' ? ep : undefined,
               );
             } else {
-              // Auto-create library entry with "watching" status
               await setShowStatus(
                 { id: mid, title: d.title, name: d.name, poster_path: d.poster_path,
                   backdrop_path: d.backdrop_path, overview: d.overview,
@@ -240,9 +331,8 @@ const Watch = () => {
       window.removeEventListener('message', handleMessage);
       handlerRegistered.current = false;
     };
-  }, [userId]); // ← userId (string), not user (object) — stable, won't re-run spuriously
+  }, [userId]);
 
-  // ── Watchlist toggle ──────────────────────────────────────────────────────
   const handleWatchlistToggle = async () => {
     if (!details) return;
     const item = {
@@ -383,18 +473,16 @@ const Watch = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button variant={inWatchlist ? 'default' : 'outline'} onClick={handleWatchlistToggle} size="sm"
-                    className={cn('min-w-[120px] border-zinc-700 hover:bg-zinc-800', inWatchlist && 'bg-white text-black hover:bg-gray-200')}>
-                    {inWatchlist ? <><Check className="w-4 h-4 mr-1.5" />In List</> : <><Plus className="w-4 h-4 mr-1.5" />Add to List</>}
-                  </Button>
-
-                  <AddToCollection
+                  <SmartAddToList
                     tmdbId={movieId}
                     mediaType={mediaType}
                     title={title}
                     posterPath={details?.poster_path || null}
                     backdropPath={details?.backdrop_path}
                     voteAverage={details?.vote_average}
+                    details={details}
+                    inWatchlist={inWatchlist}
+                    onWatchlistToggle={handleWatchlistToggle}
                   />
 
                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
@@ -546,7 +634,6 @@ const Watch = () => {
             </div>
           </div>
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
-          <div className="mt-8"><UserReviews tmdbId={movieId} mediaType={mediaType} title={details?.title || details?.name || ''} /></div>
           <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
         </div>
       </div>

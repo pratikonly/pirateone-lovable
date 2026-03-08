@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, User, Film } from 'lucide-react';
+import { X, Send, Loader2, Bot, User, Film, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -63,7 +63,7 @@ const AIChatbot = () => {
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
       >
-        <MessageCircle className="w-6 h-6" />
+        <Sparkles className="w-6 h-6" />
       </button>
     );
   }
@@ -73,7 +73,7 @@ const AIChatbot = () => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-primary" />
+          <Sparkles className="w-5 h-5 text-primary" />
           <span className="font-semibold text-sm text-foreground">AI Recommender</span>
         </div>
         <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -85,7 +85,7 @@ const AIChatbot = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground text-sm mt-8">
-            <Bot className="w-10 h-10 mx-auto mb-3 text-primary/50" />
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-primary/50" />
             <p className="font-medium">What should you watch?</p>
             <p className="text-xs mt-1">Ask me for movie & TV recommendations!</p>
             <div className="mt-4 space-y-2">
@@ -99,7 +99,7 @@ const AIChatbot = () => {
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && <Bot className="w-5 h-5 text-primary mt-1 flex-shrink-0" />}
+            {msg.role === 'assistant' && <Sparkles className="w-5 h-5 text-primary mt-1 flex-shrink-0" />}
             <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'} rounded-xl px-3 py-2 text-sm`}>
               <div className="prose prose-sm prose-invert max-w-none [&_p]:m-0 [&_ul]:my-1 [&_li]:my-0">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
@@ -131,7 +131,7 @@ const AIChatbot = () => {
         ))}
         {isLoading && (
           <div className="flex gap-2">
-            <Bot className="w-5 h-5 text-primary mt-1" />
+            <Sparkles className="w-5 h-5 text-primary mt-1" />
             <div className="bg-muted rounded-xl px-3 py-2">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>

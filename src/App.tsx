@@ -20,8 +20,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const Help = lazy(() => import("./pages/Help"));
 const Watch = lazy(() => import("./pages/Watch"));
 const Sports = lazy(() => import("./pages/Sports"));
-const Stats = lazy(() => import("./pages/Stats"));
-const Collections = lazy(() => import("./pages/Collections"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -57,8 +55,6 @@ const App = () => (
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
                     <Route path="/sports" element={<Sports />} />
-                    <Route path="/stats" element={<Stats />} />
-                    <Route path="/collections" element={<Collections />} />
                     <Route path="/watch/:type/:id" element={<Watch />} />
                   </Route>
                   <Route path="*" element={<NotFound />} />
