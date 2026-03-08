@@ -22,6 +22,8 @@ import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
+import UserReviews from '@/components/UserReviews';
+import AddToCollection from '@/components/AddToCollection';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -386,6 +388,15 @@ const Watch = () => {
                     {inWatchlist ? <><Check className="w-4 h-4 mr-1.5" />In List</> : <><Plus className="w-4 h-4 mr-1.5" />Add to List</>}
                   </Button>
 
+                  <AddToCollection
+                    tmdbId={movieId}
+                    mediaType={mediaType}
+                    title={title}
+                    posterPath={details?.poster_path || null}
+                    backdropPath={details?.backdrop_path}
+                    voteAverage={details?.vote_average}
+                  />
+
                   <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium border border-zinc-700 bg-transparent text-white hover:bg-zinc-800 transition-colors">
                     <Download className="w-4 h-4" />Download<ExternalLink className="w-3 h-3 opacity-50" />
@@ -535,7 +546,8 @@ const Watch = () => {
             </div>
           </div>
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
-          <div className="mt-12 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
+          <div className="mt-8"><UserReviews tmdbId={movieId} mediaType={mediaType} title={details?.title || details?.name || ''} /></div>
+          <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
         </div>
       </div>
     </div>

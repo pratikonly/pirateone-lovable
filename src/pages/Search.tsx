@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search as SearchIcon, Film, Tv, Loader2, Hash, X, ChevronDown } from 'lucide-react';
-import { searchMulti, getBackdropUrl, getTrending, Movie, getMovieDetails, getTVDetails } from '@/lib/tmdb';
+import { searchMulti, getBackdropUrl, getTrending, Movie, getMovieDetails, getTVDetails, discoverMovies, discoverTV } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
+import SearchFilters, { SearchFilterValues } from '@/components/SearchFilters';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
@@ -31,18 +32,22 @@ const Search = () => {
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [idMode, setIdMode] = useState(false);        // user switched to ID mode
-  const [idInput, setIdInput] = useState('');         // raw ID input
+  const [idMode, setIdMode] = useState(false);
+  const [idInput, setIdInput] = useState('');
   const [idType, setIdType] = useState<'both' | 'movie' | 'tv'>('both');
   const [idResult, setIdResult] = useState<Movie | null>(null);
   const [idLoading, setIdLoading] = useState(false);
   const [idError, setIdError] = useState('');
+  const [filters, setFilters] = useState<SearchFilterValues>({ genre: '', year: '', rating: '', sortBy: '' });
+  const [filterResults, setFilterResults] = useState<Movie[]>([]);
+  const [filterMediaType, setFilterMediaType] = useState<'movie' | 'tv'>('movie');
   const currentIndexRef = useRef(0);
   const setBackdropUrl = useSetBackdropUrl();
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const debouncedQuery = useDebounce(query.trim(), 300);
   const debouncedId = useDebounce(idInput.trim(), 500);
+  const hasActiveFilters = filters.genre || filters.year || filters.rating || filters.sortBy;
 
   useEffect(() => {
     const fetchTrending = async () => {
@@ -53,6 +58,33 @@ const Search = () => {
     };
     fetchTrending();
   }, []);
+
+  // ── Discover with filters ──
+  useEffect(() => {
+    if (!hasActiveFilters || idMode) return;
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        const params: Record<string, string> = {};
+        if (filters.genre) params.with_genres = filters.genre;
+        if (filters.year) {
+          if (filterMediaType === 'movie') params.primary_release_year = filters.year;
+          else params.first_air_date_year = filters.year;
+        }
+        if (filters.rating) params['vote_average.gte'] = filters.rating;
+        if (filters.sortBy) params.sort_by = filters.sortBy;
+
+        const discoverFn = filterMediaType === 'movie' ? discoverMovies : discoverTV;
+        const data = await discoverFn(params);
+        setFilterResults(data.results);
+      } catch (e) {
+        console.error('Discover error:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    run();
+  }, [filters, filterMediaType, hasActiveFilters, idMode]);
 
   // ── Text search ──
   useEffect(() => {
@@ -185,6 +217,17 @@ const Search = () => {
           Search by TMDB ID
         </button>
       </div>
+
+      {/* ── Filters ── */}
+      {!idMode && (
+        <div className="max-w-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={() => setFilterMediaType('movie')} className={`text-xs px-2 py-1 rounded ${filterMediaType === 'movie' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Movies</button>
+            <button onClick={() => setFilterMediaType('tv')} className={`text-xs px-2 py-1 rounded ${filterMediaType === 'tv' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>TV Shows</button>
+          </div>
+          <SearchFilters filters={filters} onChange={setFilters} mediaType={filterMediaType} />
+        </div>
+      )}
 
       {/* ── NAME SEARCH INPUT ── */}
       {!idMode && (
@@ -338,8 +381,24 @@ const Search = () => {
           </>
         )}
 
+        {/* Filter results */}
+        {!idMode && hasActiveFilters && !hasQuery && (
+          filterResults.length > 0 ? (
+            <div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {filterResults.length} {filterMediaType === 'movie' ? 'movies' : 'TV shows'} found
+              </p>
+              <MovieGrid items={filterResults} />
+            </div>
+          ) : !isLoading ? (
+            <div className="text-center py-16">
+              <p className="text-muted-foreground text-lg">No results match your filters</p>
+            </div>
+          ) : null
+        )}
+
         {/* Initial state */}
-        {!idMode && !hasQuery && (
+        {!idMode && !hasQuery && !hasActiveFilters && (
           <div className="text-center py-12 lg:py-16">
             <SearchIcon className="w-12 lg:w-16 h-12 lg:h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground text-base lg:text-lg">Search for your favorite movies and TV shows</p>

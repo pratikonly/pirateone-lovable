@@ -210,6 +210,16 @@ export const searchMulti = async (query: string) => {
   return data.results.filter(item => item.media_type === 'movie' || item.media_type === 'tv');
 };
 
+export const discoverMovies = async (params: Record<string, string> = {}, page = 1) => {
+  const data = await fetchTMDB<{ results: Movie[]; total_pages: number }>('/discover/movie', { ...params, page: String(page) });
+  return { results: data.results.map(m => ({ ...m, media_type: 'movie' as const })), totalPages: data.total_pages };
+};
+
+export const discoverTV = async (params: Record<string, string> = {}, page = 1) => {
+  const data = await fetchTMDB<{ results: Movie[]; total_pages: number }>('/discover/tv', { ...params, page: String(page) });
+  return { results: data.results.map(m => ({ ...m, media_type: 'tv' as const })), totalPages: data.total_pages };
+};
+
 export const searchMovies = async (query: string) => {
   const data = await fetchTMDB<{ results: Movie[] }>('/search/movie', { query });
   return data.results.map(m => ({ ...m, media_type: 'movie' as const }));
