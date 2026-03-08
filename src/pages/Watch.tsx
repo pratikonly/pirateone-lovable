@@ -22,6 +22,8 @@ import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
+import UserReviews from '@/components/UserReviews';
+import AddToCollection from '@/components/AddToCollection';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -535,7 +537,8 @@ const Watch = () => {
             </div>
           </div>
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
-          <div className="mt-12 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
+          <div className="mt-8"><UserReviews tmdbId={movieId} mediaType={mediaType} title={details?.title || details?.name || ''} /></div>
+          <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
         </div>
       </div>
     </div>
