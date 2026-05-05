@@ -41,7 +41,10 @@ const getDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episo
     ? `https://dl.vidsrc.vip/movie/${id}`
     : `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
 
-const BUNNY_DOWNLOAD_URL = 'https://bunnyddl.termsandconditionshere.workers.dev/';
+const getBunnyDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) =>
+  type === 'movie'
+    ? `https://bunnyddl.termsandconditionshere.workers.dev/movie/${id}`
+    : `https://bunnyddl.termsandconditionshere.workers.dev/tv/${id}/${season || 1}/${episode || 1}`;
 
 const DownloadMenu = ({ primaryUrl }: { primaryUrl: string }) => {
   const [open, setOpen] = useState(false);
