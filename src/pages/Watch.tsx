@@ -435,6 +435,7 @@ const Watch = () => {
   const cast        = details.credits?.cast?.slice(0, 10) || [];
   const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
   const downloadUrl = getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
+  const bunnyUrl    = getBunnyDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
 
   return (
     <div className="min-h-screen text-white bg-transparent">
