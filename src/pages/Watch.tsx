@@ -41,9 +41,12 @@ const getDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episo
     ? `https://dl.vidsrc.vip/movie/${id}`
     : `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
 
-const BUNNY_DOWNLOAD_URL = 'https://bunnyddl.termsandconditionshere.workers.dev/';
+const getBunnyDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episode?: number) =>
+  type === 'movie'
+    ? `https://bunnyddl.termsandconditionshere.workers.dev/movie/${id}`
+    : `https://bunnyddl.termsandconditionshere.workers.dev/tv/${id}/${season || 1}/${episode || 1}`;
 
-const DownloadMenu = ({ primaryUrl }: { primaryUrl: string }) => {
+const DownloadMenu = ({ primaryUrl, bunnyUrl }: { primaryUrl: string; bunnyUrl: string }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative inline-block">
@@ -62,7 +65,7 @@ const DownloadMenu = ({ primaryUrl }: { primaryUrl: string }) => {
               <span className="font-medium">VidSrc Download</span>
               <ExternalLink className="w-3.5 h-3.5 opacity-60" />
             </a>
-            <a href={BUNNY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+            <a href={bunnyUrl} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
               className="w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors text-white">
               <span className="font-medium">BunnyDDL</span>
               <ExternalLink className="w-3.5 h-3.5 opacity-60" />
@@ -432,6 +435,7 @@ const Watch = () => {
   const cast        = details.credits?.cast?.slice(0, 10) || [];
   const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
   const downloadUrl = getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
+  const bunnyUrl    = getBunnyDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
 
   return (
     <div className="min-h-screen text-white bg-transparent">
@@ -518,7 +522,7 @@ const Watch = () => {
                     onWatchlistToggle={handleWatchlistToggle}
                   />
 
-                  <DownloadMenu primaryUrl={downloadUrl} />
+                  <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />
 
 
                   <div className="relative inline-block">
