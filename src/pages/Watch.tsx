@@ -485,10 +485,8 @@ const Watch = () => {
                     onWatchlistToggle={handleWatchlistToggle}
                   />
 
-                  <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium border border-zinc-700 bg-transparent text-white hover:bg-zinc-800 transition-colors">
-                    <Download className="w-4 h-4" />Download<ExternalLink className="w-3 h-3 opacity-50" />
-                  </a>
+                  <DownloadMenu primaryUrl={downloadUrl} />
+
 
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
