@@ -48,18 +48,36 @@ const getBunnyDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, 
 
 const DownloadMenu = ({ primaryUrl, bunnyUrl }: { primaryUrl: string; bunnyUrl: string }) => {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ vertical: 'up' | 'down'; horizontal: 'left' | 'right' }>({ vertical: 'down', horizontal: 'left' });
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggle = () => {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      const menuH = 110, menuW = 224;
+      const vertical = window.innerHeight - r.bottom < menuH && r.top > menuH ? 'up' : 'down';
+      const horizontal = window.innerWidth - r.left < menuW && r.right > menuW ? 'right' : 'left';
+      setPos({ vertical, horizontal });
+    }
+    setOpen(o => !o);
+  };
+
   return (
     <div className="relative inline-block">
-      <Button variant="outline" size="sm"
+      <Button ref={btnRef} variant="outline" size="sm"
         className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
-        onClick={() => setOpen(o => !o)}>
+        onClick={handleToggle}>
         <Download className="w-4 h-4" />Download
         <ChevronDown className={cn('w-3.5 h-3.5 ml-1 transition-transform', open && 'rotate-180')} />
       </Button>
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-2 w-56 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl z-50 py-1 animate-in fade-in-60 zoom-in-95 duration-150">
+          <div className={cn(
+            'absolute w-56 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl z-50 py-1 animate-in fade-in-60 zoom-in-95 duration-150',
+            pos.vertical === 'down' ? 'top-full mt-2' : 'bottom-full mb-2',
+            pos.horizontal === 'left' ? 'left-0' : 'right-0',
+          )}>
             <a href={primaryUrl} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
               className="w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors text-white">
               <span className="font-medium">VidSrc Download</span>
