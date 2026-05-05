@@ -41,6 +41,39 @@ const getDownloadUrl = (id: number, type: 'movie' | 'tv', season?: number, episo
     ? `https://dl.vidsrc.vip/movie/${id}`
     : `https://dl.vidsrc.vip/tv/${id}/${season || 1}/${episode || 1}`;
 
+const BUNNY_DOWNLOAD_URL = 'https://bunnyddl.termsandconditionshere.workers.dev/';
+
+const DownloadMenu = ({ primaryUrl }: { primaryUrl: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <Button variant="outline" size="sm"
+        className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
+        onClick={() => setOpen(o => !o)}>
+        <Download className="w-4 h-4" />Download
+        <ChevronDown className={cn('w-3.5 h-3.5 ml-1 transition-transform', open && 'rotate-180')} />
+      </Button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-2 w-56 bg-zinc-950/95 backdrop-blur-xl border border-zinc-800 rounded-xl shadow-2xl z-50 py-1 animate-in fade-in-60 zoom-in-95 duration-150">
+            <a href={primaryUrl} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+              className="w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors text-white">
+              <span className="font-medium">VidSrc Download</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            </a>
+            <a href={BUNNY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+              className="w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-800/60 flex items-center justify-between transition-colors text-white">
+              <span className="font-medium">BunnyDDL</span>
+              <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 /* ── Smart Add to List Dropdown ── */
 const SmartAddToList = ({ tmdbId, mediaType, title, posterPath, backdropPath, voteAverage, details, inWatchlist, onWatchlistToggle }: {
   tmdbId: number; mediaType: string; title: string; posterPath: string | null;
