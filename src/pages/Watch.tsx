@@ -522,7 +522,7 @@ const Watch = () => {
                     onWatchlistToggle={handleWatchlistToggle}
                   />
 
-                  <DownloadMenu primaryUrl={downloadUrl} />
+                  <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />
 
 
                   <div className="relative inline-block">
