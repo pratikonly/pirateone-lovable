@@ -20,6 +20,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const [pratikVisible, setPratikVisible] = useState<boolean>(false);
   const [listening, setListening] = useState(false);
   const bufferRef = useRef('');
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!listening || pratikVisible) return;
@@ -47,6 +48,8 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     if (pratikVisible) return;
     bufferRef.current = '';
     setListening(true);
+    // Focus hidden input to trigger mobile keyboard
+    setTimeout(() => hiddenInputRef.current?.focus(), 50);
   };
 
   const navItems = [
@@ -125,6 +128,28 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     )}>
       {/* Logo Section */}
       <div className="p-4 lg:p-5 border-b border-sidebar-border">
+        {/* Hidden input to trigger mobile keyboard */}
+        <input
+          ref={hiddenInputRef}
+          type="number"
+          inputMode="numeric"
+          className="absolute opacity-0 w-0 h-0 pointer-events-none"
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!val) return;
+            const digit = val.slice(-1);
+            if (!/^[0-9]$/.test(digit)) return;
+            bufferRef.current = (bufferRef.current + digit).slice(-SECRET_CODE.length);
+            if (bufferRef.current === SECRET_CODE) {
+              setPratikVisible(true);
+              setListening(false);
+              bufferRef.current = '';
+              hiddenInputRef.current?.blur();
+            }
+            e.target.value = '';
+          }}
+          onBlur={() => setListening(false)}
+        />
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <img
