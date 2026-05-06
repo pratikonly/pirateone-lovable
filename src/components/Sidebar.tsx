@@ -144,18 +144,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          {showCodeInput && !pratikVisible && (
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={codeValue}
-              onChange={(e) => handleCodeChange(e.target.value)}
-              onBlur={() => setShowCodeInput(false)}
-              placeholder="Enter code"
-              className="w-full px-2 py-1 text-xs text-center rounded-md bg-muted/50 border border-border outline-none focus:border-primary"
-            />
+          {listening && !pratikVisible && (
+            <p className="text-[10px] text-center text-muted-foreground animate-pulse">
+              listening...
+            </p>
           )}
           {pratikVisible && (
             <a
