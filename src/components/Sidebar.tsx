@@ -144,11 +144,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          {listening && !pratikVisible && (
-            <p className="text-[10px] text-center text-muted-foreground animate-pulse">
-              listening...
-            </p>
-          )}
           {pratikVisible && (
             <a
               href="https://xpratik.vercel.app/"
