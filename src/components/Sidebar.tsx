@@ -21,10 +21,13 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const bufferRef = useRef('');
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pratikVisibleRef = useRef(false);
 
   const tryUnlock = (digit: string) => {
+    if (pratikVisibleRef.current) return;
     bufferRef.current = (bufferRef.current + digit).slice(-SECRET_CODE.length);
     if (bufferRef.current === SECRET_CODE) {
+      pratikVisibleRef.current = true;
       setPratikVisible(true);
       setListening(false);
       bufferRef.current = '';
@@ -34,7 +37,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   };
 
   useEffect(() => {
-    if (!listening || pratikVisible) return;
+    if (!listening || pratikVisibleRef.current) return;
     const handleKey = (e: KeyboardEvent) => {
       if (/^[0-9]$/.test(e.key)) tryUnlock(e.key);
     };
@@ -47,10 +50,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       window.removeEventListener('keydown', handleKey);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [listening, pratikVisible]);
+  }, [listening]);
 
   const handleLogoTap = () => {
-    if (pratikVisible) return;
+    if (pratikVisibleRef.current) return;
     bufferRef.current = '';
     setListening(true);
     setTimeout(() => hiddenInputRef.current?.focus(), 50);
