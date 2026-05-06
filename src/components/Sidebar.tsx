@@ -21,31 +21,36 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(SECRET_KEY) === 'true';
   });
-  const [showCodeInput, setShowCodeInput] = useState(false);
-  const [codeValue, setCodeValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [listening, setListening] = useState(false);
+  const bufferRef = useRef('');
 
   useEffect(() => {
-    if (showCodeInput) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [showCodeInput]);
+    if (!listening || pratikVisible) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (!/^[0-9]$/.test(e.key)) {
+        bufferRef.current = '';
+        return;
+      }
+      bufferRef.current = (bufferRef.current + e.key).slice(-SECRET_CODE.length);
+      if (bufferRef.current === SECRET_CODE) {
+        localStorage.setItem(SECRET_KEY, 'true');
+        setPratikVisible(true);
+        setListening(false);
+        bufferRef.current = '';
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    const timeout = setTimeout(() => setListening(false), 8000);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      clearTimeout(timeout);
+    };
+  }, [listening, pratikVisible]);
 
   const handleLogoTap = () => {
     if (pratikVisible) return;
-    setShowCodeInput((v) => !v);
-    setCodeValue('');
-  };
-
-  const handleCodeChange = (val: string) => {
-    const clean = val.replace(/\D/g, '').slice(0, SECRET_CODE.length);
-    setCodeValue(clean);
-    if (clean === SECRET_CODE) {
-      localStorage.setItem(SECRET_KEY, 'true');
-      setPratikVisible(true);
-      setShowCodeInput(false);
-      setCodeValue('');
-    }
+    bufferRef.current = '';
+    setListening(true);
   };
 
   const navItems = [
@@ -139,18 +144,10 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          {showCodeInput && !pratikVisible && (
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={codeValue}
-              onChange={(e) => handleCodeChange(e.target.value)}
-              onBlur={() => setShowCodeInput(false)}
-              placeholder="Enter code"
-              className="w-full px-2 py-1 text-xs text-center rounded-md bg-muted/50 border border-border outline-none focus:border-primary"
-            />
+          {listening && !pratikVisible && (
+            <p className="text-[10px] text-center text-muted-foreground animate-pulse">
+              listening...
+            </p>
           )}
           {pratikVisible && (
             <a
