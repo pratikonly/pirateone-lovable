@@ -141,16 +141,8 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
       <div className="lg:hidden flex-1" />
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div
-          ref={secretAreaRef}
-          onClick={handleSecretAreaClick}
-          className={`px-2 py-1 rounded-full cursor-pointer select-none transition-all duration-300 ${
-            showVisitorCount
-              ? 'bg-muted/50 border border-border text-xs text-muted-foreground'
-              : 'w-6 h-6'
-          }`}
-        >
-          {showVisitorCount && <span>{visitorCount} visits</span>}
+        <div className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground select-none">
+          <span>{visitorCount} visits</span>
         </div>
         {!user ? (
           <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
