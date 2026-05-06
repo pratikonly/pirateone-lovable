@@ -11,7 +11,6 @@ interface SidebarProps {
 }
 
 const SECRET_CODE = '12418';
-const SECRET_KEY = 'pratik_unlocked';
 
 const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
@@ -21,26 +20,32 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const [listening, setListening] = useState(false);
   const bufferRef = useRef('');
   const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const tryUnlock = (digit: string) => {
+    bufferRef.current = (bufferRef.current + digit).slice(-SECRET_CODE.length);
+    if (bufferRef.current === SECRET_CODE) {
+      setPratikVisible(true);
+      setListening(false);
+      bufferRef.current = '';
+      hiddenInputRef.current?.blur();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    }
+  };
 
   useEffect(() => {
     if (!listening || pratikVisible) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (!/^[0-9]$/.test(e.key)) {
-        bufferRef.current = '';
-        return;
-      }
-      bufferRef.current = (bufferRef.current + e.key).slice(-SECRET_CODE.length);
-      if (bufferRef.current === SECRET_CODE) {
-        setPratikVisible(true);
-        setListening(false);
-        bufferRef.current = '';
-      }
+      if (/^[0-9]$/.test(e.key)) tryUnlock(e.key);
     };
     window.addEventListener('keydown', handleKey);
-    const timeout = setTimeout(() => setListening(false), 8000);
+    timeoutRef.current = setTimeout(() => {
+      setListening(false);
+      bufferRef.current = '';
+    }, 8000);
     return () => {
       window.removeEventListener('keydown', handleKey);
-      clearTimeout(timeout);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [listening, pratikVisible]);
 
@@ -48,7 +53,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     if (pratikVisible) return;
     bufferRef.current = '';
     setListening(true);
-    // Focus hidden input to trigger mobile keyboard
     setTimeout(() => hiddenInputRef.current?.focus(), 50);
   };
 
@@ -131,24 +135,21 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         {/* Hidden input to trigger mobile keyboard */}
         <input
           ref={hiddenInputRef}
-          type="number"
+          type="text"
           inputMode="numeric"
           className="absolute opacity-0 w-0 h-0 pointer-events-none"
           onChange={(e) => {
             const val = e.target.value;
-            if (!val) return;
-            const digit = val.slice(-1);
-            if (!/^[0-9]$/.test(digit)) return;
-            bufferRef.current = (bufferRef.current + digit).slice(-SECRET_CODE.length);
-            if (bufferRef.current === SECRET_CODE) {
-              setPratikVisible(true);
-              setListening(false);
-              bufferRef.current = '';
-              hiddenInputRef.current?.blur();
-            }
+            const digits = val.replace(/\D/g, '');
+            digits.split('').forEach(tryUnlock);
             e.target.value = '';
           }}
-          onBlur={() => setListening(false)}
+          onBlur={() => {
+            if (!pratikVisible) {
+              setListening(false);
+              bufferRef.current = '';
+            }
+          }}
         />
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
