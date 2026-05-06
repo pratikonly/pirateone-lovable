@@ -26,7 +26,9 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const tryUnlock = (digit: string) => {
     if (pratikVisibleRef.current) return;
     bufferRef.current = (bufferRef.current + digit).slice(-SECRET_CODE.length);
+    console.log('buffer:', bufferRef.current, '| target:', SECRET_CODE);
     if (bufferRef.current === SECRET_CODE) {
+      console.log('UNLOCKED!');
       pratikVisibleRef.current = true;
       setPratikVisible(true);
       setListening(false);
@@ -39,6 +41,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   useEffect(() => {
     if (!listening || pratikVisibleRef.current) return;
     const handleKey = (e: KeyboardEvent) => {
+      console.log('keydown:', e.key, '| listening:', listening);
       if (/^[0-9]$/.test(e.key)) tryUnlock(e.key);
     };
     window.addEventListener('keydown', handleKey);
@@ -55,8 +58,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const handleLogoTap = () => {
     if (pratikVisibleRef.current) return;
     bufferRef.current = '';
+    console.log('logo tapped, setting listening true');
     setListening(true);
-    setTimeout(() => hiddenInputRef.current?.focus(), 50);
+    setTimeout(() => {
+      console.log('focusing hidden input');
+      hiddenInputRef.current?.focus();
+    }, 50);
   };
 
   const navItems = [
