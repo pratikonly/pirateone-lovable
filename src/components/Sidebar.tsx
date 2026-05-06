@@ -21,31 +21,36 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(SECRET_KEY) === 'true';
   });
-  const [showCodeInput, setShowCodeInput] = useState(false);
-  const [codeValue, setCodeValue] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [listening, setListening] = useState(false);
+  const bufferRef = useRef('');
 
   useEffect(() => {
-    if (showCodeInput) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [showCodeInput]);
+    if (!listening || pratikVisible) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (!/^[0-9]$/.test(e.key)) {
+        bufferRef.current = '';
+        return;
+      }
+      bufferRef.current = (bufferRef.current + e.key).slice(-SECRET_CODE.length);
+      if (bufferRef.current === SECRET_CODE) {
+        localStorage.setItem(SECRET_KEY, 'true');
+        setPratikVisible(true);
+        setListening(false);
+        bufferRef.current = '';
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    const timeout = setTimeout(() => setListening(false), 8000);
+    return () => {
+      window.removeEventListener('keydown', handleKey);
+      clearTimeout(timeout);
+    };
+  }, [listening, pratikVisible]);
 
   const handleLogoTap = () => {
     if (pratikVisible) return;
-    setShowCodeInput((v) => !v);
-    setCodeValue('');
-  };
-
-  const handleCodeChange = (val: string) => {
-    const clean = val.replace(/\D/g, '').slice(0, SECRET_CODE.length);
-    setCodeValue(clean);
-    if (clean === SECRET_CODE) {
-      localStorage.setItem(SECRET_KEY, 'true');
-      setPratikVisible(true);
-      setShowCodeInput(false);
-      setCodeValue('');
-    }
+    bufferRef.current = '';
+    setListening(true);
   };
 
   const navItems = [
