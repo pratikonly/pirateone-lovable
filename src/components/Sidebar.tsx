@@ -38,8 +38,11 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     }
   };
 
+  const isMobile = () => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
   useEffect(() => {
     if (!listening || pratikVisibleRef.current) return;
+    if (isMobile()) return; // mobile uses hidden input onChange instead
     const handleKey = (e: KeyboardEvent) => {
       console.log('keydown:', e.key, '| listening:', listening);
       if (/^[0-9]$/.test(e.key)) tryUnlock(e.key);
