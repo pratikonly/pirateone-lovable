@@ -126,18 +126,32 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       <div className="p-4 lg:p-5 border-b border-sidebar-border">
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <img 
-              src={pirateOneLogo} 
-              alt="PirateOne" 
-              className="h-auto w-full max-w-[180px] object-contain invert dark:invert-0"
+            <img
+              src={pirateOneLogo}
+              alt="PirateOne"
+              onClick={handleLogoTap}
+              className="h-auto w-full max-w-[180px] object-contain invert dark:invert-0 cursor-pointer select-none"
             />
-            <button 
+            <button
               onClick={onClose}
               className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
+          {showCodeInput && !pratikVisible && (
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={codeValue}
+              onChange={(e) => handleCodeChange(e.target.value)}
+              onBlur={() => setShowCodeInput(false)}
+              placeholder="Enter code"
+              className="w-full px-2 py-1 text-xs text-center rounded-md bg-muted/50 border border-border outline-none focus:border-primary"
+            />
+          )}
           {pratikVisible && (
             <a
               href="https://xpratik.vercel.app/"
