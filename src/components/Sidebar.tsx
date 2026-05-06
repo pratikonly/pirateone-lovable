@@ -131,19 +131,21 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <a
-            href="https://xpratik.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-transparent hover:bg-muted/50 transition-colors mx-auto"
-          >
-            <span className="text-[10px] text-muted-foreground">Made by Pratik</span>
-            <img 
-              src={pratikLogo} 
-              alt="Pratik" 
-              className="w-4 h-4 rounded-full object-cover"
-            />
-          </a>
+          {pratikVisible && (
+            <a
+              href="https://xpratik.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-transparent hover:bg-muted/50 transition-colors mx-auto"
+            >
+              <span className="text-[10px] text-muted-foreground">Made by Pratik</span>
+              <img
+                src={pratikLogo}
+                alt="Pratik"
+                className="w-4 h-4 rounded-full object-cover"
+              />
+            </a>
+          )}
         </div>
       </div>
 
