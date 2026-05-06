@@ -21,25 +21,32 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(SECRET_KEY) === 'true';
   });
-  const bufferRef = useRef('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [codeValue, setCodeValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (showCodeInput) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [showCodeInput]);
+
+  const handleLogoTap = () => {
     if (pratikVisible) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (!/^[0-9]$/.test(e.key)) {
-        bufferRef.current = '';
-        return;
-      }
-      bufferRef.current = (bufferRef.current + e.key).slice(-SECRET_CODE.length);
-      if (bufferRef.current === SECRET_CODE) {
-        localStorage.setItem(SECRET_KEY, 'true');
-        setPratikVisible(true);
-        bufferRef.current = '';
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [pratikVisible]);
+    setShowCodeInput((v) => !v);
+    setCodeValue('');
+  };
+
+  const handleCodeChange = (val: string) => {
+    const clean = val.replace(/\D/g, '').slice(0, SECRET_CODE.length);
+    setCodeValue(clean);
+    if (clean === SECRET_CODE) {
+      localStorage.setItem(SECRET_KEY, 'true');
+      setPratikVisible(true);
+      setShowCodeInput(false);
+      setCodeValue('');
+    }
+  };
 
   const navItems = [
     { label: 'Home', path: '/', icon: (
