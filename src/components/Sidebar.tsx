@@ -17,10 +17,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  const [pratikVisible, setPratikVisible] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(SECRET_KEY) === 'true';
-  });
+  const [pratikVisible, setPratikVisible] = useState<boolean>(false);
   const [listening, setListening] = useState(false);
   const bufferRef = useRef('');
 
@@ -33,7 +30,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       }
       bufferRef.current = (bufferRef.current + e.key).slice(-SECRET_CODE.length);
       if (bufferRef.current === SECRET_CODE) {
-        localStorage.setItem(SECRET_KEY, 'true');
         setPratikVisible(true);
         setListening(false);
         bufferRef.current = '';
