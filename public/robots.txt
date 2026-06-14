@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: http://pirateone.qzz.io/sitemap.xml
+Sitemap: https://pirateone.qzz.io/sitemap.xml
