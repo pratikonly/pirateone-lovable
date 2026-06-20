@@ -20,7 +20,6 @@ import { getWatchProgress, saveWatchProgress, getProgressPercentage } from '@/li
 import { getShowStatus, setShowStatus } from '@/lib/showStatus';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
-import FullscreenVerifyChecklist from '@/components/FullscreenVerifyChecklist';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
 import { Button } from '@/components/ui/button';
@@ -499,8 +498,6 @@ const Watch = () => {
                   </ScrollArea>
                 </div>
               )}
-
-              <FullscreenVerifyChecklist />
 
               <div className="w-full max-w-4xl mx-auto">
                 <VideoPlayer
