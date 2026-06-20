@@ -558,9 +558,9 @@ const Watch = () => {
                                 const num = i + 1;
                                 return isDead ? (
                                   <div key={srv.id}
-                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none">
-                                    <span className="line-through opacity-60">Server {num}</span>
-                                    <span className="block text-[9px] text-red-500/80 font-bold uppercase tracking-wide leading-none mt-0.5">Dead</span>
+                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none flex items-center justify-center gap-1">
+                                    <span className="line-through opacity-60">S{num}</span>
+                                    <span className="text-[9px] text-red-500 font-bold uppercase tracking-wide">Dead</span>
                                   </div>
                                 ) : (
                                   <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}
@@ -585,9 +585,9 @@ const Watch = () => {
                                 const num = animeServers.length + i + 1;
                                 return isDead ? (
                                   <div key={srv.id}
-                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none">
-                                    <span className="line-through opacity-60">Server {num}</span>
-                                    <span className="block text-[9px] text-red-500/80 font-bold uppercase tracking-wide leading-none mt-0.5">Dead</span>
+                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none flex items-center justify-center gap-1">
+                                    <span className="line-through opacity-60">S{num}</span>
+                                    <span className="text-[9px] text-red-500 font-bold uppercase tracking-wide">Dead</span>
                                   </div>
                                 ) : (
                                   <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}

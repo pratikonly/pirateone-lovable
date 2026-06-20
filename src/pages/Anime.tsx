@@ -101,7 +101,7 @@ const Anime = () => {
   }, [animeList, searchQuery]);
 
   const LoadingSkeleton = () => (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 lg:gap-3">
+    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 lg:gap-3">
       {[...Array(18)].map((_, i) => (
         <div key={i} className="space-y-2">
           <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
@@ -116,27 +116,25 @@ const Anime = () => {
 
   return (
     <div className="p-4 lg:p-6 pt-20">
-      {/* Header + Search */}
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <h1 className="font-display text-3xl lg:text-4xl shrink-0">Anime</h1>
+      <h1 className="font-display text-3xl lg:text-4xl mb-4">Anime</h1>
 
-        <div className={`flex items-center gap-2 border rounded-xl px-3 py-2 transition-all duration-300 bg-zinc-900/80 backdrop-blur-sm ${searchFocused || searchQuery ? 'border-primary/60 w-full max-w-sm shadow-[0_0_12px_rgba(var(--primary-rgb),0.2)]' : 'border-zinc-700/50 w-44 hover:border-zinc-500'}`}>
-          <Search className={`w-4 h-4 shrink-0 transition-colors ${searchFocused || searchQuery ? 'text-primary' : 'text-zinc-500'}`} />
-          <input
-            type="text"
-            placeholder="Search anime…"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none min-w-0"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-zinc-500 hover:text-white transition-colors shrink-0">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+      {/* Search bar — below title, above description */}
+      <div className={`flex items-center gap-2 border rounded-xl px-3 py-2 mb-4 transition-all duration-300 bg-zinc-900/80 backdrop-blur-sm ${searchFocused || searchQuery ? 'border-primary/60 max-w-md shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-zinc-700/50 max-w-xs hover:border-zinc-500'}`}>
+        <Search className={`w-4 h-4 shrink-0 transition-colors ${searchFocused || searchQuery ? 'text-primary' : 'text-zinc-500'}`} />
+        <input
+          type="text"
+          placeholder="Search anime…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none min-w-0"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} className="text-zinc-500 hover:text-white transition-colors shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {!searchQuery && (
@@ -152,7 +150,7 @@ const Anime = () => {
         <LoadingSkeleton />
       ) : filteredAnime.length > 0 ? (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 lg:gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 lg:gap-3">
             {filteredAnime.map((item, index) => (
               <MovieCard key={`${item.id}-${index}`} movie={item} index={index} className="w-full" />
             ))}
