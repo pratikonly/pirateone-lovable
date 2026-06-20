@@ -16,9 +16,10 @@ import {
 interface MovieCardProps {
   movie: Movie;
   index?: number;
+  className?: string;
 }
 
-const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
+const MovieCard = ({ movie, index = 0, className }: MovieCardProps) => {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -90,7 +91,8 @@ const MovieCard = ({ movie, index = 0 }: MovieCardProps) => {
           ref={cardRef}
           className={cn(
             'group relative cursor-pointer card-hover shrink-0',
-            'animate-fade-in w-[100px] md:w-[120px] lg:w-[130px]'
+            'animate-fade-in w-[100px] md:w-[120px] lg:w-[130px]',
+            className
           )}
           style={{ animationDelay: `${index * 50}ms` }}
           onClick={handlePlay}

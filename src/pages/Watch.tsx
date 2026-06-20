@@ -553,15 +553,25 @@ const Watch = () => {
                               <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">Anime + Movies + TV</span>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {animeServers.map((srv, i) => (
-                                <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}
-                                  className={cn('px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center',
-                                    selectedServer === srv.id
-                                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                                      : 'bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95')}>
-                                  Server {i + 1}
-                                </button>
-                              ))}
+                              {animeServers.map((srv, i) => {
+                                const isDead = srv.id === 'vidsrccc';
+                                const num = i + 1;
+                                return isDead ? (
+                                  <div key={srv.id}
+                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none">
+                                    <span className="line-through opacity-60">Server {num}</span>
+                                    <span className="block text-[9px] text-red-500/80 font-bold uppercase tracking-wide leading-none mt-0.5">Dead</span>
+                                  </div>
+                                ) : (
+                                  <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}
+                                    className={cn('px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center',
+                                      selectedServer === srv.id
+                                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                                        : 'bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-emerald-500/50 hover:bg-emerald-950/30 active:scale-95')}>
+                                    Server {num}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                           <div className="p-3">
@@ -570,15 +580,25 @@ const Watch = () => {
                               <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">Movies + TV Only</span>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
-                              {movieTvServers.map((srv, i) => (
-                                <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}
-                                  className={cn('px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center',
-                                    selectedServer === srv.id
-                                      ? 'bg-blue-500/20 border-blue-500 text-blue-300'
-                                      : 'bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 active:scale-95')}>
-                                  Server {animeServers.length + i + 1}
-                                </button>
-                              ))}
+                              {movieTvServers.map((srv, i) => {
+                                const isDead = srv.id === 'autoembed';
+                                const num = animeServers.length + i + 1;
+                                return isDead ? (
+                                  <div key={srv.id}
+                                    className="px-2 py-2 rounded-lg text-xs font-medium border text-center relative overflow-hidden bg-red-950/30 border-red-800/50 text-red-400/60 cursor-not-allowed select-none">
+                                    <span className="line-through opacity-60">Server {num}</span>
+                                    <span className="block text-[9px] text-red-500/80 font-bold uppercase tracking-wide leading-none mt-0.5">Dead</span>
+                                  </div>
+                                ) : (
+                                  <button key={srv.id} onClick={() => { setSelectedServer(srv.id); setServerOpen(false); }}
+                                    className={cn('px-2 py-2 rounded-lg text-xs font-medium transition-all duration-200 border text-center',
+                                      selectedServer === srv.id
+                                        ? 'bg-blue-500/20 border-blue-500 text-blue-300'
+                                        : 'bg-zinc-900/50 border-zinc-700/50 text-zinc-300 hover:border-blue-500/50 hover:bg-blue-950/30 active:scale-95')}>
+                                    Server {num}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
