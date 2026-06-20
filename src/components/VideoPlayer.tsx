@@ -21,18 +21,15 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
 
-    // Track if we've loaded this specific video/episode combination
     const videoKey = useMemo(() => `${id}-${type}-${season}-${episode}-${server}-${isDub}`, [id, type, season, episode, server, isDub]);
     const initialProgressRef = useRef<number | null>(null);
     const lastVideoKeyRef = useRef<string>('');
 
-    // Store progress on initial load for this video, clear it when video changes
     if (videoKey !== lastVideoKeyRef.current) {
       initialProgressRef.current = progressSeconds ?? null;
       lastVideoKeyRef.current = videoKey;
     }
 
-    // Memoize playerUrl so it only recalculates when video parameters change, not when progressSeconds updates
     const playerUrl = useMemo(() => {
       return getPlayerUrl(id, type, server, season, episode, isDub, initialProgressRef.current ?? undefined);
     }, [id, type, server, season, episode, isDub]);
@@ -44,7 +41,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       onAdBlockedRef.current?.(adCountRef.current);
     }, []);
 
-    // Kill window.open popups
+    // Block window.open popups — re-apply every 50ms to outlast player scripts that restore it
     useEffect(() => {
       const kill = () => {
         try { window.open = () => { reportBlock(); return null; }; } catch { /* cross-origin */ }
@@ -54,23 +51,33 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => clearInterval(interval);
     }, [reportBlock]);
 
-    // Kill beforeunload hijacks
+    // Block page-level navigation hijacks (top.location redirects from inside iframes)
     useEffect(() => {
-      const handle = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-      window.addEventListener('beforeunload', handle);
-      return () => window.removeEventListener('beforeunload', handle);
+      const blockNav = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+      window.addEventListener('beforeunload', blockNav);
+      return () => window.removeEventListener('beforeunload', blockNav);
     }, []);
 
-    // Popup detection without window.focus()
+    // Detect when an iframe click steals focus (opens a new tab) and snap focus back immediately
     useEffect(() => {
       let pending: ReturnType<typeof setTimeout> | null = null;
+
       const cancel = () => { if (pending) { clearTimeout(pending); pending = null; } };
-      const onVis  = () => { if (document.hidden) cancel(); };
+
+      const onVis = () => { if (document.hidden) cancel(); };
+
       const onBlur = () => {
         if (document.hidden) return;
-        if (Date.now() - lastClickTimeRef.current < 1500) return;
-        pending = setTimeout(() => { pending = null; if (!document.hidden) reportBlock(); }, 80);
+        pending = setTimeout(() => {
+          pending = null;
+          if (!document.hidden) {
+            // Snap focus back to close / suppress the hijacked tab
+            window.focus();
+            reportBlock();
+          }
+        }, 80);
       };
+
       document.addEventListener('visibilitychange', onVis);
       window.addEventListener('blur', onBlur);
       window.addEventListener('focus', cancel);
@@ -82,12 +89,15 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       };
     }, [reportBlock]);
 
-    // Remove injected ad iframes
+    // Remove ad iframes injected into the page DOM
     useEffect(() => {
-      const AD = [/doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
+      const AD_PATTERNS = [
+        /doubleclick\.net/i, /googlesyndication/i, /adnxs\.com/i,
         /exoclick/i, /trafficjunky/i, /popads/i, /popcash/i,
-        /propellerads/i, /adsterra/i, /juicyads/i, /adsystem/i];
-      const isAd = (src: string) => AD.some(p => p.test(src));
+        /propellerads/i, /adsterra/i, /juicyads/i, /adsystem/i,
+      ];
+      const isAd = (src: string) => AD_PATTERNS.some(p => p.test(src));
+
       const observer = new MutationObserver(mutations => {
         for (const m of mutations)
           for (const node of m.addedNodes)
@@ -97,6 +107,11 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       observer.observe(document.documentElement, { childList: true, subtree: true });
       return () => observer.disconnect();
     }, [reportBlock]);
+
+    // Track clicks near the iframe so blur detection knows when to fire
+    const handleMouseDown = useCallback(() => {
+      lastClickTimeRef.current = Date.now();
+    }, []);
 
     const setIframeRef = (el: HTMLIFrameElement | null) => {
       (iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el;
@@ -109,13 +124,13 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
         ref={wrapperRef}
         className="relative w-full bg-black"
         style={{ paddingBottom: '56.25%', height: 0, borderRadius: '0.5rem' }}
+        onMouseDown={handleMouseDown}
       >
         <iframe
           ref={setIframeRef}
           src={playerUrl}
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-modals allow-downloads"
           allow="autoplay; encrypted-media; fullscreen *; picture-in-picture"
           allowFullScreen
           style={{ border: 'none', borderRadius: '0.5rem' }}
