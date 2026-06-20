@@ -138,6 +138,15 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
         <div className="lg:hidden flex-1" />
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Global search icon — LEFT of visitor count */}
+          <button
+            onClick={openSearch}
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-muted/50 border border-border hover:bg-muted hover:border-primary/40 transition-all duration-200 text-muted-foreground hover:text-foreground"
+            aria-label="Search"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
           {showVisitorCount && (
             <div className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground select-none">
               <span>{visitorCount} visits</span>
@@ -151,15 +160,6 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
               <span>{visitorCount} visits</span>
             </div>
           )}
-
-          {/* Global search icon */}
-          <button
-            onClick={openSearch}
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-muted/50 border border-border hover:bg-muted hover:border-primary/40 transition-all duration-200 text-muted-foreground hover:text-foreground"
-            aria-label="Search"
-          >
-            <Search className="w-4 h-4" />
-          </button>
 
           {!user ? (
             <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
