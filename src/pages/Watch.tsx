@@ -287,6 +287,7 @@ const Watch = () => {
 
   useEffect(() => {
     if (mediaType !== 'tv' || !movieId) return;
+    setSeasonDetails(null);
     getSeasonDetails(movieId, season).then(setSeasonDetails).catch(console.error);
   }, [movieId, mediaType, season]);
 
