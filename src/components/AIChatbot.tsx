@@ -51,10 +51,10 @@ const AIChatbot = () => {
       setMessages(prev => [...prev, { role: 'assistant', content: data.response, movies: data.movies }]);
     } catch (err: any) {
       const msg = err?.message || '';
-      const display = msg.includes('Rate limit') ? '⚡ Rate limit hit — please wait a moment and try again.'
-        : msg.includes('credits') ? '💳 AI credits exhausted. Try again later.'
-        : msg.includes('AI') || msg.includes('service') ? '🔧 AI service is temporarily unavailable.'
-        : '❌ Something went wrong. Please try again.';
+      const display = msg.includes('Rate limit') ? 'Rate limit hit — please wait a moment and try again.'
+        : msg.includes('credits') ? 'AI credits exhausted. Try again later.'
+        : msg.includes('AI') || msg.includes('service') ? 'AI service is temporarily unavailable.'
+        : 'Something went wrong. Please try again.';
       setMessages(prev => [...prev, { role: 'assistant', content: display }]);
     } finally {
       setIsLoading(false);
@@ -130,7 +130,7 @@ const AIChatbot = () => {
                       )}
                       <div className="min-w-0">
                         <p className="text-xs font-medium truncate">{m.title}</p>
-                        <p className="text-[10px] text-muted-foreground">⭐ {m.rating} · {m.year}</p>
+                        <p className="text-[10px] text-muted-foreground">{m.rating} · {m.year}</p>
                       </div>
                     </button>
                   ))}

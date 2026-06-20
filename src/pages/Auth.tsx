@@ -118,7 +118,7 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) toast.error(error.message);
-        else { toast.success('Welcome back, pirate! ⚓'); navigate('/'); }
+        else { toast.success('Welcome back, pirate!'); navigate('/'); }
       } else {
         if (password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
         const { error } = await signUp(email, password);
@@ -423,7 +423,7 @@ const Auth = () => {
 
           {/* Footer */}
           <p style={{ marginTop: '28px', fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>
-            ⚓ &nbsp;Stream freely. No ads. No limits.
+            Stream freely. No ads. No limits.
           </p>
         </div>
       </div>

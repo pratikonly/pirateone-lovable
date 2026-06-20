@@ -7,7 +7,6 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { BackdropProvider } from "./contexts/BackdropContext";
 import { PirateIdentityProvider } from "./contexts/PirateIdentityContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import { FloatingPlayerProvider } from "./contexts/FloatingPlayerContext";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Movies from "./pages/Movies";
@@ -30,7 +29,6 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <BackdropProvider>
-          <FloatingPlayerProvider>
             <PirateIdentityProvider>
               <Toaster />
               <Sonner />
@@ -55,7 +53,6 @@ const App = () => (
                 </Routes>
               </BrowserRouter>
             </PirateIdentityProvider>
-          </FloatingPlayerProvider>
         </BackdropProvider>
       </AuthProvider>
     </TooltipProvider>

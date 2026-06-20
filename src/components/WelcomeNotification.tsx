@@ -55,7 +55,7 @@ const WelcomeNotification = () => {
               </div>
               <p className="text-sm text-muted-foreground">
                 Not sure what to watch? Tap the{' '}
-                <span className="text-foreground font-medium">✨ button</span> in the bottom-right
+                <span className="text-foreground font-medium">Sparkles button</span> in the bottom-right
                 corner for personalized recommendations powered by AI — no sign-in needed.
               </p>
             </div>

@@ -5,7 +5,6 @@ import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
 import AIChatbot from './AIChatbot';
-import FloatingPlayer from './FloatingPlayer';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -53,7 +52,6 @@ const Layout = () => {
 
       <WelcomeNotification />
       <AIChatbot />
-      <FloatingPlayer />
     </div>
   );
 };

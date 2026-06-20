@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
-  ExternalLink, Play, FolderPlus, List, Loader2, MonitorPlay,
+  ExternalLink, Play, FolderPlus, List, Loader2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -13,7 +13,6 @@ import {
   getImageUrl, getBackdropUrl,
   ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
-import { useFloatingPlayer } from '@/contexts/FloatingPlayerContext';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -207,7 +206,6 @@ const Watch = () => {
   const navigate       = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
   const { user }       = useAuth();
-  const { openFloatingPlayer } = useFloatingPlayer();
 
   const parsed    = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
@@ -465,8 +463,8 @@ const Watch = () => {
         </Button>
 
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6 lg:items-stretch">
+            <div className="flex flex-col gap-4">
 
               {mediaType === 'tv' && seasons > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
@@ -527,23 +525,6 @@ const Watch = () => {
                   />
 
                   <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />
-
-                  <Button
-                    variant="outline" size="sm"
-                    className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
-                    onClick={() => openFloatingPlayer({
-                      id: movieId,
-                      mediaType,
-                      season: mediaType === 'tv' ? season : undefined,
-                      episode: mediaType === 'tv' ? episode : undefined,
-                      server: selectedServer,
-                      title,
-                      watchPath: `/watch/${mediaType}/${movieId}`,
-                    })}
-                  >
-                    <MonitorPlay className="w-4 h-4" />
-                    Float
-                  </Button>
 
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
@@ -613,7 +594,9 @@ const Watch = () => {
               </div>
               <p className="text-zinc-400 text-sm leading-relaxed">{details.overview || 'No overview available.'}</p>
               {mediaType === 'movie' && details.belongs_to_collection && (
-                <div className="mt-4"><CollectionInfo collectionId={details.belongs_to_collection.id} currentMovieId={movieId} /></div>
+                <div className="flex-1 min-h-[180px]">
+                  <CollectionInfo collectionId={details.belongs_to_collection.id} currentMovieId={movieId} />
+                </div>
               )}
             </div>
 
@@ -642,7 +625,21 @@ const Watch = () => {
                 {details.tagline && <div><span className="text-zinc-500 block">Tagline</span><p className="italic">"{details.tagline}"</p></div>}
                 <div><span className="text-zinc-500 block">Release</span><p>{details.release_date || details.first_air_date || 'Unknown'}</p></div>
                 <div><span className="text-zinc-500 block">Status</span><p>{details.status}</p></div>
-                {mediaType === 'tv' && <><div><span className="text-zinc-500 block">Seasons</span><p>{details.number_of_seasons}</p></div><div><span className="text-zinc-500 block">Episodes</span><p>{details.number_of_episodes}</p></div></>}
+                {mediaType === 'tv' && (
+                  <>
+                    <div><span className="text-zinc-500 block">Seasons</span><p>{details.number_of_seasons}</p></div>
+                    <div>
+                      <span className="text-zinc-500 block">Season {season}</span>
+                      <p>{seasonDetails?.episodes?.length ?? details.number_of_episodes} episodes</p>
+                    </div>
+                    {seasonDetails?.air_date && (
+                      <div><span className="text-zinc-500 block">Season Premiere</span><p>{seasonDetails.air_date}</p></div>
+                    )}
+                    {seasonDetails?.vote_average ? (
+                      <div><span className="text-zinc-500 block">Season Rating</span><p>{seasonDetails.vote_average.toFixed(1)} / 10</p></div>
+                    ) : null}
+                  </>
+                )}
                 {details.genres?.length > 0 && (
                   <div><span className="text-zinc-500 block">Genres</span>
                     <div className="flex flex-wrap gap-1 mt-1">

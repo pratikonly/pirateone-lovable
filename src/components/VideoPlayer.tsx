@@ -115,6 +115,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           src={playerUrl}
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-presentation allow-modals allow-downloads"
           allow="autoplay; encrypted-media; fullscreen *; picture-in-picture"
           allowFullScreen
           style={{ border: 'none', borderRadius: '0.5rem' }}

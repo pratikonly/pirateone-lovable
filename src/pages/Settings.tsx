@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Bell, Trash2, User, RefreshCw, Upload,
-  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film, TrendingUp
+  Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film, TrendingUp, Tv, Clock, Anchor
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -97,10 +97,10 @@ const WatchStats = () => {
   };
 
   const statCards = [
-    { label: 'Movies', value: stats.totalMovies, color: 'rgba(168,85,247,0.85)', icon: '🎬' },
-    { label: 'Episodes', value: stats.totalEpisodes, color: 'rgba(20,184,166,0.85)', icon: '📺' },
-    { label: 'This Week', value: stats.recentCount, color: 'rgba(251,191,36,0.85)', icon: '🔥' },
-    { label: 'Watch Time', value: stats.totalTime > 0 ? formatTime(stats.totalTime) : '0m', color: 'rgba(96,165,250,0.85)', icon: '⏱' },
+    { label: 'Movies', value: stats.totalMovies, color: 'rgba(168,85,247,0.85)', icon: <Film size={18}/> },
+    { label: 'Episodes', value: stats.totalEpisodes, color: 'rgba(20,184,166,0.85)', icon: <Tv size={18}/> },
+    { label: 'This Week', value: stats.recentCount, color: 'rgba(251,191,36,0.85)', icon: <TrendingUp size={18}/> },
+    { label: 'Watch Time', value: stats.totalTime > 0 ? formatTime(stats.totalTime) : '0m', color: 'rgba(96,165,250,0.85)', icon: <Clock size={18}/> },
   ];
 
   return (
@@ -115,7 +115,7 @@ const WatchStats = () => {
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: '10px', padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '10px',
           }}>
-            <span style={{ fontSize: '1.2rem' }}>{card.icon}</span>
+            <span style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>{card.icon}</span>
             <div>
               <p style={{ fontWeight: 700, fontSize: '1rem', color: '#fff', margin: 0 }}>{card.value}</p>
               <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', margin: '1px 0 0' }}>{card.label}</p>
@@ -431,7 +431,7 @@ const Settings = () => {
           </div>
 
           <div className="settings-footer">
-            <p style={{ fontSize:'0.85rem', color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em', fontWeight:500, margin:0 }}>⚓ &nbsp;PirateOne · Your data stays yours</p>
+            <p style={{ fontSize:'0.85rem', color:'rgba(255,255,255,0.3)', letterSpacing:'0.1em', fontWeight:500, margin:0 }}><Anchor size={12} style={{ display:'inline', verticalAlign:'middle', marginRight:5 }}/>PirateOne · Your data stays yours</p>
           </div>
 
         </div>
