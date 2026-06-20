@@ -1,5 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { Play } from 'lucide-react';
+import React, { forwardRef, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
 
 interface VideoPlayerProps {
@@ -16,17 +15,13 @@ interface VideoPlayerProps {
 }
 
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
-  ({ id, type, season, episode, isDub = false, title, poster, server = 'videasy', progressSeconds, onAdBlocked }, ref) => {
+  ({ id, type, season, episode, isDub = false, title, server = 'videasy', progressSeconds, onAdBlocked }, ref) => {
     const wrapperRef       = useRef<HTMLDivElement>(null);
     const iframeRef        = useRef<HTMLIFrameElement>(null);
     const adCountRef       = useRef(0);
     const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
     const blockUntilRef    = useRef(0);
-
-    // Lazy-load state — iframe is not injected until the user clicks Play.
-    // This eliminates the page-load redirect that some servers trigger automatically.
-    const [loaded, setLoaded] = useState(false);
 
     const videoKey = useMemo(
       () => `${id}-${type}-${season}-${episode}-${server}-${isDub}`,
@@ -35,14 +30,10 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const initialProgressRef = useRef<number | null>(null);
     const lastVideoKeyRef    = useRef<string>('');
 
-    // Reset to poster screen whenever the video/server changes
-    useEffect(() => {
-      if (videoKey !== lastVideoKeyRef.current) {
-        initialProgressRef.current = progressSeconds ?? null;
-        lastVideoKeyRef.current    = videoKey;
-        setLoaded(false);
-      }
-    }, [videoKey, progressSeconds]);
+    if (videoKey !== lastVideoKeyRef.current) {
+      initialProgressRef.current = progressSeconds ?? null;
+      lastVideoKeyRef.current    = videoKey;
+    }
 
     const playerUrl = useMemo(
       () => getPlayerUrl(id, type, server, season, episode, isDub, initialProgressRef.current ?? undefined),
@@ -56,7 +47,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       onAdBlockedRef.current?.(adCountRef.current);
     }, []);
 
-    // Override window.open every 50 ms — outlasts player scripts that try to restore it
+    // Override window.open every 50ms — outlasts scripts that try to restore it
     useEffect(() => {
       const kill = () => {
         try { window.open = () => { reportBlock(); return null; }; } catch { /* cross-origin */ }
@@ -66,21 +57,28 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => clearInterval(interval);
     }, [reportBlock]);
 
-    // Block top-level navigation hijacks (beforeunload redirect)
+    // Block top-level navigation hijacks
     useEffect(() => {
       const blockNav = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
       window.addEventListener('beforeunload', blockNav);
       return () => window.removeEventListener('beforeunload', blockNav);
     }, []);
 
+    // When the iframe first loads, open a 12-second protection window.
+    // This covers both the auto-load moment and the player's own "click to play" button.
+    const handleIframeLoad = useCallback(() => {
+      lastClickTimeRef.current = Date.now();
+      blockUntilRef.current    = Date.now() + 12000;
+    }, []);
+
     // Focus-snap: immediately reclaim focus when the iframe steals it.
-    // Fires synchronously so we beat the new tab before it fully renders.
+    // Fires synchronously (no delay) to beat the new tab before it renders.
     useEffect(() => {
       const onBlur = () => {
         if (document.hidden) return;
         const sinceClick = Date.now() - lastClickTimeRef.current;
         const inBlock    = Date.now() < blockUntilRef.current;
-        if (sinceClick < 1500 || inBlock) {
+        if (sinceClick < 2000 || inBlock) {
           window.focus();
           reportBlock();
           blockUntilRef.current = Date.now() + 2000;
@@ -94,7 +92,7 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       const onVis = () => {
         const sinceClick = Date.now() - lastClickTimeRef.current;
         const inBlock    = Date.now() < blockUntilRef.current;
-        if (document.hidden && (sinceClick < 1500 || inBlock)) {
+        if (document.hidden && (sinceClick < 2000 || inBlock)) {
           window.focus();
           reportBlock();
         }
@@ -128,22 +126,13 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => observer.disconnect();
     }, [reportBlock]);
 
-    // Keep lastClickTimeRef fresh while the mouse moves over the iframe
-    // so the blur guard stays active throughout playback interaction
+    // Keep lastClickTimeRef current while mouse moves over the player area
     const handleMouseMove = useCallback(() => {
       lastClickTimeRef.current = Date.now();
     }, []);
 
     const handleMouseDown = useCallback(() => {
       lastClickTimeRef.current = Date.now();
-    }, []);
-
-    // User explicitly clicks Play — record the time, open a 15-second protection
-    // window that covers both our click and the player's own "click to start" button
-    const handlePlay = useCallback(() => {
-      lastClickTimeRef.current = Date.now();
-      blockUntilRef.current    = Date.now() + 15000;
-      setLoaded(true);
     }, []);
 
     const setIframeRef = (el: HTMLIFrameElement | null) => {
@@ -160,43 +149,16 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
       >
-        {!loaded ? (
-          /* ── Poster / Play overlay ── */
-          <div className="absolute inset-0 flex items-center justify-center rounded-lg overflow-hidden cursor-pointer group"
-            onClick={handlePlay}>
-            {poster ? (
-              <img
-                src={poster}
-                alt={title || 'Video thumbnail'}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-zinc-900" />
-            )}
-            {/* Dark overlay */}
-            <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors" />
-            {/* Play button */}
-            <div className="relative z-10 w-20 h-20 rounded-full bg-white/10 border-2 border-white/60 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-white/20 transition-all duration-200 shadow-2xl">
-              <Play className="w-8 h-8 text-white fill-white ml-1" />
-            </div>
-            {title && (
-              <span className="absolute bottom-4 left-0 right-0 text-center text-sm font-semibold text-white/80 drop-shadow">
-                {title}
-              </span>
-            )}
-          </div>
-        ) : (
-          /* ── Actual iframe ── */
-          <iframe
-            ref={setIframeRef}
-            src={playerUrl}
-            title={title || 'Video player'}
-            className="absolute top-0 left-0 w-full h-full"
-            allow="autoplay; encrypted-media; fullscreen *; picture-in-picture"
-            allowFullScreen
-            style={{ border: 'none', borderRadius: '0.5rem' }}
-          />
-        )}
+        <iframe
+          ref={setIframeRef}
+          src={playerUrl}
+          title={title || 'Video player'}
+          className="absolute top-0 left-0 w-full h-full"
+          allow="autoplay; encrypted-media; fullscreen *; picture-in-picture"
+          allowFullScreen
+          onLoad={handleIframeLoad}
+          style={{ border: 'none', borderRadius: '0.5rem' }}
+        />
       </div>
     );
   }
