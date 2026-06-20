@@ -20,6 +20,7 @@ import { getWatchProgress, saveWatchProgress, getProgressPercentage } from '@/li
 import { getShowStatus, setShowStatus } from '@/lib/showStatus';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
+import FullscreenVerifyChecklist from '@/components/FullscreenVerifyChecklist';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
 import { Button } from '@/components/ui/button';
