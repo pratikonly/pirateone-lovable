@@ -222,7 +222,7 @@ const Watch = () => {
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen]         = useState(false);
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
-  const [noteDismissed, setNoteDismissed]   = useState(false);
+  
   const serverButtonRef = useRef<HTMLButtonElement>(null);
 
   const [watchProgress, setWatchProgress] = useState<{
