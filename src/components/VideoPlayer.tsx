@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { forwardRef, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
 
 interface VideoPlayerProps {
