@@ -20,7 +20,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const adCountRef = useRef(0);
     const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
-    const [overlayVisible, setOverlayVisible] = useState(true);
 
     // Track if we've loaded this specific video/episode combination
     const videoKey = useMemo(() => `${id}-${type}-${season}-${episode}-${server}-${isDub}`, [id, type, season, episode, server, isDub]);
