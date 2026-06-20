@@ -4,7 +4,6 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
-import AIChatbot from './AIChatbot';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,7 +50,6 @@ const Layout = () => {
       </main>
 
       <WelcomeNotification />
-      <AIChatbot />
     </div>
   );
 };

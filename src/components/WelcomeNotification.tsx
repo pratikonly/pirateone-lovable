@@ -8,10 +8,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Globe, Shield, Sparkles } from 'lucide-react';
+import { AlertTriangle, Globe, Shield } from 'lucide-react';
 
 const NOTIFICATION_KEY = 'pirateone_welcome_shown';
-const NOTIFICATION_VERSION = '4';
+const NOTIFICATION_VERSION = '5';
 
 const WelcomeNotification = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +31,7 @@ const WelcomeNotification = () => {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
-      <DialogContent className="sm:max-w-2xl lg:max-w-3xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <AlertTriangle className="w-5 h-5 text-primary" />
@@ -43,24 +43,9 @@ const WelcomeNotification = () => {
         </DialogHeader>
 
         <div className="py-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Card 1 — AI Recommender */}
-            <div className="flex flex-col gap-3 p-4 rounded-lg bg-primary/10 border border-primary/30">
-              <div className="flex items-center gap-3 md:flex-col md:items-start">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                </div>
-                <h4 className="font-semibold text-sm text-primary md:mt-2">AI Movie Recommender</h4>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Not sure what to watch? Tap the{' '}
-                <span className="text-foreground font-medium">Sparkles button</span> in the bottom-right
-                corner for personalized recommendations powered by AI — no sign-in needed.
-              </p>
-            </div>
-
-            {/* Card 2 — Ad Protection */}
+            {/* Card — Ad Protection */}
             <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="flex items-center gap-3 md:flex-col md:items-start">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -74,7 +59,7 @@ const WelcomeNotification = () => {
               </p>
             </div>
 
-            {/* Card 3 — VPN */}
+            {/* Card — VPN */}
             <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="flex items-center gap-3 md:flex-col md:items-start">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
