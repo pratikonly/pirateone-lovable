@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
-  ExternalLink, MousePointerClick, Play, FolderPlus, List, Loader2,
+  ExternalLink, Play, FolderPlus, List, Loader2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
