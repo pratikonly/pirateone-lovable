@@ -58,34 +58,44 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => window.removeEventListener('beforeunload', blockNav);
     }, []);
 
-    // Detect when an iframe click steals focus (opens a new tab) and snap focus back immediately
+    // Detect when an iframe click steals focus (opens a new tab) and snap focus back immediately.
+    // We check if the blur happened within 1500ms of a recorded mousedown on the iframe wrapper —
+    // if so, it was almost certainly an ad popup, so we call window.focus() synchronously (no delay)
+    // to reclaim focus before the new tab can fully render.
     useEffect(() => {
-      let pending: ReturnType<typeof setTimeout> | null = null;
-
-      const cancel = () => { if (pending) { clearTimeout(pending); pending = null; } };
-
-      const onVis = () => { if (document.hidden) cancel(); };
+      let blockUntil = 0;
 
       const onBlur = () => {
         if (document.hidden) return;
-        pending = setTimeout(() => {
-          pending = null;
-          if (!document.hidden) {
-            // Snap focus back to close / suppress the hijacked tab
-            window.focus();
-            reportBlock();
-          }
-        }, 80);
+        const sinceClick = Date.now() - lastClickTimeRef.current;
+        if (sinceClick < 1500) {
+          // Synchronous snap-back — beats the new tab getting focus
+          window.focus();
+          reportBlock();
+          // Keep blocking for a short window in case of rapid repeat attempts
+          blockUntil = Date.now() + 2000;
+        }
       };
 
-      document.addEventListener('visibilitychange', onVis);
+      // Secondary guard: if focus somehow left and blockUntil is set, reclaim again
+      const onFocusIn = () => {
+        if (Date.now() < blockUntil) window.focus();
+      };
+
+      const onVis = () => {
+        if (document.hidden && Date.now() - lastClickTimeRef.current < 1500) {
+          window.focus();
+          reportBlock();
+        }
+      };
+
       window.addEventListener('blur', onBlur);
-      window.addEventListener('focus', cancel);
+      window.addEventListener('focusin', onFocusIn);
+      document.addEventListener('visibilitychange', onVis);
       return () => {
-        document.removeEventListener('visibilitychange', onVis);
         window.removeEventListener('blur', onBlur);
-        window.removeEventListener('focus', cancel);
-        cancel();
+        window.removeEventListener('focusin', onFocusIn);
+        document.removeEventListener('visibilitychange', onVis);
       };
     }, [reportBlock]);
 
