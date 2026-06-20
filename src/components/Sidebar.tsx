@@ -61,12 +61,12 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const handleLogoTap = () => {
     if (pratikVisibleRef.current) return;
     bufferRef.current = '';
-    console.log('logo tapped, setting listening true');
     setListening(true);
-    setTimeout(() => {
-      console.log('focusing hidden input');
-      hiddenInputRef.current?.focus();
-    }, 50);
+    if (isMobile()) {
+      setTimeout(() => {
+        hiddenInputRef.current?.focus();
+      }, 50);
+    }
   };
 
   const navItems = [

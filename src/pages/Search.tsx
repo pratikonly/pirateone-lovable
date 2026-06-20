@@ -182,6 +182,20 @@ const Search = () => {
     </div>
   );
 
+  const LoadingSkeleton = () => (
+    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5">
+      {[...Array(12)].map((_, i) => (
+        <div key={i} className="space-y-2">
+          <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
+          <div className="space-y-1.5">
+            <div className="h-3 bg-muted rounded animate-pulse" />
+            <div className="h-2.5 w-12 bg-muted rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen flex flex-col p-4 lg:p-8 pt-20">
       <h1 className="font-display text-3xl lg:text-4xl mb-6 lg:mb-8">Search</h1>
@@ -352,10 +366,14 @@ const Search = () => {
           </div>
         )}
 
+        {/* Loading skeleton while searching */}
+        {!idMode && isLoading && debouncedQuery.length >= 2 && <LoadingSkeleton />}
+        {!idMode && isLoading && hasActiveFilters && !hasQuery && <LoadingSkeleton />}
+
         {/* Text search results */}
-        {!idMode && debouncedQuery.length >= 2 && (
+        {!idMode && !isLoading && debouncedQuery.length >= 2 && (
           <>
-            {results.length === 0 && !isLoading ? (
+            {results.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-muted-foreground text-lg">No results found for "{debouncedQuery}"</p>
                 <p className="text-muted-foreground mt-2">Try a different search term or switch to TMDB ID search</p>

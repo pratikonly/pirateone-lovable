@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Loader2, Bot, User, Film, Sparkles } from 'lucide-react';
+import { X, Send, Loader2, User, Film, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,8 @@ interface ChatMessage {
   content: string;
   movies?: { id: number; title: string; poster: string | null; rating: string; year: string; mediaType: string }[];
 }
+
+const SUGGESTIONS = ['Suggest a thriller movie', 'Best anime to binge', 'Something like Breaking Bad'];
 
 const AIChatbot = () => {
   const { user } = useAuth();
@@ -29,15 +31,20 @@ const AIChatbot = () => {
     if (isOpen && inputRef.current) inputRef.current.focus();
   }, [isOpen]);
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (text: string = input) => {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
+
     if (!user) {
-      setMessages(prev => [...prev, { role: 'user', content: input }, { role: 'assistant', content: 'Please sign in to use the AI recommender!' }]);
+      setMessages(prev => [...prev,
+        { role: 'user', content: trimmed },
+        { role: 'assistant', content: 'Please sign in to use the AI recommender!' }
+      ]);
       setInput('');
       return;
     }
 
-    const userMsg: ChatMessage = { role: 'user', content: input };
+    const userMsg: ChatMessage = { role: 'user', content: trimmed };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
@@ -45,13 +52,21 @@ const AIChatbot = () => {
     try {
       const history = messages.map(m => ({ role: m.role, content: m.content }));
       const { data, error } = await supabase.functions.invoke('chat-recommend', {
-        body: { message: input, history },
+        body: { message: trimmed, history },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Request failed');
+      if (data?.error) throw new Error(data.error);
+      if (!data?.response) throw new Error('No response received');
+
       setMessages(prev => [...prev, { role: 'assistant', content: data.response, movies: data.movies }]);
     } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+      const msg = err?.message || '';
+      const display = msg.includes('Rate limit') ? '⚡ Rate limit hit — please wait a moment and try again.'
+        : msg.includes('credits') ? '💳 AI credits exhausted. Try again later.'
+        : msg.includes('AI') || msg.includes('service') ? '🔧 AI service is temporarily unavailable.'
+        : '❌ Something went wrong. Please try again.';
+      setMessages(prev => [...prev, { role: 'assistant', content: display }]);
     } finally {
       setIsLoading(false);
     }
@@ -89,14 +104,19 @@ const AIChatbot = () => {
             <p className="font-medium">What should you watch?</p>
             <p className="text-xs mt-1">Ask me for movie & TV recommendations!</p>
             <div className="mt-4 space-y-2">
-              {['Suggest a thriller movie', 'Best anime to binge', "Something like Breaking Bad"].map(q => (
-                <button key={q} onClick={() => { setInput(q); }} className="block w-full text-left px-3 py-2 rounded-lg bg-muted/50 border border-border text-xs hover:bg-muted transition-colors">
+              {SUGGESTIONS.map(q => (
+                <button
+                  key={q}
+                  onClick={() => sendMessage(q)}
+                  className="block w-full text-left px-3 py-2 rounded-lg bg-muted/50 border border-border text-xs hover:bg-muted transition-colors"
+                >
                   {q}
                 </button>
               ))}
             </div>
           </div>
         )}
+
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && <Sparkles className="w-5 h-5 text-primary mt-1 flex-shrink-0" />}
@@ -115,7 +135,9 @@ const AIChatbot = () => {
                       {m.poster ? (
                         <img src={m.poster} alt={m.title} className="w-8 h-12 rounded object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-8 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0"><Film className="w-3 h-3" /></div>
+                        <div className="w-8 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                          <Film className="w-3 h-3" />
+                        </div>
                       )}
                       <div className="min-w-0">
                         <p className="text-xs font-medium truncate">{m.title}</p>
@@ -129,6 +151,7 @@ const AIChatbot = () => {
             {msg.role === 'user' && <User className="w-5 h-5 text-muted-foreground mt-1 flex-shrink-0" />}
           </div>
         ))}
+
         {isLoading && (
           <div className="flex gap-2">
             <Sparkles className="w-5 h-5 text-primary mt-1" />
@@ -150,7 +173,11 @@ const AIChatbot = () => {
             placeholder="Ask for recommendations..."
             className="flex-1 bg-muted border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
           />
-          <button type="submit" disabled={isLoading || !input.trim()} className="bg-primary text-primary-foreground rounded-lg px-3 py-2 disabled:opacity-50 hover:opacity-90 transition-opacity">
+          <button
+            type="submit"
+            disabled={isLoading || !input.trim()}
+            className="bg-primary text-primary-foreground rounded-lg px-3 py-2 disabled:opacity-50 hover:opacity-90 transition-opacity"
+          >
             <Send className="w-4 h-4" />
           </button>
         </form>
