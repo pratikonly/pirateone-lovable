@@ -98,12 +98,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => observer.disconnect();
     }, [reportBlock]);
 
-    const handleOverlayClick = useCallback(() => {
-      lastClickTimeRef.current = Date.now();
-      setOverlayVisible(false);
-      setTimeout(() => setOverlayVisible(true), 800);
-    }, []);
-
     const setIframeRef = (el: HTMLIFrameElement | null) => {
       (iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el;
       if (typeof ref === 'function') ref(el);
@@ -126,13 +120,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
         />
-        {overlayVisible && (
-          <div
-            className="absolute inset-0 z-10"
-            style={{ background: 'transparent', cursor: 'pointer' }}
-            onClick={handleOverlayClick}
-          />
-        )}
       </div>
     );
   }
