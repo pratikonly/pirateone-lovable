@@ -503,6 +503,7 @@ const Watch = () => {
               <div className="w-full max-w-4xl mx-auto">
                 <VideoPlayer
                   id={movieId} type={mediaType} title={title}
+                  poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
                   season={mediaType === 'tv' ? season   : undefined}
                   episode={mediaType === 'tv' ? episode : undefined}
                   server={selectedServer}

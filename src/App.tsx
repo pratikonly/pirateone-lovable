@@ -21,6 +21,7 @@ import Sports from "./pages/Sports";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import ServerStatus from "./pages/ServerStatus";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
                     <Route path="/sports" element={<Sports />} />
                     <Route path="/watch/:type/:id" element={<Watch />} />
                   </Route>
+                  <Route path="/server" element={<ServerStatus />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
