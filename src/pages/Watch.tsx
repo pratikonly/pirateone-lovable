@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
-  ExternalLink, MousePointerClick, Play, FolderPlus, List, Loader2,
+  ExternalLink, Play, FolderPlus, List, Loader2,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -20,6 +20,7 @@ import { getWatchProgress, saveWatchProgress, getProgressPercentage } from '@/li
 import { getShowStatus, setShowStatus } from '@/lib/showStatus';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
+import FullscreenVerifyChecklist from '@/components/FullscreenVerifyChecklist';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
 import { Button } from '@/components/ui/button';
@@ -221,7 +222,7 @@ const Watch = () => {
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen]         = useState(false);
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
-  const [noteDismissed, setNoteDismissed]   = useState(false);
+  
   const serverButtonRef = useRef<HTMLButtonElement>(null);
 
   const [watchProgress, setWatchProgress] = useState<{
@@ -499,21 +500,7 @@ const Watch = () => {
                 </div>
               )}
 
-              {!noteDismissed && (
-                <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/30">
-                  <MousePointerClick className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-300/90 leading-relaxed flex-1">
-                    <span className="font-semibold text-yellow-300">Tip:</span> Sometimes you may need to{' '}
-                    <span className="font-semibold">click twice</span> to interact with the video player.
-                  </p>
-                  <button onClick={() => setNoteDismissed(true)} aria-label="Dismiss"
-                    className="flex-shrink-0 text-yellow-500/60 hover:text-yellow-400 ml-1 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                </div>
-              )}
+              <FullscreenVerifyChecklist />
 
               <div className="w-full max-w-4xl mx-auto">
                 <VideoPlayer
