@@ -107,18 +107,17 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     return (
       <div
         ref={wrapperRef}
-        className="relative w-full rounded-lg overflow-hidden bg-black"
-        style={{ paddingBottom: '56.25%', height: 0 }}
+        className="relative w-full bg-black"
+        style={{ paddingBottom: '56.25%', height: 0, borderRadius: '0.5rem' }}
       >
         <iframe
           ref={setIframeRef}
           src={playerUrl}
           title={title || 'Video player'}
           className="absolute top-0 left-0 w-full h-full"
-          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allow="autoplay; encrypted-media; fullscreen *; picture-in-picture"
           allowFullScreen
-          referrerPolicy="no-referrer"
-          style={{ border: 'none' }}
+          style={{ border: 'none', borderRadius: '0.5rem' }}
         />
       </div>
     );
