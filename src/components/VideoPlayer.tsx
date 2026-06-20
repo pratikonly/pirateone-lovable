@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import React, { forwardRef, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getPlayerUrl, ServerType } from '@/lib/tmdb';
 
 interface VideoPlayerProps {
@@ -20,7 +20,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const adCountRef = useRef(0);
     const onAdBlockedRef   = useRef(onAdBlocked);
     const lastClickTimeRef = useRef(0);
-    const [overlayVisible, setOverlayVisible] = useState(true);
 
     // Track if we've loaded this specific video/episode combination
     const videoKey = useMemo(() => `${id}-${type}-${season}-${episode}-${server}-${isDub}`, [id, type, season, episode, server, isDub]);
@@ -99,12 +98,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => observer.disconnect();
     }, [reportBlock]);
 
-    const handleOverlayClick = useCallback(() => {
-      lastClickTimeRef.current = Date.now();
-      setOverlayVisible(false);
-      setTimeout(() => setOverlayVisible(true), 800);
-    }, []);
-
     const setIframeRef = (el: HTMLIFrameElement | null) => {
       (iframeRef as React.MutableRefObject<HTMLIFrameElement | null>).current = el;
       if (typeof ref === 'function') ref(el);
@@ -127,13 +120,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
           referrerPolicy="no-referrer"
           style={{ border: 'none' }}
         />
-        {overlayVisible && (
-          <div
-            className="absolute inset-0 z-10"
-            style={{ background: 'transparent', cursor: 'pointer' }}
-            onClick={handleOverlayClick}
-          />
-        )}
       </div>
     );
   }
