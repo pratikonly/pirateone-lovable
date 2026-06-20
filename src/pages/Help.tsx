@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -6,7 +6,7 @@ import {
   Sparkles, Shield, Database, Server, Download,
   ChevronDown, ChevronUp, Anchor, Tv, Film, Zap,
   BookMarked, History, Library, User, Camera, Search, TrendingUp,
-  Award, ThumbsUp, MessageSquare, Hash
+  Award, ThumbsUp, MessageSquare, Hash, Keyboard, GitBranch, MonitorPlay,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -313,6 +313,27 @@ const Help = () => {
                   <span key={i} style={{ fontSize:'0.66rem', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.5)', padding:'2px 8px', borderRadius:'5px', fontFamily:'monospace' }}>S{i+1}</span>
                 ))}
               </div>
+
+              {/* Server Comparison */}
+              <div style={{ paddingLeft:'50px', marginTop:'14px' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'auto 1fr 1fr 1fr', gap:'6px 10px', alignItems:'center' }}>
+                  <span style={{ fontSize:'0.62rem', color:'rgba(255,255,255,0.25)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em' }}>Group</span>
+                  <span style={{ fontSize:'0.62rem', color:'#f97316', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', textAlign:'center' }}>🎬 Movies</span>
+                  <span style={{ fontSize:'0.62rem', color:'#3b82f6', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', textAlign:'center' }}>📺 TV</span>
+                  <span style={{ fontSize:'0.62rem', color:'#a855f7', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', textAlign:'center' }}>🎌 Anime</span>
+                  {[
+                    { label:'S1–S9', movie:true, tv:true, anime:true },
+                    { label:'S10–S15', movie:true, tv:true, anime:false },
+                  ].map(row => (
+                    <React.Fragment key={row.label}>
+                      <span style={{ fontSize:'0.66rem', fontFamily:'monospace', color:'rgba(255,255,255,0.5)', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', padding:'2px 7px', borderRadius:'5px', width:'fit-content' }}>{row.label}</span>
+                      {[row.movie, row.tv, row.anime].map((ok, j) => (
+                        <span key={j} style={{ textAlign:'center', fontSize:'0.8rem' }}>{ok ? '✅' : '❌'}</span>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Downloads */}
@@ -398,7 +419,88 @@ const Help = () => {
           </div>
         </div>
 
-        {/* ══ 4. FAQ — full width, centered ══ */}
+        {/* ══ 4. KEYBOARD SHORTCUTS ══ */}
+        <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'52px' }}>
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'40px' }}>
+            <SL icon={<Keyboard size={13}/>} label="Keyboard Shortcuts" />
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px 40px' }}>
+              {[
+                { group:'Global', color:'#a855f7', keys:[
+                  { key:'/', action:'Open & focus the Search bar' },
+                  { key:'Esc', action:'Close sidebar / dismiss panels' },
+                ]},
+                { group:'Watch Page', color:'#3b82f6', keys:[
+                  { key:'Float button', action:'Open floating mini-player (PiP)' },
+                  { key:'Server N', action:'Switch server from the server menu' },
+                ]},
+              ].map(group => (
+                <div key={group.group}>
+                  <p style={{ fontSize:'0.65rem', fontWeight:700, letterSpacing:'0.15em', textTransform:'uppercase', color:group.color, marginBottom:'10px' }}>{group.group}</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                    {group.keys.map(k => (
+                      <div key={k.key} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'8px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'9px' }}>
+                        <kbd style={{ flexShrink:0, display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:36, padding:'2px 8px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.15)', borderBottom:'2px solid rgba(255,255,255,0.1)', borderRadius:'6px', fontSize:'0.7rem', fontFamily:'monospace', color:'#fff', fontWeight:600, whiteSpace:'nowrap' }}>{k.key}</kbd>
+                        <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.5)' }}>{k.action}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p style={{ marginTop:'14px', fontSize:'0.72rem', color:'rgba(255,255,255,0.22)' }}>
+              Shortcuts don't fire when typing inside a text input or textarea.
+            </p>
+          </div>
+        </div>
+
+        {/* ══ 5. CHANGELOG ══ */}
+        <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'52px' }}>
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'40px' }}>
+            <SL icon={<GitBranch size={13}/>} label="What's New" />
+            <div style={{ display:'flex', flexDirection:'column', gap:'0' }}>
+              {[
+                {
+                  version:'v2.6', date:'Jun 2026', color:'#a855f7', bg:'rgba(168,85,247,0.1)', border:'rgba(168,85,247,0.25)', badge:'Latest',
+                  changes:['AI Movie Recommender open to all users — no sign-in needed','Floating mini-player (PiP) — float any video while browsing','Keyboard shortcuts: / for search, Esc to close sidebar','Welcome popup updated with AI Recommender tip'],
+                },
+                {
+                  version:'v2.5', date:'May 2026', color:'#3b82f6', bg:'rgba(59,130,246,0.08)', border:'rgba(59,130,246,0.2)', badge:null,
+                  changes:['15 streaming servers — switch instantly if one fails','Download button on every watch page (VidSrc + BunnyDDL)','Search loading skeletons for smoother experience'],
+                },
+                {
+                  version:'v2.4', date:'Apr 2026', color:'rgba(255,255,255,0.3)', bg:'rgba(255,255,255,0.03)', border:'rgba(255,255,255,0.08)', badge:null,
+                  changes:['Watch history sync when signed in','Library status: Watching / Completed / Dropped / Plan to Watch','Community reviews powered by TMDB on every title page'],
+                },
+              ].map((rel, ri) => (
+                <div key={rel.version} style={{ display:'flex', gap:'18px', paddingBottom:'24px', position:'relative' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0, width:40 }}>
+                    <div style={{ width:36, height:36, borderRadius:'50%', background:rel.bg, border:`1px solid ${rel.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <Zap size={14} style={{ color:rel.color }}/>
+                    </div>
+                    {ri < 2 && <div style={{ flex:1, width:1, background:'rgba(255,255,255,0.06)', marginTop:6 }}/>}
+                  </div>
+                  <div style={{ paddingTop:6 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                      <span style={{ fontWeight:700, fontSize:'0.88rem', color:'#fff' }}>{rel.version}</span>
+                      {rel.badge && <span style={{ fontSize:'0.6rem', fontWeight:700, padding:'2px 8px', borderRadius:'99px', background:rel.bg, border:`1px solid ${rel.border}`, color:rel.color }}>{rel.badge}</span>}
+                      <span style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.3)' }}>{rel.date}</span>
+                    </div>
+                    <ul style={{ margin:0, padding:0, listStyle:'none', display:'flex', flexDirection:'column', gap:4 }}>
+                      {rel.changes.map(c => (
+                        <li key={c} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:'0.8rem', color:'rgba(255,255,255,0.5)' }}>
+                          <CheckCircle size={12} style={{ color:rel.color, flexShrink:0, marginTop:2 }}/>
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ══ 6. FAQ — full width, centered ══ */}
         <div className="hfu" style={{ width:'100%', maxWidth:'100%', marginBottom:'32px' }}>
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'40px' }}>
             <SL icon={<HelpCircle size={13}/>} label="Frequently Asked Questions" />

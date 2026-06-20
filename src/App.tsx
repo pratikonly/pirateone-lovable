@@ -7,6 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { BackdropProvider } from "./contexts/BackdropContext";
 import { PirateIdentityProvider } from "./contexts/PirateIdentityContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { FloatingPlayerProvider } from "./contexts/FloatingPlayerContext";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Movies from "./pages/Movies";
@@ -29,30 +30,32 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <BackdropProvider>
-          <PirateIdentityProvider>
-            <Toaster />
-            <Sonner />
-            <SpeedInsights />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route element={<Layout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/movies" element={<Movies />} />
-                  <Route path="/series" element={<Series />} />
-                  <Route path="/anime" element={<Anime />} />
-                  <Route path="/search" element={<Search />} />
-                  <Route path="/watchlist" element={<Watchlist />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="/sports" element={<Sports />} />
-                  <Route path="/watch/:type/:id" element={<Watch />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </PirateIdentityProvider>
+          <FloatingPlayerProvider>
+            <PirateIdentityProvider>
+              <Toaster />
+              <Sonner />
+              <SpeedInsights />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route element={<Layout />}>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/movies" element={<Movies />} />
+                    <Route path="/series" element={<Series />} />
+                    <Route path="/anime" element={<Anime />} />
+                    <Route path="/search" element={<Search />} />
+                    <Route path="/watchlist" element={<Watchlist />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/help" element={<Help />} />
+                    <Route path="/sports" element={<Sports />} />
+                    <Route path="/watch/:type/:id" element={<Watch />} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </PirateIdentityProvider>
+          </FloatingPlayerProvider>
         </BackdropProvider>
       </AuthProvider>
     </TooltipProvider>

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Loader2, User, Film, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 
@@ -14,7 +13,6 @@ interface ChatMessage {
 const SUGGESTIONS = ['Suggest a thriller movie', 'Best anime to binge', 'Something like Breaking Bad'];
 
 const AIChatbot = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -34,15 +32,6 @@ const AIChatbot = () => {
   const sendMessage = async (text: string = input) => {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
-
-    if (!user) {
-      setMessages(prev => [...prev,
-        { role: 'user', content: trimmed },
-        { role: 'assistant', content: 'Please sign in to use the AI recommender!' }
-      ]);
-      setInput('');
-      return;
-    }
 
     const userMsg: ChatMessage = { role: 'user', content: trimmed };
     setMessages(prev => [...prev, userMsg]);

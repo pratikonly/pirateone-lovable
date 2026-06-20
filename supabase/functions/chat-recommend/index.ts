@@ -102,32 +102,19 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authentication
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      authHeader ? { global: { headers: { Authorization: authHeader } } } : {}
     );
 
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      console.error('Auth error:', authError?.message || 'No user found');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { data: { user } } = authHeader
+      ? await supabaseClient.auth.getUser()
+      : { data: { user: null } };
 
-    console.log('Authenticated user:', user.id);
+    console.log('Request from:', user?.id ?? 'anonymous');
 
     const { message, history } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -230,7 +217,7 @@ Always include at least one recommendation with the title in [brackets] format.`
       }
     }
 
-    console.log('AI response received with', movies.length, 'movies for user', user.id);
+    console.log('AI response received with', movies.length, 'movies for user', user?.id ?? 'anonymous');
 
     return new Response(
       JSON.stringify({ 

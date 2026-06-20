@@ -35,11 +35,11 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
 
   if (isLoading) {
     return (
-      <div className="bg-card/50 backdrop-blur-sm rounded-lg p-4 border border-border/50 animate-pulse">
-        <div className="h-6 w-48 bg-muted rounded mb-4" />
-        <div className="flex gap-3">
+      <div className="bg-card/50 rounded-lg p-3 border border-border/50 animate-pulse">
+        <div className="h-4 w-36 bg-muted rounded mb-3" />
+        <div className="flex gap-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="w-24 h-36 bg-muted rounded-lg flex-shrink-0" />
+            <div key={i} className="w-12 h-[72px] bg-muted rounded flex-shrink-0" />
           ))}
         </div>
       </div>
@@ -51,15 +51,15 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
   }
 
   return (
-    <div className="bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-sm rounded-lg p-4 border border-border overflow-hidden">
-      <div className="flex items-center gap-2 mb-3">
-        <Film className="w-4 h-4 text-primary flex-shrink-0" />
-        <h3 className="font-display text-sm truncate">
+    <div className="bg-white/5 rounded-lg p-3 border border-border/50">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Film className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+        <h3 className="text-xs font-semibold truncate">
           Part of <span className="text-primary">{collection.name}</span>
         </h3>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {collection.parts.map((movie: Movie) => {
           const isCurrentMovie = movie.id === currentMovieId;
           const posterUrl = getImageUrl(movie.poster_path, 'w200');
@@ -69,12 +69,12 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
               key={movie.id}
               onClick={() => !isCurrentMovie && navigate(`/watch/movie/${movie.id}`)}
               disabled={isCurrentMovie}
-              className={`flex-shrink-0 group transition-all ${
+              className={`flex-shrink-0 w-12 group transition-all ${
                 isCurrentMovie ? 'cursor-default' : 'hover:scale-105'
               }`}
             >
-              <div className={`relative w-full rounded overflow-hidden border-2 ${
-                isCurrentMovie ? 'border-primary ring-1 ring-primary/30' : 'border-transparent hover:border-primary/50'
+              <div className={`relative w-full rounded overflow-hidden border ${
+                isCurrentMovie ? 'border-primary ring-1 ring-primary/30' : 'border-transparent hover:border-primary/40'
               }`}>
                 {posterUrl ? (
                   <img
@@ -84,18 +84,18 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
                   />
                 ) : (
                   <div className="w-full aspect-[2/3] bg-muted flex items-center justify-center">
-                    <Film className="w-4 h-4 text-muted-foreground" />
+                    <Film className="w-3 h-3 text-muted-foreground" />
                   </div>
                 )}
                 {isCurrentMovie && (
                   <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
-                    <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded font-medium">
+                    <span className="bg-primary text-primary-foreground text-[8px] px-1 py-0.5 rounded font-medium">
                       Playing
                     </span>
                   </div>
                 )}
               </div>
-              <p className={`mt-1 text-[10px] font-medium truncate text-center ${
+              <p className={`mt-0.5 text-[9px] font-medium truncate text-center ${
                 isCurrentMovie ? 'text-primary' : 'text-muted-foreground'
               }`}>
                 {movie.title}

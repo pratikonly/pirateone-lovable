@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
-  ExternalLink, Play, FolderPlus, List, Loader2,
+  ExternalLink, Play, FolderPlus, List, Loader2, MonitorPlay,
 } from 'lucide-react';
 import { z } from 'zod';
 import {
@@ -13,6 +13,7 @@ import {
   getImageUrl, getBackdropUrl,
   ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS,
 } from '@/lib/tmdb';
+import { useFloatingPlayer } from '@/contexts/FloatingPlayerContext';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -206,6 +207,7 @@ const Watch = () => {
   const navigate       = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
   const { user }       = useAuth();
+  const { openFloatingPlayer } = useFloatingPlayer();
 
   const parsed    = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
@@ -526,6 +528,22 @@ const Watch = () => {
 
                   <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />
 
+                  <Button
+                    variant="outline" size="sm"
+                    className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
+                    onClick={() => openFloatingPlayer({
+                      id: movieId,
+                      mediaType,
+                      season: mediaType === 'tv' ? season : undefined,
+                      episode: mediaType === 'tv' ? episode : undefined,
+                      server: selectedServer,
+                      title,
+                      watchPath: `/watch/${mediaType}/${movieId}`,
+                    })}
+                  >
+                    <MonitorPlay className="w-4 h-4" />
+                    Float
+                  </Button>
 
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
