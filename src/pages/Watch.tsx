@@ -654,11 +654,11 @@ const Watch = () => {
                       <span className="text-zinc-500 block">Season {season}</span>
                       <p>{seasonDetails?.episodes?.length ?? details.number_of_episodes} episodes</p>
                     </div>
-                    {seasonDetails?.air_date && (
-                      <div><span className="text-zinc-500 block">Season Premiere</span><p>{seasonDetails.air_date}</p></div>
+                    {(seasonDetails as any)?.air_date && (
+                      <div><span className="text-zinc-500 block">Season Premiere</span><p>{(seasonDetails as any).air_date}</p></div>
                     )}
-                    {seasonDetails?.vote_average ? (
-                      <div><span className="text-zinc-500 block">Season Rating</span><p>{seasonDetails.vote_average.toFixed(1)} / 10</p></div>
+                    {(seasonDetails as any)?.vote_average ? (
+                      <div><span className="text-zinc-500 block">Season Rating</span><p>{(seasonDetails as any).vote_average.toFixed(1)} / 10</p></div>
                     ) : null}
                   </>
                 )}
