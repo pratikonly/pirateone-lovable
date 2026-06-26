@@ -271,7 +271,7 @@ const Header = ({ onMenuToggle }: HeaderProps) => {
                         const title = item.title || item.name || 'Untitled';
                         const year = (item.release_date || item.first_air_date)?.split('-')[0] || '';
                         const type = item.media_type === 'tv' ? 'TV' : 'Movie';
-                        const poster = item.poster_path ? getImageUrl(item.poster_path, 'w92') : null;
+                        const poster = item.poster_path ? getImageUrl(item.poster_path, 'w200') : null;
                         return (
                           <button
                             key={item.id}
