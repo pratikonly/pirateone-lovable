@@ -60,7 +60,7 @@ function pingImage(origin: string, timeoutMs: number): Promise<{ ok: boolean; ms
     img.onload  = () => done(true);
     // onerror: if < 400ms, likely DNS failure (server down); if ≥ 400ms, server sent an HTTP error (still up)
     img.onerror = () => done(Date.now() - start >= 400);
-    img.src = `${origin}/favicon.ico?_=${Date.now()}`;
+    img.src = `${origin}/favicon.svg?_=${Date.now()}`;
   });
 }
 

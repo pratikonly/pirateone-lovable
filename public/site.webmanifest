@@ -10,7 +10,6 @@
   "theme_color": "#0f3460",
   "categories": ["entertainment", "video", "movies"],
   "icons": [
-    { "src": "/pirateone-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/pirateone-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
