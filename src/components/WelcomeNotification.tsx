@@ -8,7 +8,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Globe, Shield } from 'lucide-react';
+import { AlertTriangle, Globe, MousePointerClick } from 'lucide-react';
 
 const NOTIFICATION_KEY = 'pirateone_welcome_shown';
 const NOTIFICATION_VERSION = '5';
