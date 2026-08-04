@@ -11,11 +11,12 @@ interface VideoPlayerProps {
   poster?: string | null;
   server?: ServerType;
   progressSeconds?: number;
+  imdbId?: string;
   onAdBlocked?: (count: number) => void;
 }
 
 const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
-  ({ id, type, season, episode, isDub = false, title, server = 'videasy', progressSeconds, onAdBlocked }, ref) => {
+  ({ id, type, season, episode, isDub = false, title, server = 'videasy', progressSeconds, imdbId, onAdBlocked }, ref) => {
     const wrapperRef       = useRef<HTMLDivElement>(null);
     const iframeRef        = useRef<HTMLIFrameElement>(null);
     const adCountRef       = useRef(0);
@@ -24,8 +25,8 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     const blockUntilRef    = useRef(0);
 
     const videoKey = useMemo(
-      () => `${id}-${type}-${season}-${episode}-${server}-${isDub}`,
-      [id, type, season, episode, server, isDub]
+      () => `${id}-${type}-${season}-${episode}-${server}-${isDub}-${imdbId ?? ''}`,
+      [id, type, season, episode, server, isDub, imdbId]
     );
     const initialProgressRef = useRef<number | null>(null);
     const lastVideoKeyRef    = useRef<string>('');
@@ -36,8 +37,8 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
     }
 
     const playerUrl = useMemo(
-      () => getPlayerUrl(id, type, server, season, episode, isDub, initialProgressRef.current ?? undefined),
-      [id, type, server, season, episode, isDub]
+      () => getPlayerUrl(id, type, server, season, episode, isDub, initialProgressRef.current ?? undefined, imdbId),
+      [id, type, server, season, episode, isDub, imdbId]
     );
 
     useEffect(() => { onAdBlockedRef.current = onAdBlocked; }, [onAdBlocked]);

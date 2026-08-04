@@ -64,6 +64,8 @@ export interface MovieDetails extends Movie {
   credits?: Credits;
   seasons?: { id: number; name: string; season_number: number; episode_count: number; poster_path: string | null }[];
   belongs_to_collection?: Collection | null;
+  imdb_id?: string;
+  external_ids?: { imdb_id?: string | null };
 }
 
 export interface Logo {
@@ -194,11 +196,11 @@ export const searchMultiPaginated = async (query: string, page = 1) => {
 };
 
 export const getMovieDetails = async (id: number): Promise<MovieDetails> => {
-  return fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: 'credits' });
+  return fetchTMDB<MovieDetails>(`/movie/${id}`, { append_to_response: 'credits,external_ids' });
 };
 
 export const getTVDetails = async (id: number): Promise<MovieDetails> => {
-  return fetchTMDB<MovieDetails>(`/tv/${id}`, { append_to_response: 'credits' });
+  return fetchTMDB<MovieDetails>(`/tv/${id}`, { append_to_response: 'credits,external_ids' });
 };
 
 export const getSeasonDetails = async (tvId: number, seasonNumber: number): Promise<SeasonDetails> => {
@@ -299,7 +301,7 @@ export interface ServerInfo {
 
 // Movie & TV servers (no anime support)
 export const MOVIE_TV_SERVERS: ServerInfo[] = [
-  { id: 'autoembed', name: 'AutoEmbed', supportsMovies: true, supportsTV: true, supportsAnime: false },
+  { id: 'autoembed', name: 'Hanna', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'vidsrc', name: 'VidSrc', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'movies111', name: '111Movies', supportsMovies: true, supportsTV: true, supportsAnime: false },
   { id: 'twoembed', name: '2Embed', supportsMovies: true, supportsTV: true, supportsAnime: false },
@@ -330,7 +332,8 @@ export const getPlayerUrl = (
   season?: number,
   episode?: number,
   isDub: boolean = false,
-  progressSeconds?: number
+  progressSeconds?: number,
+  imdbId?: string
 ) => {
   const accent = 'FD105E';
 
@@ -391,12 +394,10 @@ export const getPlayerUrl = (
     return `https://vidrock.net/tv/${id}/${season || 1}/${episode || 1}`;
   }
 
-  // AutoEmbed
+  // Hanna (IMDb-id based)
   if (server === 'autoembed') {
-    if (type === 'movie') {
-      return `https://player.autoembed.cc/embed/movie/${id}`;
-    }
-    return `https://player.autoembed.cc/embed/tv/${id}/${season || 1}/${episode || 1}`;
+    if (imdbId) return `https://hanna427def.com/play/${imdbId}`;
+    return `https://hanna427def.com/play/`;
   }
 
   // VidSrc (old)
