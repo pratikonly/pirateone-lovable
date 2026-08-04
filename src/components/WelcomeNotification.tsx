@@ -45,19 +45,21 @@ const WelcomeNotification = () => {
         <div className="py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            {/* Card — Ad Protection */}
+            {/* Card — Ads & Redirects */}
             <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
               <div className="flex items-center gap-3 md:flex-col md:items-start">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-5 h-5 text-primary" />
+                  <MousePointerClick className="w-5 h-5 text-primary" />
                 </div>
-                <h4 className="font-semibold text-sm md:mt-2">Ad Protection Active</h4>
+                <h4 className="font-semibold text-sm md:mt-2">Ads & Redirects</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                PirateOne automatically blocks ad redirects and popups. Your data is stored{' '}
-                <span className="text-foreground font-medium">privately on your device</span> — no tracking.
+                While watching or tapping on the video player, a new tab or ad may open. Just{' '}
+                <span className="text-foreground font-medium">close it and come back</span> to
+                PirateOne to continue watching.
               </p>
             </div>
+
 
             {/* Card — VPN */}
             <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/50 border border-border/50">
