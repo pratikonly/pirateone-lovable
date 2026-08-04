@@ -508,6 +508,7 @@ const Watch = () => {
                   episode={mediaType === 'tv' ? episode : undefined}
                   server={selectedServer}
                   progressSeconds={watchProgress?.currentTime}
+                  imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
                 />
               </div>
 
@@ -554,7 +555,7 @@ const Watch = () => {
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
                               {animeServers.map((srv, i) => {
-                                const isDead = srv.id === 'vidsrccc';
+                                const isDead = srv.id === 'vidsrccc' || srv.id === 'vidify';
                                 const num = i + 1;
                                 return isDead ? (
                                   <div key={srv.id}
@@ -581,7 +582,7 @@ const Watch = () => {
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
                               {movieTvServers.map((srv, i) => {
-                                const isDead = srv.id === 'autoembed';
+                                const isDead = false;
                                 const num = animeServers.length + i + 1;
                                 return isDead ? (
                                   <div key={srv.id}
