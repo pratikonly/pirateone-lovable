@@ -520,7 +520,7 @@ const Watch = () => {
           <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
             <ArrowLeft className="w-4 h-4 mr-2" />Back
           </Button>
-          <div className="flex items-center gap-2 mr-16 sm:mr-24">
+          <div className="flex items-center gap-2 mr-48 sm:mr-72">
             <Button variant="outline" size="sm" onClick={toggleTheater}
               className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
               <Maximize className="w-4 h-4" />
