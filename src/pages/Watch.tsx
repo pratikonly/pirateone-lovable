@@ -491,7 +491,7 @@ const Watch = () => {
 
   return (
     <div className="min-h-screen text-white bg-transparent">
-      {theaterMode && (
+      {theaterMode && createPortal(
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
           <div className="flex items-center justify-between px-4 py-2 bg-zinc-950/90 border-b border-zinc-800">
             <div className="flex items-center gap-2 min-w-0">
@@ -519,7 +519,8 @@ const Watch = () => {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="p-4 md:p-8 pt-20">
