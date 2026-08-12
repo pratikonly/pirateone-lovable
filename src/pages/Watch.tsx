@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
   ExternalLink, Play, FolderPlus, List, Loader2,
-PanelRightClose, PanelRightOpen } from 'lucide-react';
+PanelRightClose, PanelRightOpen, Maximize, Minimize } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
@@ -228,6 +229,14 @@ const Watch = () => {
     try { localStorage.setItem('watch_info_open', next ? '1' : '0'); } catch { /* ignore */ }
     return next;
   });
+  const [theaterMode, setTheaterMode] = useState(false);
+  const toggleTheater = useCallback(() => {
+    setTheaterMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem('watch_theater_mode', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
   
   const serverButtonRef = useRef<HTMLButtonElement>(null);
@@ -396,6 +405,22 @@ const Watch = () => {
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!theaterMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setTheaterMode(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [theaterMode]);
+
   const handleWatchlistToggle = async () => {
     if (!details) return;
     const item = {
@@ -466,16 +491,55 @@ const Watch = () => {
 
   return (
     <div className="min-h-screen text-white bg-transparent">
+      {theaterMode && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 bg-zinc-950/90 border-b border-zinc-800">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button variant="ghost" size="sm" onClick={() => { setTheaterMode(false); navigate(-1); }}
+                className="text-white hover:bg-white/10 h-8 px-2">
+                <ArrowLeft className="w-4 h-4 mr-1" />Back
+              </Button>
+              <h2 className="text-sm font-semibold truncate">{title}</h2>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setTheaterMode(false)}
+              className="text-white hover:bg-white/10 h-8 px-2">
+              <Minimize className="w-4 h-4 mr-1" />Exit
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black">
+            <div className="w-full aspect-video sm:h-full sm:w-auto sm:max-w-full max-h-full">
+              <VideoPlayer
+                id={movieId} type={mediaType} title={title}
+                poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'original') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
+                season={mediaType === 'tv' ? season   : undefined}
+                episode={mediaType === 'tv' ? episode : undefined}
+                server={selectedServer}
+                progressSeconds={watchProgress?.currentTime}
+                imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <div className="p-4 md:p-8 pt-20">
         <div className="flex items-center justify-between mb-4 gap-2">
           <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
             <ArrowLeft className="w-4 h-4 mr-2" />Back
           </Button>
-          <Button variant="outline" size="sm" onClick={toggleInfo}
-            className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
-            {infoOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-            <span className="hidden sm:inline">{infoOpen ? 'Hide Info' : 'Show Info'}</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={toggleTheater}
+              className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
+              <Maximize className="w-4 h-4" />
+              <span className="hidden sm:inline">Theater</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={toggleInfo}
+              className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
+              {infoOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+              <span className="hidden sm:inline">{infoOpen ? 'Hide Info' : 'Show Info'}</span>
+            </Button>
+          </div>
         </div>
 
         <div className="max-w-7xl mx-auto">
