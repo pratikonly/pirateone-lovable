@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
   ExternalLink, Play, FolderPlus, List, Loader2,
-PanelRightClose, PanelRightOpen } from 'lucide-react';
+PanelRightClose, PanelRightOpen, Maximize, Minimize } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
