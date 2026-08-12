@@ -220,6 +220,14 @@ const Watch = () => {
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen]         = useState(false);
+  const [infoOpen, setInfoOpen]             = useState<boolean>(() => {
+    try { return localStorage.getItem('watch_info_open') !== '0'; } catch { return true; }
+  });
+  const toggleInfo = () => setInfoOpen(prev => {
+    const next = !prev;
+    try { localStorage.setItem('watch_info_open', next ? '1' : '0'); } catch { /* ignore */ }
+    return next;
+  });
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
   
   const serverButtonRef = useRef<HTMLButtonElement>(null);
