@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
   ExternalLink, Play, FolderPlus, List, Loader2,
-PanelRightClose, PanelRightOpen, Maximize, Minimize } from 'lucide-react';
+Maximize, Minimize } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
@@ -221,14 +221,6 @@ const Watch = () => {
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
   const [serverOpen, setServerOpen]         = useState(false);
-  const [infoOpen, setInfoOpen]             = useState<boolean>(() => {
-    try { return localStorage.getItem('watch_info_open') !== '0'; } catch { return true; }
-  });
-  const toggleInfo = () => setInfoOpen(prev => {
-    const next = !prev;
-    try { localStorage.setItem('watch_info_open', next ? '1' : '0'); } catch { /* ignore */ }
-    return next;
-  });
   const [theaterMode, setTheaterMode] = useState(false);
   const toggleTheater = useCallback(() => {
     setTheaterMode(prev => {
@@ -528,22 +520,17 @@ const Watch = () => {
           <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
             <ArrowLeft className="w-4 h-4 mr-2" />Back
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-3">
             <Button variant="outline" size="sm" onClick={toggleTheater}
               className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
               <Maximize className="w-4 h-4" />
               <span className="hidden sm:inline">Theater</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={toggleInfo}
-              className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
-              {infoOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-              <span className="hidden sm:inline">{infoOpen ? 'Hide Info' : 'Show Info'}</span>
-            </Button>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto">
-          <div className={cn('grid grid-cols-1 gap-6 lg:items-stretch', infoOpen ? 'lg:grid-cols-[1fr,320px]' : 'lg:grid-cols-1')}>
+          <div className="grid grid-cols-1 gap-6 lg:items-stretch lg:grid-cols-[1fr,320px]">
             <div className="flex flex-col gap-4">
 
               {mediaType === 'tv' && seasons > 0 && (
@@ -703,7 +690,6 @@ const Watch = () => {
             </div>
 
             {/* Right sidebar */}
-            {infoOpen && (
             <div className="space-y-4">
               <div className="p-4 flex items-center justify-center min-h-[80px]">
                 {logoUrl ? <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
@@ -787,7 +773,6 @@ const Watch = () => {
                 </div>
               )}
             </div>
-            )}
           </div>
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
           <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
