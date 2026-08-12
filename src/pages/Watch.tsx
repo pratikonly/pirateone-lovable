@@ -228,6 +228,14 @@ const Watch = () => {
     try { localStorage.setItem('watch_info_open', next ? '1' : '0'); } catch { /* ignore */ }
     return next;
   });
+  const [theaterMode, setTheaterMode] = useState(false);
+  const toggleTheater = useCallback(() => {
+    setTheaterMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem('watch_theater_mode', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
   
   const serverButtonRef = useRef<HTMLButtonElement>(null);
