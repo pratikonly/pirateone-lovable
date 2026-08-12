@@ -8,11 +8,13 @@ import pratikLogo from '@/assets/pratik-logo.png';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  desktopCollapsed?: boolean;
 }
 
 const SECRET_CODE = '12418';
 
-const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
+const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) => {
+
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
