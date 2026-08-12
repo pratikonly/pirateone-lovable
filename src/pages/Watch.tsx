@@ -486,6 +486,37 @@ const Watch = () => {
 
   return (
     <div className="min-h-screen text-white bg-transparent">
+      {theaterMode && (
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 bg-zinc-950/90 border-b border-zinc-800">
+            <div className="flex items-center gap-2 min-w-0">
+              <Button variant="ghost" size="sm" onClick={() => { setTheaterMode(false); navigate(-1); }}
+                className="text-white hover:bg-white/10 h-8 px-2">
+                <ArrowLeft className="w-4 h-4 mr-1" />Back
+              </Button>
+              <h2 className="text-sm font-semibold truncate">{title}</h2>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setTheaterMode(false)}
+              className="text-white hover:bg-white/10 h-8 px-2">
+              <Minimize className="w-4 h-4 mr-1" />Exit
+            </Button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
+            <div className="w-full h-full sm:aspect-video sm:h-auto sm:max-h-full sm:max-w-[100vw] sm:rounded-lg sm:overflow-hidden">
+              <VideoPlayer
+                id={movieId} type={mediaType} title={title}
+                poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'original') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
+                season={mediaType === 'tv' ? season   : undefined}
+                episode={mediaType === 'tv' ? episode : undefined}
+                server={selectedServer}
+                progressSeconds={watchProgress?.currentTime}
+                imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="p-4 md:p-8 pt-20">
         <div className="flex items-center justify-between mb-4 gap-2">
           <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
