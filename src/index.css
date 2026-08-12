@@ -199,6 +199,45 @@
   animation: gradient-shift 3s ease infinite;
 }
 
+/* Full-screen loading state toggled with F7. */
+.shortcut-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #6255bc;
+}
+
+.shortcut-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin-top: -1px;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.shortcut-loading-spinner {
+  width: 41px;
+  height: 41px;
+  border: 4px solid #6255c5;
+  border-right-color: transparent;
+  border-bottom-color: #6255c5;
+  border-radius: 50%;
+  animation: shortcut-loading-spin 0.85s linear infinite;
+}
+
+@keyframes shortcut-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Line clamp utilities */
 .line-clamp-2 {
   display: -webkit-box;

@@ -22,6 +22,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import ServerStatus from "./pages/ServerStatus";
+import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <SpeedInsights />
+               <ShortcutLoadingOverlay />
               <BrowserRouter>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
