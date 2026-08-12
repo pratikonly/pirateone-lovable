@@ -410,6 +410,11 @@ const Watch = () => {
     };
   }, [theaterMode]);
 
+  useEffect(() => {
+    document.body.classList.toggle('watch-theater-active', theaterMode);
+    return () => document.body.classList.remove('watch-theater-active');
+  }, [theaterMode]);
+
   const handleWatchlistToggle = async () => {
     if (!details) return;
     const item = {
@@ -480,7 +485,7 @@ const Watch = () => {
 
   return (
     <div className={cn('min-h-screen text-white bg-transparent', theaterMode && 'watch-theater-mode')}>
-      <div className="p-4 md:p-8 pt-20">
+      <div className={cn('p-4 md:p-8', theaterMode ? 'pt-4 md:pt-6' : 'pt-20')}>
         <div className="max-w-7xl mx-auto">
           <div className={cn(
             'grid grid-cols-1 gap-6 lg:items-stretch',

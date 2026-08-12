@@ -210,6 +210,11 @@
   color: #6255bc;
 }
 
+/* YouTube-style theater mode hides the shared site header without changing other pages. */
+body.watch-theater-active header.fixed.top-0 {
+  display: none;
+}
+
 .shortcut-loading-content {
   display: flex;
   flex-direction: column;
