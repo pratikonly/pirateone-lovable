@@ -464,7 +464,7 @@ const Watch = () => {
         </Button>
 
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6 lg:items-stretch">
+          <div className={cn('grid grid-cols-1 gap-6 lg:items-stretch', infoOpen ? 'lg:grid-cols-[1fr,320px]' : 'lg:grid-cols-1')}>
             <div className="flex flex-col gap-4">
 
               {mediaType === 'tv' && seasons > 0 && (
