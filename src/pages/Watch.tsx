@@ -4,7 +4,7 @@ import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
   ExternalLink, Play, FolderPlus, List, Loader2,
-} from 'lucide-react';
+, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
