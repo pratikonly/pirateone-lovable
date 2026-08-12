@@ -516,19 +516,6 @@ const Watch = () => {
       )}
 
       <div className="p-4 md:p-8 pt-20">
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
-            <ArrowLeft className="w-4 h-4 mr-2" />Back
-          </Button>
-          <div className="flex items-center gap-2 mr-48 sm:mr-72">
-            <Button variant="outline" size="sm" onClick={toggleTheater}
-              className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
-              <Maximize className="w-4 h-4" />
-              <span className="hidden sm:inline">Theater</span>
-            </Button>
-          </div>
-        </div>
-
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 gap-6 lg:items-stretch lg:grid-cols-[1fr,320px]">
             <div className="flex flex-col gap-4">
@@ -566,7 +553,17 @@ const Watch = () => {
                 </div>
               )}
 
-              <div className="w-full max-w-4xl mx-auto">
+              <div className="w-full max-w-4xl mx-auto flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
+                    <ArrowLeft className="w-4 h-4 mr-2" />Back
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={toggleTheater}
+                    className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
+                    <Maximize className="w-4 h-4" />
+                    <span className="hidden sm:inline">Theater</span>
+                  </Button>
+                </div>
                 <VideoPlayer
                   id={movieId} type={mediaType} title={title}
                   poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
