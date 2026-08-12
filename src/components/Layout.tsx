@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
+import { PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
+import { cn } from '@/lib/utils';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopCollapsed, setDesktopCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('sidebar_collapsed') === '1'; } catch { return false; }
+  });
   const navigate = useNavigate();
+
+  const toggleDesktop = () => {
+    setDesktopCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebar_collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
