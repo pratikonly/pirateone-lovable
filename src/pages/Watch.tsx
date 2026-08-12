@@ -467,9 +467,16 @@ const Watch = () => {
   return (
     <div className="min-h-screen text-white bg-transparent">
       <div className="p-4 md:p-8 pt-20">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4 text-white hover:bg-white/10">
-          <ArrowLeft className="w-4 h-4 mr-2" />Back
-        </Button>
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
+            <ArrowLeft className="w-4 h-4 mr-2" />Back
+          </Button>
+          <Button variant="outline" size="sm" onClick={toggleInfo}
+            className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
+            {infoOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+            <span className="hidden sm:inline">{infoOpen ? 'Hide Info' : 'Show Info'}</span>
+          </Button>
+        </div>
 
         <div className="max-w-7xl mx-auto">
           <div className={cn('grid grid-cols-1 gap-6 lg:items-stretch', infoOpen ? 'lg:grid-cols-[1fr,320px]' : 'lg:grid-cols-1')}>
