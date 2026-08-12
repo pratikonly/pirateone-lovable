@@ -12,9 +12,10 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 interface HeaderProps {
   onMenuToggle: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-const Header = ({ onMenuToggle }: HeaderProps) => {
+const Header = ({ onMenuToggle, sidebarCollapsed = false }: HeaderProps) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
