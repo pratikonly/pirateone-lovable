@@ -143,7 +143,8 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
     <aside className={cn(
       "fixed left-0 top-0 h-screen w-64 lg:w-60 bg-sidebar/5 backdrop-blur-sm border-r border-border flex flex-col z-50",
       "transition-transform duration-300 ease-in-out",
-      isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+      desktopCollapsed && "lg:-translate-x-full"
     )}>
       {/* Logo Section */}
       <div className="p-4 lg:p-5 border-b border-sidebar-border">
