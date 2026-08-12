@@ -505,8 +505,8 @@ const Watch = () => {
               <Minimize className="w-4 h-4 mr-1" />Exit
             </Button>
           </div>
-          <div className="flex-1 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
-            <div className="w-full h-full sm:aspect-video sm:h-auto sm:max-h-full sm:max-w-[100vw] sm:rounded-lg sm:overflow-hidden">
+          <div className="flex-1 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black">
+            <div className="w-full aspect-video sm:h-full sm:w-auto sm:max-w-full max-h-full">
               <VideoPlayer
                 id={movieId} type={mediaType} title={title}
                 poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'original') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
