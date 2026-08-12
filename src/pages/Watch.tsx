@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
@@ -406,10 +405,8 @@ const Watch = () => {
       }
     };
     window.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
     };
   }, [theaterMode]);
 
@@ -482,42 +479,13 @@ const Watch = () => {
   const bunnyUrl    = getBunnyDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
 
   return (
-    <div className="min-h-screen text-white bg-transparent">
-      {theaterMode && createPortal(
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-          <div className="flex items-center justify-between px-4 py-2 bg-zinc-950/90 border-b border-zinc-800">
-            <div className="flex items-center gap-2 min-w-0">
-              <Button variant="ghost" size="sm" onClick={() => { setTheaterMode(false); navigate(-1); }}
-                className="text-white hover:bg-white/10 h-8 px-2">
-                <ArrowLeft className="w-4 h-4 mr-1" />Back
-              </Button>
-              <h2 className="text-sm font-semibold truncate">{title}</h2>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setTheaterMode(false)}
-              className="text-white hover:bg-white/10 h-8 px-2">
-              <Minimize className="w-4 h-4 mr-1" />Exit
-            </Button>
-          </div>
-          <div className="flex-1 flex items-center justify-center p-0 sm:p-4 overflow-hidden bg-black">
-            <div className="w-full aspect-video sm:h-full sm:w-auto sm:max-w-full max-h-full">
-              <VideoPlayer
-                id={movieId} type={mediaType} title={title}
-                poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'original') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
-                season={mediaType === 'tv' ? season   : undefined}
-                episode={mediaType === 'tv' ? episode : undefined}
-                server={selectedServer}
-                progressSeconds={watchProgress?.currentTime}
-                imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
-              />
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
+    <div className={cn('min-h-screen text-white bg-transparent', theaterMode && 'watch-theater-mode')}>
       <div className="p-4 md:p-8 pt-20">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 gap-6 lg:items-stretch lg:grid-cols-[1fr,320px]">
+          <div className={cn(
+            'grid grid-cols-1 gap-6 lg:items-stretch',
+            theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr,320px]'
+          )}>
             <div className="flex flex-col gap-4">
 
               {mediaType === 'tv' && seasons > 0 && (
@@ -553,15 +521,18 @@ const Watch = () => {
                 </div>
               )}
 
-              <div className="w-full max-w-4xl mx-auto flex flex-col gap-3">
+              <div className={cn(
+                'w-full mx-auto flex flex-col gap-3',
+                theaterMode ? 'max-w-none' : 'max-w-4xl'
+              )}>
                 <div className="flex items-center justify-between gap-2">
                   <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
                     <ArrowLeft className="w-4 h-4 mr-2" />Back
                   </Button>
                   <Button variant="outline" size="sm" onClick={toggleTheater}
                     className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
-                    <Maximize className="w-4 h-4" />
-                    <span className="hidden sm:inline">Theater</span>
+                    {theaterMode ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                    <span className="hidden sm:inline">{theaterMode ? 'Exit Theater' : 'Theater'}</span>
                   </Button>
                 </div>
                 <VideoPlayer
@@ -687,7 +658,7 @@ const Watch = () => {
             </div>
 
             {/* Right sidebar */}
-            <div className="space-y-4">
+            <div className={cn('space-y-4', theaterMode && 'hidden')}>
               <div className="p-4 flex items-center justify-center min-h-[80px]">
                 {logoUrl ? <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
                   : <h2 className="text-xl font-bold text-center">{title}</h2>}
