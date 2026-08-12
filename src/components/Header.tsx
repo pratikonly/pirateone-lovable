@@ -131,7 +131,7 @@ const Header = ({ onMenuToggle, sidebarCollapsed = false }: HeaderProps) => {
 
   return (
     <>
-      <header className="fixed top-0 right-0 left-0 lg:left-60 h-14 z-40 flex items-center justify-between px-4 lg:px-6">
+      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 transition-[left] duration-300', sidebarCollapsed ? 'lg:left-8' : 'lg:left-60')}>
         <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9" onClick={onMenuToggle}>
           <Menu className="w-5 h-5" />
         </Button>
