@@ -5,7 +5,7 @@ const ShortcutLoadingOverlay = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "F7") return;
+      if (event.key !== "F4") return;
 
       event.preventDefault();
       setIsVisible((visible) => !visible);

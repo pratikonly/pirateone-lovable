@@ -199,7 +199,7 @@
   animation: gradient-shift 3s ease infinite;
 }
 
-/* Full-screen loading state toggled with F7. */
+/* Full-screen loading state toggled with F4. */
 .shortcut-loading-overlay {
   position: fixed;
   inset: 0;
