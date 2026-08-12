@@ -716,6 +716,7 @@ const Watch = () => {
                 </div>
               )}
             </div>
+            )}
           </div>
           <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} /></div>
           <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
