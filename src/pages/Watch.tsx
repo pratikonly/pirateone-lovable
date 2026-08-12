@@ -632,6 +632,7 @@ const Watch = () => {
             </div>
 
             {/* Right sidebar */}
+            {infoOpen && (
             <div className="space-y-4">
               <div className="p-4 flex items-center justify-center min-h-[80px]">
                 {logoUrl ? <img src={logoUrl} alt={title} className="max-h-16 max-w-full object-contain" />
