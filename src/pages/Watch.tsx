@@ -404,6 +404,18 @@ const Watch = () => {
     };
   }, [userId]);
 
+  useEffect(() => {
+    if (!theaterMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setTheaterMode(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [theaterMode]);
+
   const handleWatchlistToggle = async () => {
     if (!details) return;
     const item = {
