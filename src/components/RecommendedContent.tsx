@@ -41,9 +41,14 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
     fetchContent();
   }, [mediaId, mediaType]);
 
-  const handleClick = (item: Movie) => {
+  const handleClick = (item: Movie, e?: React.MouseEvent) => {
     const type = item.media_type || mediaType;
-    navigate(`/watch/${type}/${item.id}`);
+    const url = `/watch/${type}/${item.id}`;
+    if (openInNewTab) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(url);
+    }
   };
 
   const currentList = activeTab === 'recommended' ? recommendations : similar;
