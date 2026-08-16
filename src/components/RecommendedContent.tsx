@@ -41,15 +41,14 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
     fetchContent();
   }, [mediaId, mediaType]);
 
-  const handleClick = (item: Movie) => {
-    const type = item.media_type || mediaType;
-    const url = `/watch/${type}/${item.id}`;
-    if (openInNewTab) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      navigate(url);
-    }
+  const getUrl = (item: Movie) => `/watch/${item.media_type || mediaType}/${item.id}`;
+
+  const handleClick = (e: React.MouseEvent, item: Movie) => {
+    if (openInNewTab) return; // let the anchor handle it natively
+    e.preventDefault();
+    navigate(getUrl(item));
   };
+
 
   const currentList = activeTab === 'recommended' ? recommendations : similar;
 
@@ -110,11 +109,15 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
             const rating = item.vote_average?.toFixed(1);
 
             return (
-              <div
+              <a
                 key={item.id}
-                onClick={() => handleClick(item)}
-                className="group relative cursor-pointer"
+                href={getUrl(item)}
+                target={openInNewTab ? '_blank' : undefined}
+                rel={openInNewTab ? 'noopener noreferrer' : undefined}
+                onClick={(e) => handleClick(e, item)}
+                className="group relative cursor-pointer block"
               >
+
                 <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted">
                   {posterUrl ? (
                     <img
@@ -155,7 +158,8 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
                     </span>
                   </div>
                 </div>
-              </div>
+              </a>
+
             );
           })}
         </div>
