@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 interface RecommendedContentProps {
   mediaId: number;
   mediaType: 'movie' | 'tv';
+  openInNewTab?: boolean;
 }
 
-const RecommendedContent = ({ mediaId, mediaType }: RecommendedContentProps) => {
+const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedContentProps) => {
   const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<Movie[]>([]);
   const [similar, setSimilar] = useState<Movie[]>([]);
@@ -42,7 +43,12 @@ const RecommendedContent = ({ mediaId, mediaType }: RecommendedContentProps) => 
 
   const handleClick = (item: Movie) => {
     const type = item.media_type || mediaType;
-    navigate(`/watch/${type}/${item.id}`);
+    const url = `/watch/${type}/${item.id}`;
+    if (openInNewTab) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(url);
+    }
   };
 
   const currentList = activeTab === 'recommended' ? recommendations : similar;
