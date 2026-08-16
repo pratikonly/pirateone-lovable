@@ -109,11 +109,15 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
             const rating = item.vote_average?.toFixed(1);
 
             return (
-              <div
+              <a
                 key={item.id}
-                onClick={() => handleClick(item)}
-                className="group relative cursor-pointer"
+                href={getUrl(item)}
+                target={openInNewTab ? '_blank' : undefined}
+                rel={openInNewTab ? 'noopener noreferrer' : undefined}
+                onClick={(e) => handleClick(e, item)}
+                className="group relative cursor-pointer block"
               >
+
                 <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted">
                   {posterUrl ? (
                     <img
