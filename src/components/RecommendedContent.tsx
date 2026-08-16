@@ -41,7 +41,7 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
     fetchContent();
   }, [mediaId, mediaType]);
 
-  const handleClick = (item: Movie, e?: React.MouseEvent) => {
+  const handleClick = (item: Movie) => {
     const type = item.media_type || mediaType;
     const url = `/watch/${type}/${item.id}`;
     if (openInNewTab) {
