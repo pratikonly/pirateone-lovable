@@ -158,7 +158,8 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
                     </span>
                   </div>
                 </div>
-              </div>
+              </a>
+
             );
           })}
         </div>
