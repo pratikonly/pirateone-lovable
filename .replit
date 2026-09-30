@@ -33,4 +33,3 @@ externalPort = 80
 [userenv]
 
 [userenv.shared]
-VITE_LIVE_API_BASE = "https://livetgtv.lovable.app"

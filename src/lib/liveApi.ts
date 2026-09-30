@@ -23,13 +23,7 @@ export class LiveApiError extends Error {
   }
 }
 
-const getApiBase = () => {
-  const configuredBase = import.meta.env.VITE_LIVE_API_BASE?.trim();
-  if (!configuredBase) {
-    throw new Error('Live TV is not configured. Set VITE_LIVE_API_BASE and try again.');
-  }
-  return configuredBase.replace(/\/+$/, '');
-};
+const LIVE_API_BASE = 'https://livetgtv.lovable.app';
 
 const getJson = async (url: string, signal?: AbortSignal, noStore = false): Promise<unknown> => {
   const response = await fetch(url, {
@@ -45,7 +39,7 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? value as Record<string, unknown> : null;
 
 export const fetchLiveChannels = async (signal?: AbortSignal): Promise<LiveChannel[]> => {
-  const payload = asRecord(await getJson(`${getApiBase()}/api/public/channels`, signal));
+  const payload = asRecord(await getJson(`${LIVE_API_BASE}/api/public/channels`, signal));
   if (!payload || !Array.isArray(payload.channels)) {
     throw new Error('The Live TV service returned an invalid channel list.');
   }
@@ -73,7 +67,7 @@ export const fetchLiveChannel = async (
 ): Promise<LiveChannelDetail> => {
   const encodedId = encodeURIComponent(channelId);
   const payload = asRecord(await getJson(
-    `${getApiBase()}/api/public/channels/${encodedId}`,
+    `${LIVE_API_BASE}/api/public/channels/${encodedId}`,
     signal,
     true,
   ));

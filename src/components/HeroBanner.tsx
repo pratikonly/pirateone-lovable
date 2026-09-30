@@ -180,7 +180,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="hero-banner relative h-[85svh] min-h-[500px] mb-8 overflow-hidden bg-black"
+        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
         role="status"
         aria-label="Loading featured titles"
       >
@@ -188,7 +188,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/50" />
         <div className="absolute inset-0 flex items-center">
-          <div className="container mx-auto w-full px-5 sm:px-8 lg:px-10">
+          <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
             <div className="max-w-3xl space-y-5">
               <div className="flex items-center gap-3">
                 <div className="h-7 w-20 rounded-full bg-muted animate-shimmer" />
@@ -240,7 +240,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative h-[85svh] min-h-[500px] mb-8 overflow-hidden bg-black"
+      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
@@ -266,7 +266,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                 <img
                   src={artworkUrl}
                   alt=""
-                  className="h-full w-full object-cover opacity-40"
+                  className="h-full w-full object-cover opacity-75"
                   loading={index === 0 ? 'eager' : 'lazy'}
                   onError={(event) => {
                     const image = event.currentTarget;
@@ -284,18 +284,18 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
         })}
       </div>
 
-      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black/50" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-black/70" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
-      <div className="absolute inset-0 shadow-[inset_0_0_180px_45px_rgba(0,0,0,0.95)]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
+      <div className="absolute inset-0 shadow-[inset_0_0_100px_20px_rgba(0,0,0,0.25)]" />
 
       <div className="relative z-10 flex h-full items-center">
-        <div className="container mx-auto w-full px-5 py-24 sm:px-8 lg:px-10">
+        <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
             <div className={cn(
               'max-w-3xl min-w-0 transition-all duration-500',
               isTransitioning ? 'translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
             )}>
-              <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-4 md:gap-3">
                 <span className="rounded-full border border-white/40 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black shadow-lg">
                   {mediaType === 'tv' ? 'TV Series' : 'Movie'}
                 </span>
@@ -311,11 +311,11 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               </div>
 
               {logoUrl ? (
-                <div className="mb-3 md:mb-4">
+                <div className="mb-2 sm:mb-4">
                   <img
                     src={logoUrl}
                     alt={title}
-                    className="max-h-20 w-auto object-contain drop-shadow-[0_5px_10px_rgba(0,0,0,0.95)] filter brightness-110 sm:max-h-24 md:max-h-28 lg:max-h-32"
+                    className="max-h-16 w-auto object-contain drop-shadow-[0_5px_10px_rgba(0,0,0,0.95)] filter brightness-110 sm:max-h-24 md:max-h-28 lg:max-h-32"
                     loading="eager"
                   />
                 </div>

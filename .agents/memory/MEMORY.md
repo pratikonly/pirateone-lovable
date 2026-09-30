@@ -1,1 +1,1 @@
-- [Node package setup](node-package-setup.md) — ranged installs may upgrade manifest and lock versions; inspect package files after dependency setup.
+- [Node package setup](node-package-setup.md) — ranged installs may upgrade versions, and npm lock-only runs may preserve Replit mirror URLs; verify both.
