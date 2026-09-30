@@ -128,12 +128,14 @@ const Sidebar = () => {
   ];
 
   return (
+    <>
     <aside className={cn(
       "relative w-full pt-14 bg-sidebar/5 backdrop-blur-sm border-b border-border flex flex-col",
-      "xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-60 xl:pt-0 xl:border-b-0 xl:border-r xl:z-50"
+      "md:fixed md:top-16 md:left-1/2 md:-translate-x-1/2 md:w-max md:max-w-[calc(100vw-2rem)] md:pt-0 md:flex-row md:rounded-2xl md:border md:bg-background/85 md:shadow-2xl md:z-50 md:overflow-hidden",
+      "xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-60 xl:max-w-none xl:translate-x-0 xl:pt-0 xl:flex-col xl:rounded-none xl:border-b-0 xl:border-r xl:bg-sidebar/5 xl:shadow-none xl:overflow-visible"
     )}>
       {/* Logo Section */}
-      <div className="p-3 border-b border-sidebar-border flex-shrink-0 xl:p-5">
+      <div className="p-3 border-b border-sidebar-border flex-shrink-0 md:hidden xl:block xl:p-5">
         {/* Hidden input to trigger mobile keyboard */}
         <input
           ref={hiddenInputRef}
@@ -226,31 +228,33 @@ const Sidebar = () => {
         </div>
       </nav>
 
-      {/* Bottom Navigation */}
-      <div className="flex items-center gap-1 p-2 border-t border-sidebar-border overflow-x-auto scrollbar-hide xl:block xl:p-3 xl:space-y-1">
-        {bottomItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={cn(
-              'flex shrink-0 items-center gap-2 px-3 py-2.5 rounded-lg whitespace-nowrap transition-all duration-200 group xl:gap-3',
-              'hover:bg-sidebar-accent',
-              isActive(item.path)
-                ? 'bg-primary/15 text-primary border-l-2 border-primary'
-                : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
-            )}
-          >
-            <span className={cn(
-              'transition-colors',
-              isActive(item.path) ? 'text-primary' : 'text-sidebar-foreground group-hover:text-primary'
-            )}>
-              {item.icon}
-            </span>
-            <span className="font-medium text-sm">{item.label}</span>
-          </NavLink>
-        ))}
-      </div>
     </aside>
+
+    {/* Utility Navigation */}
+    <div className="flex items-center gap-1 p-2 border-t border-sidebar-border overflow-x-auto scrollbar-hide md:fixed md:right-5 md:bottom-5 md:z-50 md:rounded-2xl md:border md:bg-background/90 md:p-2 md:shadow-2xl md:backdrop-blur-xl xl:fixed xl:left-0 xl:right-auto xl:bottom-0 xl:w-60 xl:block xl:rounded-none xl:border-0 xl:bg-sidebar/5 xl:p-3 xl:shadow-none xl:backdrop-blur-0 xl:space-y-1">
+      {bottomItems.map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          className={cn(
+            'flex shrink-0 items-center gap-2 px-3 py-2.5 rounded-lg whitespace-nowrap transition-all duration-200 group xl:gap-3',
+            'hover:bg-sidebar-accent',
+            isActive(item.path)
+              ? 'bg-primary/15 text-primary border-l-2 border-primary'
+              : 'text-sidebar-foreground hover:text-sidebar-accent-foreground'
+          )}
+        >
+          <span className={cn(
+            'transition-colors',
+            isActive(item.path) ? 'text-primary' : 'text-sidebar-foreground group-hover:text-primary'
+          )}>
+            {item.icon}
+          </span>
+          <span className="font-medium text-sm">{item.label}</span>
+        </NavLink>
+      ))}
+    </div>
+    </>
   );
 };
 

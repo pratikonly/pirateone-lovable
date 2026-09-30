@@ -35,7 +35,7 @@ const Layout = () => {
       <Sidebar />
       <Header />
 
-      <main className="pt-0 min-h-screen relative z-10 xl:ml-60">
+      <main className="pt-0 min-h-screen relative z-10 md:pt-20 xl:ml-60 xl:pt-0">
         <div key={`${location.pathname}${location.search}`} className="page-transition">
           <Outlet />
         </div>
