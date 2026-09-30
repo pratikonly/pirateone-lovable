@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,20 +14,31 @@ import Movies from "./pages/Movies";
 import Series from "./pages/Series";
 import Anime from "./pages/Anime";
 import Search from "./pages/Search";
-import Watchlist from "./pages/Watchlist";
-import Settings from "./pages/Settings";
-import Help from "./pages/Help";
-import Watch from "./pages/Watch";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
-import ServerStatus from "./pages/ServerStatus";
 import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay";
 import FloatingQuickActions from "./components/FloatingQuickActions";
-import Sports from "./pages/Sports";
 import Header from "./components/Header";
+import RoutePrefetcher from "./components/RoutePrefetcher";
+import { lazyRouteLoaders } from "./lib/lazyRoutes";
 
-const queryClient = new QueryClient();
+const Watchlist = lazy(lazyRouteLoaders.watchlist);
+const Settings = lazy(lazyRouteLoaders.settings);
+const Help = lazy(lazyRouteLoaders.help);
+const Sports = lazy(lazyRouteLoaders.sports);
+const Watch = lazy(lazyRouteLoaders.watch);
+const ServerStatus = lazy(lazyRouteLoaders.serverStatus);
+const NotFound = lazy(lazyRouteLoaders.notFound);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -38,13 +50,14 @@ const App = () => (
               <Sonner />
               <SpeedInsights />
                <ShortcutLoadingOverlay />
-              <BrowserRouter>
+              <BrowserRouter future={{ v7_startTransition: true }}>
+                <RoutePrefetcher />
                 <Header />
                 <FloatingQuickActions />
                 <Routes>
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route element={<Layout />}>
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/" element={<Index />} />
                     <Route path="/movies" element={<Movies />} />
                     <Route path="/series" element={<Series />} />
@@ -55,9 +68,9 @@ const App = () => (
                     <Route path="/help" element={<Help />} />
                     <Route path="/sports" element={<Sports />} />
                     <Route path="/watch/:type/:id" element={<Watch />} />
+                    <Route path="/server" element={<ServerStatus />} />
+                    <Route path="*" element={<NotFound />} />
                   </Route>
-                  <Route path="/server" element={<ServerStatus />} />
-                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
             </PirateIdentityProvider>

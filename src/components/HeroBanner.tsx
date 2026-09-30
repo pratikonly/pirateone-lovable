@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Play, Plus } from 'lucide-react';
-import { Movie, getBackdropUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, getYouTubeEmbedUrl, Video } from '@/lib/tmdb';
+import { Play, Plus } from 'lucide-react';
+import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, Video } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb } from '@/lib/watchlistDb';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,8 +40,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const requestedLogoKeys = useRef(new Set<string>());
   const requestedTrailerKeys = useRef(new Set<string>());
   const transitionTimeout = useRef<number | null>(null);
-  const sceneIframeRef = useRef<HTMLIFrameElement | null>(null);
-
   const featuredMovies = useMemo(() => movies.slice(0, 5), [movies]);
   const currentMovie = featuredMovies[currentIndex];
   const logoKey = currentMovie
@@ -146,50 +144,15 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
     }, 480);
   }, [currentIndex, featuredMovies.length, isTransitioning]);
 
-  const subscribeToSceneEvents = useCallback((iframe: HTMLIFrameElement) => {
-    const postMessage = (message: object) => {
-      iframe.contentWindow?.postMessage(JSON.stringify(message), '*');
-    };
-
-    postMessage({ event: 'listening', id: 'pirateone-hero-scene', channel: 'pirateone-hero-scene' });
-    postMessage({
-      event: 'command',
-      func: 'addEventListener',
-      args: ['onStateChange'],
-      id: 'pirateone-hero-scene',
-      channel: 'pirateone-hero-scene',
-    });
-  }, []);
-
   useEffect(() => {
-    const handleSceneMessage = (event: MessageEvent) => {
-      if (!['https://www.youtube.com', 'https://www.youtube-nocookie.com'].includes(event.origin)) return;
-
-      let data: { event?: string; info?: number } | null = null;
-      try {
-        data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-      } catch {
-        return;
-      }
-
-      if (data?.event === 'onStateChange' && Number(data.info) === 0) {
-        goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
-      }
-    };
-
-    window.addEventListener('message', handleSceneMessage);
-    return () => window.removeEventListener('message', handleSceneMessage);
-  }, [currentIndex, featuredMovies.length, goToSlide]);
-
-  useEffect(() => {
-    if (featuredMovies.length <= 1 || currentTrailer?.key) return;
+    if (featuredMovies.length <= 1) return;
 
     const interval = window.setInterval(() => {
       goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
     }, 8500);
 
     return () => window.clearInterval(interval);
-  }, [currentIndex, currentTrailer?.key, featuredMovies.length, goToSlide]);
+  }, [currentIndex, featuredMovies.length, goToSlide]);
 
   useEffect(() => () => {
     if (transitionTimeout.current) {
@@ -217,7 +180,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="relative h-[60vh] md:h-[70vh] min-h-[400px] max-h-[600px] -mt-14 mb-8 overflow-hidden"
+        className="hero-banner relative h-[85svh] min-h-[500px] mb-8 overflow-hidden bg-black"
         role="status"
         aria-label="Loading featured titles"
       >
@@ -225,30 +188,21 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/50" />
         <div className="absolute inset-0 flex items-center">
-          <div className="container mx-auto px-4 lg:px-6 pt-14">
-            <div className="flex items-center gap-6 lg:gap-10">
-              <div className="flex-1 max-w-2xl space-y-5">
-                <div className="flex items-center gap-3">
-                  <div className="h-7 w-20 rounded-full bg-muted animate-shimmer" />
-                  <div className="h-7 w-14 rounded-full bg-muted animate-shimmer" />
-                  <div className="h-7 w-12 rounded-full bg-muted animate-shimmer" />
-                </div>
-               <div className="h-14 sm:h-16 md:h-20 w-[72%] max-w-lg rounded-md bg-muted animate-shimmer" />
-                <div className="flex gap-3 pt-1">
-                  <div className="h-11 w-28 rounded-md bg-primary/15 animate-shimmer" />
-                  <div className="h-11 w-28 rounded-md bg-muted animate-shimmer" />
-                  <div className="h-11 w-24 rounded-md bg-muted animate-shimmer" />
-                </div>
+          <div className="container mx-auto w-full px-5 sm:px-8 lg:px-10">
+            <div className="max-w-3xl space-y-5">
+              <div className="flex items-center gap-3">
+                <div className="h-7 w-20 rounded-full bg-muted animate-shimmer" />
+                <div className="h-7 w-14 rounded-full bg-muted animate-shimmer" />
+                <div className="h-7 w-12 rounded-full bg-muted animate-shimmer" />
               </div>
-             <div className="hidden md:block flex-1 aspect-video rounded-2xl border border-border bg-muted animate-shimmer" />
+              <div className="h-14 w-[72%] max-w-lg rounded-md bg-muted animate-shimmer sm:h-16 md:h-20" />
+              <div className="flex gap-3 pt-1">
+                <div className="h-11 w-28 rounded-md bg-primary/15 animate-shimmer" />
+                <div className="h-11 w-28 rounded-md bg-muted animate-shimmer" />
+                <div className="h-11 w-24 rounded-md bg-muted animate-shimmer" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <div className="h-2 w-6 rounded-full bg-muted-foreground/40 animate-pulse" />
-          {[...Array(4)].map((_, index) => (
-            <div key={index} className="h-2 w-2 rounded-full bg-muted animate-pulse" />
-          ))}
         </div>
         <span className="sr-only">Loading featured titles</span>
       </div>
@@ -286,13 +240,15 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative -mt-14 mb-8 min-h-[680px] overflow-hidden bg-black md:h-[72vh] md:min-h-[520px] md:max-h-[720px]"
+      className="hero-banner relative h-[85svh] min-h-[500px] mb-8 overflow-hidden bg-black"
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
       <div className="absolute inset-0">
         {featuredMovies.map((movie, index) => {
-          const url = getBackdropUrl(movie.backdrop_path, 'original');
+          const posterUrl = movie.poster_path ? getImageUrl(movie.poster_path, 'w780') : null;
+          const backdropUrl = getBackdropUrl(movie.backdrop_path, 'original');
+          const artworkUrl = backdropUrl || posterUrl;
           return (
             <div
               key={movie.id}
@@ -306,12 +262,21 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                   )
               )}
             >
-              {url && (
+              {artworkUrl && (
                 <img
-                  src={url}
+                  src={artworkUrl}
                   alt=""
                   className="h-full w-full object-cover opacity-40"
                   loading={index === 0 ? 'eager' : 'lazy'}
+                  onError={(event) => {
+                    const image = event.currentTarget;
+                    if (posterUrl && image.dataset.posterFallback !== 'true' && artworkUrl !== posterUrl) {
+                      image.dataset.posterFallback = 'true';
+                      image.src = posterUrl;
+                    } else {
+                      image.style.display = 'none';
+                    }
+                  }}
                 />
               )}
             </div>
@@ -324,11 +289,10 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
       <div className="absolute inset-0 shadow-[inset_0_0_180px_45px_rgba(0,0,0,0.95)]" />
 
-      <div className="relative z-10 flex min-h-[680px] items-center md:h-full md:min-h-0">
-        <div className="container mx-auto px-5 pb-16 pt-24 sm:px-8 lg:px-10">
-          <div className="grid items-center gap-10 md:grid-cols-[2fr_3fr] md:gap-10 lg:gap-14">
+      <div className="relative z-10 flex h-full items-center">
+        <div className="container mx-auto w-full px-5 py-24 sm:px-8 lg:px-10">
             <div className={cn(
-              'min-w-0 transition-all duration-500',
+              'max-w-3xl min-w-0 transition-all duration-500',
               isTransitioning ? 'translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
             )}>
               <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
@@ -399,84 +363,8 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                 </Button>
               </div>
             </div>
-
-            <div className={cn(
-              'relative min-w-0 transition-all duration-500',
-              isTransitioning ? 'translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
-            )}>
-              <div className="relative aspect-video overflow-hidden bg-black/20">
-                <div className="relative h-full w-full overflow-hidden">
-                  {currentTrailer?.key ? (
-                    <iframe
-                      ref={sceneIframeRef}
-                      key={`${logoKey}-${currentTrailer.key}`}
-                      src={`${getYouTubeEmbedUrl(currentTrailer.key)}&mute=1&controls=0&playsinline=1&modestbranding=1&disablekb=1&enablejsapi=1`}
-                      title={`${title} muted featured scene`}
-                      aria-label={`${title} muted featured scene`}
-                      tabIndex={-1}
-                      allow="autoplay; encrypted-media"
-                      onLoad={(event) => subscribeToSceneEvents(event.currentTarget)}
-                      className="pointer-events-none absolute inset-0 h-full w-full scale-[1.28] object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={backdropUrl || ''}
-                      alt=""
-                      className="h-full w-full object-cover opacity-60"
-                    />
-                  )}
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.62),transparent_18%,transparent_82%,rgba(0,0,0,0.62))]" />
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/75 to-transparent" />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/80 to-transparent" />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-
-      {featuredMovies.length > 1 && (
-        <div className="absolute bottom-6 left-5 right-5 z-10 flex items-center justify-between gap-4 sm:left-8 sm:right-8 lg:left-10 lg:right-10">
-          <div className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 p-1.5 backdrop-blur-md">
-            <button
-              type="button"
-              aria-label="Previous featured title"
-              onClick={() => goToSlide((currentIndex - 1 + featuredMovies.length) % featuredMovies.length, 'previous')}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white hover:text-black disabled:opacity-30"
-              disabled={isTransitioning}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="flex items-center gap-1.5 px-1">
-              {featuredMovies.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  aria-label={`Show featured title ${index + 1}`}
-                  aria-current={index === currentIndex ? 'true' : undefined}
-                  onClick={() => goToSlide(index, index > currentIndex ? 'next' : 'previous')}
-                  className={cn(
-                     'h-1.5 transition-all duration-500',
-                    index === currentIndex
-                       ? 'w-9 rounded-full bg-white'
-                       : 'w-1.5 rounded-full bg-white/35 hover:bg-white/75'
-                  )}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              aria-label="Next featured title"
-              onClick={() => goToSlide((currentIndex + 1) % featuredMovies.length, 'next')}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white hover:text-black disabled:opacity-30"
-              disabled={isTransitioning}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-
-        </div>
-      )}
 
       <TrailerModal
         isOpen={trailerOpen}

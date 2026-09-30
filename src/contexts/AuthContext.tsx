@@ -14,6 +14,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getAuthRequestError = (action: string, error: unknown): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Supabase ${action} request failed:`, message);
+
+  if (/failed to fetch|network|fetch failed/i.test(message)) {
+    return new Error(
+      `Could not reach Supabase Auth during ${action}. Check the Supabase project URL, your connection, and the project's allowed origins.`,
+    );
+  }
+
+  return error instanceof Error ? error : new Error(message);
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser]       = useState<User | null>(null);
@@ -47,10 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Get current session once on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      applySession(session);
-    });
+    let isMounted = true;
+
+    // A network failure should not leave auth loading forever or produce an
+    // unhandled promise rejection.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (isMounted) applySession(session);
+      })
+      .catch((error: unknown) => {
+        getAuthRequestError('session check', error);
+        if (isMounted) applySession(null);
+      });
 
     // Listen for auth changes — fires on INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
     // Without deduplication this fires 2-3 times on load with new object references each time
@@ -58,27 +79,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applySession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
       return { error: new Error('Sign-up is unavailable because authentication is not configured for this app.') };
     }
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    return { error: error as Error | null };
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      return { error: error as Error | null };
+    } catch (error) {
+      return { error: getAuthRequestError('sign-up', error) };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
     if (!isSupabaseConfigured) {
       return { error: new Error('Sign-in is unavailable because authentication is not configured for this app.') };
     }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error as Error | null };
+    } catch (error) {
+      return { error: getAuthRequestError('sign-in', error) };
+    }
   };
 
   const signOut = async () => {
@@ -90,10 +122,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return { error: new Error('Password reset is unavailable because authentication is not configured for this app.') };
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    return { error: error as Error | null };
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error: error as Error | null };
+    } catch (error) {
+      return { error: getAuthRequestError('password reset', error) };
+    }
   };
 
   return (

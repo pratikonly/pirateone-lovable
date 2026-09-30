@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getPopularTV, getTopRatedTV, getBackdropUrl, Movie } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
-import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { Loader2 } from 'lucide-react';
 
 const AutoGrid = ({ shows }: { shows: Movie[] }) => (
@@ -26,37 +26,53 @@ const SkeletonGrid = () => (
   </div>
 );
 
+const getInitialSeriesCatalog = async () => {
+  const [pop1, pop2, top1, top2] = await Promise.all([
+    getPopularTV(1), getPopularTV(2),
+    getTopRatedTV(1), getTopRatedTV(2),
+  ]);
+
+  return {
+    popular: [...pop1.results, ...pop2.results],
+    topRated: [...top1.results, ...top2.results],
+    hasMorePopular: 2 < pop1.totalPages,
+    hasMoreTopRated: 2 < top1.totalPages,
+  };
+};
+
 const Series = () => {
-  const [popularTV,  setPopularTV]  = useState<Movie[]>([]);
-  const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
-  const [isLoading,  setIsLoading]  = useState(true);
+  const { data: initialCatalog, isLoading, isError, error } = useQuery({
+    queryKey: ['catalog', 'series'],
+    queryFn: getInitialSeriesCatalog,
+  });
+  const [extraPopular, setExtraPopular] = useState<Movie[]>([]);
+  const [extraTopRated, setExtraTopRated] = useState<Movie[]>([]);
   const [activeTab,  setActiveTab]  = useState('popular');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [popularPage,  setPopularPage]  = useState(2);
   const [topRatedPage, setTopRatedPage] = useState(2);
-  const [hasMorePopular,  setHasMorePopular]  = useState(true);
-  const [hasMoreTopRated, setHasMoreTopRated] = useState(true);
+  const [hasMorePopularOverride, setHasMorePopularOverride] = useState<boolean | null>(null);
+  const [hasMoreTopRatedOverride, setHasMoreTopRatedOverride] = useState<boolean | null>(null);
 
   const currentIndexRef = useRef(0);
   const observerRef     = useRef<HTMLDivElement>(null);
   const setBackdropUrl  = useSetBackdropUrl();
 
-  // Pre-load 2 pages on mount
+  const popularTV = useMemo(
+    () => [...(initialCatalog?.popular ?? []), ...extraPopular],
+    [extraPopular, initialCatalog?.popular],
+  );
+  const topRatedTV = useMemo(
+    () => [...(initialCatalog?.topRated ?? []), ...extraTopRated],
+    [extraTopRated, initialCatalog?.topRated],
+  );
+  const hasMorePopular = hasMorePopularOverride ?? initialCatalog?.hasMorePopular ?? true;
+  const hasMoreTopRated = hasMoreTopRatedOverride ?? initialCatalog?.hasMoreTopRated ?? true;
+
   useEffect(() => {
-    (async () => {
-      try {
-        const [pop1, pop2, top1, top2] = await Promise.all([
-          getPopularTV(1), getPopularTV(2),
-          getTopRatedTV(1), getTopRatedTV(2),
-        ]);
-        setPopularTV([...pop1.results, ...pop2.results]);
-        setTopRatedTV([...top1.results, ...top2.results]);
-        setHasMorePopular(2 < pop1.totalPages);
-        setHasMoreTopRated(2 < top1.totalPages);
-      } catch (e) { console.error(e); } finally { setIsLoading(false); }
-    })();
-  }, []);
+    if (isError) console.error('Failed to load series catalog:', error);
+  }, [error, isError]);
 
   useEffect(() => {
     if (popularTV.length === 0) return;
@@ -72,22 +88,22 @@ const Series = () => {
   useEffect(() => () => setBackdropUrl(null), [setBackdropUrl]);
 
   const loadMore = useCallback(async () => {
-    if (isLoadingMore) return;
+    if (isLoadingMore || isLoading || !initialCatalog) return;
     setIsLoadingMore(true);
     try {
       if (activeTab === 'popular' && hasMorePopular) {
         const next = popularPage + 1;
         const d = await getPopularTV(next);
-        if (d.results.length) { setPopularTV(p => [...p, ...d.results]); setPopularPage(next); }
-        if (next >= d.totalPages) setHasMorePopular(false);
+        if (d.results.length) { setExtraPopular(p => [...p, ...d.results]); setPopularPage(next); }
+        setHasMorePopularOverride(next < d.totalPages);
       } else if (activeTab === 'top-rated' && hasMoreTopRated) {
         const next = topRatedPage + 1;
         const d = await getTopRatedTV(next);
-        if (d.results.length) { setTopRatedTV(p => [...p, ...d.results]); setTopRatedPage(next); }
-        if (next >= d.totalPages) setHasMoreTopRated(false);
+        if (d.results.length) { setExtraTopRated(p => [...p, ...d.results]); setTopRatedPage(next); }
+        setHasMoreTopRatedOverride(next < d.totalPages);
       }
     } catch (e) { console.error(e); } finally { setIsLoadingMore(false); }
-  }, [activeTab, hasMorePopular, hasMoreTopRated, isLoadingMore, popularPage, topRatedPage]);
+  }, [activeTab, hasMorePopular, hasMoreTopRated, initialCatalog, isLoading, isLoadingMore, popularPage, topRatedPage]);
 
   useEffect(() => {
     const el = observerRef.current;
@@ -106,7 +122,7 @@ const Series = () => {
   }, [activeTab, popularTV, topRatedTV, hasMorePopular, hasMoreTopRated]);
 
   return (
-    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6 pb-0">
       <h1 className="font-display text-3xl lg:text-4xl mb-6">Web Series</h1>
 
       <Tabs defaultValue="popular" className="w-full" onValueChange={setActiveTab}>
@@ -130,8 +146,6 @@ const Series = () => {
           <p className="text-muted-foreground text-sm">You've reached the end</p>
         )}
       </div>
-
-      <DisclaimerFooter />
     </div>
   );
 };

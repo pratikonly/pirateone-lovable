@@ -1,0 +1,1 @@
+- [Node package setup](node-package-setup.md) — ranged installs may upgrade manifest and lock versions; inspect package files after dependency setup.

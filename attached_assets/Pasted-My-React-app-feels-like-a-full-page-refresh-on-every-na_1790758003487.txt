@@ -1,0 +1,52 @@
+My React app feels like a full page refresh on every navigation. Earlier I made
+ALL components lazy-loaded with React.lazy() + Suspense to fix a "failed to
+fetch" login error, but it went too far. Now navigating between pages (e.g.
+going back to Home) shows a loading flash and feels janky. Please fix this
+so navigation feels instant and smooth like a native SPA.
+
+First, audit the code and tell me:
+- Which components/routes are lazy-loaded and where <Suspense> boundaries are
+- Whether data is refetched on every page mount
+- Whether the layout (navbar/footer/sidebar) remounts on route change
+
+Then apply these fixes:
+
+1. Lazy-load selectively. Keep Home, the layout, Navbar, Footer, Login and
+   other small/frequently used pages as normal static imports. Lazy-load only
+   heavy or rarely visited pages (dashboard, admin, charts, editors, etc.).
+
+2. Keep the layout persistent. Navbar/footer must never unmount during
+   navigation. Put <Suspense> INSIDE the layout around the <Outlet />/page
+   content only, never around the entire app.
+
+3. Use a lightweight fallback: a skeleton or subtle top progress bar that
+   matches the page layout, not a full-screen spinner or blank screen.
+
+4. Prefetch lazy routes: preload chunks on link hover/focus/touchstart and
+   during browser idle time (requestIdleCallback) using dynamic import()
+   helpers, so the chunk is already loaded before the user clicks.
+
+5. Wrap route navigation in React's startTransition / useTransition so React
+   keeps the old page visible until the new one is ready, instead of
+   flashing a fallback.
+
+6. Cache data between pages. Use React Query (or SWR) with a sensible
+   staleTime and cache so returning to Home shows cached data instantly and
+   revalidates in the background, instead of refetching from scratch.
+
+7. Add a subtle page transition (short 150-200ms fade using CSS or
+   framer-motion) so route changes feel smooth. Respect prefers-reduced-motion.
+
+8. Check vite.config manual chunk splitting (vendor chunk for react,
+   react-router, etc.) so shared code isn't reloaded per route, and make sure
+   built assets have proper caching.
+
+9. Make sure the original "failed to fetch" login problem does not return.
+   Check that the API base URL, CORS, and error handling are correct rather
+   than relying on lazy-loading as the fix.
+
+Constraints:
+- Don't change the UI design or features.
+- Show me the exact files changed and explain each change briefly.
+- After the changes, tell me how to verify (Network tab, Lighthouse,
+  React Profiler) that navigation no longer reloads or flashes.

@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getPopularMovies, getTopRatedMovies, getNowPlayingMovies, getBackdropUrl, Movie } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
-import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { Loader2 } from 'lucide-react';
 
 const AutoGrid = ({ movies }: { movies: Movie[] }) => (
@@ -26,43 +26,63 @@ const SkeletonGrid = () => (
   </div>
 );
 
+const getInitialMoviesCatalog = async () => {
+  const [pop1, pop2, top1, top2, play1, play2] = await Promise.all([
+    getPopularMovies(1), getPopularMovies(2),
+    getTopRatedMovies(1), getTopRatedMovies(2),
+    getNowPlayingMovies(1), getNowPlayingMovies(2),
+  ]);
+
+  return {
+    popular: [...pop1.results, ...pop2.results],
+    topRated: [...top1.results, ...top2.results],
+    nowPlaying: [...play1.results, ...play2.results],
+    hasMorePopular: 2 < pop1.totalPages,
+    hasMoreTopRated: 2 < top1.totalPages,
+    hasMoreNowPlaying: 2 < play1.totalPages,
+  };
+};
+
 const Movies = () => {
-  const [popularMovies,   setPopularMovies]   = useState<Movie[]>([]);
-  const [topRatedMovies,  setTopRatedMovies]  = useState<Movie[]>([]);
-  const [nowPlaying,      setNowPlaying]      = useState<Movie[]>([]);
-  const [isLoading,       setIsLoading]       = useState(true);
+  const { data: initialCatalog, isLoading, isError, error } = useQuery({
+    queryKey: ['catalog', 'movies'],
+    queryFn: getInitialMoviesCatalog,
+  });
+  const [extraPopular, setExtraPopular] = useState<Movie[]>([]);
+  const [extraTopRated, setExtraTopRated] = useState<Movie[]>([]);
+  const [extraNowPlaying, setExtraNowPlaying] = useState<Movie[]>([]);
   const [activeTab,       setActiveTab]       = useState('popular');
   const [isLoadingMore,   setIsLoadingMore]   = useState(false);
 
   const [popularPage,     setPopularPage]     = useState(2);
   const [topRatedPage,    setTopRatedPage]    = useState(2);
   const [nowPlayingPage,  setNowPlayingPage]  = useState(2);
-  const [hasMorePopular,     setHasMorePopular]     = useState(true);
-  const [hasMoreTopRated,    setHasMoreTopRated]    = useState(true);
-  const [hasMoreNowPlaying,  setHasMoreNowPlaying]  = useState(true);
+  const [hasMorePopularOverride, setHasMorePopularOverride] = useState<boolean | null>(null);
+  const [hasMoreTopRatedOverride, setHasMoreTopRatedOverride] = useState<boolean | null>(null);
+  const [hasMoreNowPlayingOverride, setHasMoreNowPlayingOverride] = useState<boolean | null>(null);
 
   const currentIndexRef = useRef(0);
   const observerRef     = useRef<HTMLDivElement>(null);
   const setBackdropUrl  = useSetBackdropUrl();
+  const popularMovies = useMemo(
+    () => [...(initialCatalog?.popular ?? []), ...extraPopular],
+    [extraPopular, initialCatalog?.popular],
+  );
+  const topRatedMovies = useMemo(
+    () => [...(initialCatalog?.topRated ?? []), ...extraTopRated],
+    [extraTopRated, initialCatalog?.topRated],
+  );
+  const nowPlaying = useMemo(
+    () => [...(initialCatalog?.nowPlaying ?? []), ...extraNowPlaying],
+    [extraNowPlaying, initialCatalog?.nowPlaying],
+  );
+  const hasMorePopular = hasMorePopularOverride ?? initialCatalog?.hasMorePopular ?? true;
+  const hasMoreTopRated = hasMoreTopRatedOverride ?? initialCatalog?.hasMoreTopRated ?? true;
+  const hasMoreNowPlaying = hasMoreNowPlayingOverride ?? initialCatalog?.hasMoreNowPlaying ?? true;
 
-  // Pre-load 2 pages on mount so grid is visually full
   useEffect(() => {
-    (async () => {
-      try {
-        const [pop1, pop2, top1, top2, play1, play2] = await Promise.all([
-          getPopularMovies(1), getPopularMovies(2),
-          getTopRatedMovies(1), getTopRatedMovies(2),
-          getNowPlayingMovies(1), getNowPlayingMovies(2),
-        ]);
-        setPopularMovies([...pop1.results, ...pop2.results]);
-        setTopRatedMovies([...top1.results, ...top2.results]);
-        setNowPlaying([...play1.results, ...play2.results]);
-        setHasMorePopular(2 < pop1.totalPages);
-        setHasMoreTopRated(2 < top1.totalPages);
-        setHasMoreNowPlaying(2 < play1.totalPages);
-      } catch (e) { console.error(e); } finally { setIsLoading(false); }
-    })();
-  }, []);
+    if (isError) console.error('Failed to load movies catalog:', error);
+  }, [error, isError]);
 
   useEffect(() => {
     if (popularMovies.length === 0) return;
@@ -78,27 +98,27 @@ const Movies = () => {
   useEffect(() => () => setBackdropUrl(null), [setBackdropUrl]);
 
   const loadMore = useCallback(async () => {
-    if (isLoadingMore) return;
+    if (isLoadingMore || isLoading || !initialCatalog) return;
     setIsLoadingMore(true);
     try {
       if (activeTab === 'popular' && hasMorePopular) {
         const next = popularPage + 1;
         const d = await getPopularMovies(next);
-        if (d.results.length) { setPopularMovies(p => [...p, ...d.results]); setPopularPage(next); }
-        if (next >= d.totalPages) setHasMorePopular(false);
+        if (d.results.length) { setExtraPopular(p => [...p, ...d.results]); setPopularPage(next); }
+        setHasMorePopularOverride(next < d.totalPages);
       } else if (activeTab === 'now-playing' && hasMoreNowPlaying) {
         const next = nowPlayingPage + 1;
         const d = await getNowPlayingMovies(next);
-        if (d.results.length) { setNowPlaying(p => [...p, ...d.results]); setNowPlayingPage(next); }
-        if (next >= d.totalPages) setHasMoreNowPlaying(false);
+        if (d.results.length) { setExtraNowPlaying(p => [...p, ...d.results]); setNowPlayingPage(next); }
+        setHasMoreNowPlayingOverride(next < d.totalPages);
       } else if (activeTab === 'top-rated' && hasMoreTopRated) {
         const next = topRatedPage + 1;
         const d = await getTopRatedMovies(next);
-        if (d.results.length) { setTopRatedMovies(p => [...p, ...d.results]); setTopRatedPage(next); }
-        if (next >= d.totalPages) setHasMoreTopRated(false);
+        if (d.results.length) { setExtraTopRated(p => [...p, ...d.results]); setTopRatedPage(next); }
+        setHasMoreTopRatedOverride(next < d.totalPages);
       }
     } catch (e) { console.error(e); } finally { setIsLoadingMore(false); }
-  }, [activeTab, hasMorePopular, hasMoreNowPlaying, hasMoreTopRated, isLoadingMore, popularPage, nowPlayingPage, topRatedPage]);
+  }, [activeTab, hasMorePopular, hasMoreNowPlaying, hasMoreTopRated, initialCatalog, isLoading, isLoadingMore, popularPage, nowPlayingPage, topRatedPage]);
 
   useEffect(() => {
     const el = observerRef.current;
@@ -118,7 +138,7 @@ const Movies = () => {
   }, [activeTab, nowPlaying, popularMovies, topRatedMovies, hasMoreNowPlaying, hasMorePopular, hasMoreTopRated]);
 
   return (
-    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6 pb-0">
       <h1 className="font-display text-3xl lg:text-4xl mb-6">Movies</h1>
 
       <Tabs defaultValue="popular" className="w-full" onValueChange={setActiveTab}>
@@ -146,8 +166,6 @@ const Movies = () => {
           <p className="text-muted-foreground text-sm">You've reached the end</p>
         )}
       </div>
-
-      <DisclaimerFooter />
     </div>
   );
 };

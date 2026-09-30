@@ -206,7 +206,7 @@
 }
 
 .page-transition {
-  animation: page-enter 220ms ease-out both;
+  animation: page-enter 180ms ease-out both;
 }
 
 .nav-page-change {

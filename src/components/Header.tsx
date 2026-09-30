@@ -128,11 +128,10 @@ const Header = () => {
   return (
     <>
       <header
-        key={`${location.pathname}${location.search}`}
         className="site-header nav-page-change fixed inset-x-3 top-3 z-[60] mx-auto flex h-14 w-[calc(100%-1.5rem)] max-w-6xl items-center justify-between rounded-full border border-white/15 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out sm:inset-x-4 sm:h-16 sm:w-[calc(100%-2rem)] sm:px-5"
       >
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
-          <img src={pirateOneLogo} alt="PirateOne" className="h-10 w-10 object-contain sm:h-11 sm:w-11" />
+          <img src={pirateOneLogo} alt="PirateOne" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
         </NavLink>
 
         <nav aria-label="Main navigation" className="mx-5 hidden min-w-0 flex-1 items-center justify-center gap-3 md:flex lg:gap-5">
@@ -162,9 +161,9 @@ const Header = () => {
             type="button"
             onClick={() => toast.info('The Live section is not available yet.')}
             title="Live"
-             className="flex shrink-0 items-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/40 hover:bg-white/[0.08] hover:text-white lg:text-[11px]"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/40 hover:bg-white/[0.08] hover:text-white lg:text-[11px]"
           >
-            <Radio className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+            <Radio className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
             Live
           </button>
         </nav>
@@ -240,7 +239,9 @@ const Header = () => {
           )}
         </div>
       </header>
-      <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />
+      {location.pathname !== '/' && (
+        <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />
+      )}
 
       <nav
         aria-label="Mobile main navigation"
@@ -273,7 +274,7 @@ const Header = () => {
           aria-label="Live"
            className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-white"
         >
-          <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
+          <Radio className="h-[18px] w-[18px] text-red-500" aria-hidden="true" />
           <span>Live</span>
         </button>
       </nav>

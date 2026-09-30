@@ -1,11 +1,32 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { searchMultiPaginated, getBackdropUrl, Movie } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
-import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { Loader2 } from 'lucide-react';
 
 const ANIME_QUERIES = ['anime', 'one piece', 'naruto', 'demon slayer', 'attack on titan', 'jujutsu kaisen'];
+
+const getUniqueAnime = (items: Movie[]) => {
+  const seenIds = new Set<number>();
+  return items.filter(item => {
+    if (seenIds.has(item.id)) return false;
+    seenIds.add(item.id);
+    return true;
+  });
+};
+
+const getInitialAnime = async () => {
+  const [pageOneSearches, pageTwoSearches] = await Promise.all([
+    Promise.all(ANIME_QUERIES.map(query => searchMultiPaginated(query, 1))),
+    Promise.all(ANIME_QUERIES.map(query => searchMultiPaginated(query, 2))),
+  ]);
+
+  return getUniqueAnime([
+    ...pageOneSearches.flatMap(search => search.results),
+    ...pageTwoSearches.flatMap(search => search.results),
+  ]);
+};
 
 const SkeletonGrid = () => (
   <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
@@ -20,45 +41,31 @@ const SkeletonGrid = () => (
 );
 
 const Anime = () => {
-  const [animeList,     setAnimeList]     = useState<Movie[]>([]);
-  const [isLoading,     setIsLoading]     = useState(true);
+  const {
+    data: initialAnime = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['catalog', 'anime'],
+    queryFn: getInitialAnime,
+  });
+  const [extraAnime, setExtraAnime] = useState<Movie[]>([]);
   const [currentPage,   setCurrentPage]   = useState(2);
   const [hasMore,       setHasMore]       = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const currentIndexRef = useRef(0);
   const observerRef     = useRef<HTMLDivElement>(null);
-  const seenIdsRef      = useRef<Set<number>>(new Set());
   const setBackdropUrl  = useSetBackdropUrl();
+  const animeList = useMemo(
+    () => getUniqueAnime([...initialAnime, ...extraAnime]),
+    [extraAnime, initialAnime],
+  );
 
-  const dedupeAndAdd = (items: Movie[], target: Movie[]) => {
-    const out = [...target];
-    items.forEach(item => {
-      if (!seenIdsRef.current.has(item.id)) {
-        seenIdsRef.current.add(item.id);
-        out.push(item);
-      }
-    });
-    return out;
-  };
-
-  // Pre-load pages 1 and 2 on mount
   useEffect(() => {
-    (async () => {
-      try {
-        const [p1, p2] = await Promise.all([
-          Promise.all(ANIME_QUERIES.map(q => searchMultiPaginated(q, 1))),
-          Promise.all(ANIME_QUERIES.map(q => searchMultiPaginated(q, 2))),
-        ]);
-        const all = [...p1.flatMap(s => s.results), ...p2.flatMap(s => s.results)];
-        const unique: Movie[] = [];
-        all.forEach(item => {
-          if (!seenIdsRef.current.has(item.id)) { seenIdsRef.current.add(item.id); unique.push(item); }
-        });
-        setAnimeList(unique);
-      } catch (e) { console.error(e); } finally { setIsLoading(false); }
-    })();
-  }, []);
+    if (isError) console.error('Failed to load anime catalog:', error);
+  }, [error, isError]);
 
   useEffect(() => {
     if (animeList.length === 0) return;
@@ -74,20 +81,23 @@ const Anime = () => {
   useEffect(() => () => setBackdropUrl(null), [setBackdropUrl]);
 
   const loadMore = useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || isLoading || !hasMore) return;
     setIsLoadingMore(true);
     try {
       const next = currentPage + 1;
       const searches = await Promise.all(ANIME_QUERIES.map(q => searchMultiPaginated(q, next)));
       const newItems = searches.flatMap(s => s.results);
-      setAnimeList(prev => {
-        const updated = dedupeAndAdd(newItems, prev);
-        if (updated.length === prev.length) setHasMore(false);
-        return updated;
+      const existingIds = new Set(animeList.map(item => item.id));
+      const uniqueNewItems = newItems.filter(item => {
+        if (existingIds.has(item.id)) return false;
+        existingIds.add(item.id);
+        return true;
       });
+      if (uniqueNewItems.length === 0) setHasMore(false);
+      setExtraAnime(previous => [...previous, ...uniqueNewItems]);
       setCurrentPage(next);
     } catch (e) { console.error(e); } finally { setIsLoadingMore(false); }
-  }, [isLoadingMore, hasMore, currentPage]);
+  }, [animeList, currentPage, hasMore, isLoading, isLoadingMore]);
 
   useEffect(() => {
     const el = observerRef.current;
@@ -101,7 +111,7 @@ const Anime = () => {
   }, [loadMore]);
 
   return (
-    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6 pb-0">
       <h1 className="font-display text-3xl lg:text-4xl mb-2">Anime</h1>
       <p className="text-muted-foreground text-sm mb-6">Popular anime series and movies</p>
 
@@ -120,8 +130,6 @@ const Anime = () => {
           <p className="text-muted-foreground text-sm">You've reached the end</p>
         )}
       </div>
-
-      <DisclaimerFooter />
     </div>
   );
 };
