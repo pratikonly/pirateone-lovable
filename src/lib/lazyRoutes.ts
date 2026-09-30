@@ -3,6 +3,7 @@ export const lazyRouteLoaders = {
   watchlist: () => import('@/pages/Watchlist'),
   settings: () => import('@/pages/Settings'),
   help: () => import('@/pages/Help'),
+  live: () => import('@/pages/Live'),
   sports: () => import('@/pages/Sports'),
   serverStatus: () => import('@/pages/ServerStatus'),
   notFound: () => import('@/pages/NotFound'),
@@ -15,6 +16,7 @@ const getLazyRouteName = (pathname: string): LazyRouteName | null => {
   if (pathname === '/watchlist' || pathname.startsWith('/watchlist/')) return 'watchlist';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
   if (pathname === '/help' || pathname.startsWith('/help/')) return 'help';
+  if (pathname === '/live' || pathname.startsWith('/live/')) return 'live';
   if (pathname === '/sports' || pathname.startsWith('/sports/')) return 'sports';
   if (pathname === '/server' || pathname.startsWith('/server/')) return 'serverStatus';
 

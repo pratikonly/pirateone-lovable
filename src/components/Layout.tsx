@@ -56,8 +56,9 @@ const Layout = () => {
     '/watchlist',
     '/settings',
     '/help',
+    '/live',
     '/sports',
-  ].includes(pathname) || /^\/watch\/[^/]+\/[^/]+$/.test(pathname);
+  ].includes(pathname) || /^\/(watch\/[^/]+\/[^/]+|live\/[^/]+)$/.test(pathname);
   const showDisclaimerFooter = ['/', '/movies', '/series', '/anime'].includes(pathname);
   const footerSpacing = isHome ? 'pb-6' : 'pb-4 lg:pb-6';
 

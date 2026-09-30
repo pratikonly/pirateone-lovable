@@ -25,6 +25,7 @@ import { lazyRouteLoaders } from "./lib/lazyRoutes";
 const Watchlist = lazy(lazyRouteLoaders.watchlist);
 const Settings = lazy(lazyRouteLoaders.settings);
 const Help = lazy(lazyRouteLoaders.help);
+const Live = lazy(lazyRouteLoaders.live);
 const Sports = lazy(lazyRouteLoaders.sports);
 const Watch = lazy(lazyRouteLoaders.watch);
 const ServerStatus = lazy(lazyRouteLoaders.serverStatus);
@@ -66,6 +67,8 @@ const App = () => (
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
+                    <Route path="/live" element={<Live />} />
+                    <Route path="/live/:id" element={<Live />} />
                     <Route path="/sports" element={<Sports />} />
                     <Route path="/watch/:type/:id" element={<Watch />} />
                     <Route path="/server" element={<ServerStatus />} />

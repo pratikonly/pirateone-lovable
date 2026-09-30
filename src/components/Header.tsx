@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import pirateOneLogo from '@/assets/logo.svg';
 import animeIcon from '@/assets/anime-icon.svg';
 
@@ -124,6 +123,7 @@ const Header = () => {
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
   const displayAvatarUrl = profileAvatarUrl || identity?.imagePath || null;
+  const isLiveActive = location.pathname === '/live' || location.pathname.startsWith('/live/');
 
   return (
     <>
@@ -157,15 +157,20 @@ const Header = () => {
               </NavLink>
             );
           })}
-          <button
-            type="button"
-            onClick={() => toast.info('The Live section is not available yet.')}
+          <NavLink
+            to="/live"
+            aria-current={isLiveActive ? 'page' : undefined}
             title="Live"
-            className="flex shrink-0 items-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/40 hover:bg-white/[0.08] hover:text-white lg:text-[11px]"
+            className={cn(
+              'flex shrink-0 items-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] transition-colors duration-200 lg:text-[11px]',
+              isLiveActive
+                ? 'border-white bg-white text-black'
+                : 'text-zinc-400 hover:border-white/40 hover:bg-white/[0.08] hover:text-white'
+            )}
           >
             <Radio className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
             Live
-          </button>
+          </NavLink>
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
@@ -268,15 +273,20 @@ const Header = () => {
             </NavLink>
           );
         })}
-        <button
-          type="button"
-          onClick={() => toast.info('The Live section is not available yet.')}
+        <NavLink
+          to="/live"
           aria-label="Live"
-           className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+          aria-current={isLiveActive ? 'page' : undefined}
+          className={cn(
+            'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
+            isLiveActive
+              ? 'bg-white text-zinc-950 shadow-sm'
+              : 'text-zinc-400 hover:bg-white/[0.08] hover:text-white'
+          )}
         >
           <Radio className="h-[18px] w-[18px] text-red-500" aria-hidden="true" />
           <span>Live</span>
-        </button>
+        </NavLink>
       </nav>
 
       {/* ── Global Search Overlay ── */}
