@@ -1,0 +1,47 @@
+My Vercel build keeps failing at "npm install" with:
+
+  npm error code ENOTFOUND
+  network request to http://package-firewall.replit.internal/npm/tinyglobby/-/tinyglobby-0.2.17.tgz failed
+
+Cause: package-lock.json has "resolved" URLs pointing to Replit's internal
+package mirror (package-firewall.replit.internal), which Vercel can't reach.
+An earlier attempt to regenerate the lockfile didn't fix it (new commit,
+same error), so the internal URLs are still in what's committed to GitHub.
+
+Please fix this completely:
+
+1. Search the ENTIRE repo (excluding node_modules) for "replit.internal" and
+   "package-firewall": package-lock.json, .npmrc, .yarnrc, bun.lockb,
+   yarn.lock, pnpm-lock.yaml, vercel.json, package.json, .replit, and any
+   config files. List every match.
+
+2. Remove any registry override to the Replit mirror from .npmrc and any
+   config in the project, and make sure the project uses only
+   https://registry.npmjs.org/.
+
+3. Fix package-lock.json. Replace every resolved URL that points to
+   package-firewall.replit.internal with the public equivalent
+   https://registry.npmjs.org/<package>/-/<file>.tgz (or delete
+   package-lock.json and regenerate it with
+   npm install --registry=https://registry.npmjs.org/ --package-lock-only
+   if replacement isn't clean). If Replit's environment forces the mirror
+   again, override it for that command via the --registry flag or an
+   npm_config_registry=https://registry.npmjs.org/ environment variable.
+
+4. Verify: run `grep -c "replit.internal" package-lock.json` and confirm it
+   prints 0, and confirm no other file in the repo contains that string.
+   Also check that only ONE lockfile exists (delete bun.lockb / yarn.lock /
+   pnpm-lock.yaml if they are extras, unless I use them).
+
+5. Run `npm ci` (or `npm install`) and `npm run build` to confirm the build
+   works with the public registry URLs.
+
+6. Commit and push the changes to the main branch on GitHub
+   (pratikonly/pirateone-lovable) so Vercel picks them up. Confirm the
+   pushed package-lock.json on GitHub has zero "replit.internal" entries.
+
+Constraints:
+- Do NOT change dependency versions, app code, UI, or features.
+- Show me the grep output before and after so I can confirm it's clean.
+- If the mirror gets written back into the lockfile every time you run
+  npm install, tell me and give me the exact workaround.
