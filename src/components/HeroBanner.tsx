@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play } from 'lucide-react';
-import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, Video } from '@/lib/tmdb';
+import { ChevronLeft, ChevronRight, Pause, Play, Plus, VolumeX } from 'lucide-react';
+import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, getYouTubeEmbedUrl, Video } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb } from '@/lib/watchlistDb';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,12 +33,14 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const [inWatchlist, setInWatchlist] = useState(false);
   const [logos, setLogos] = useState<Record<string, string | null>>({});
   const [trailers, setTrailers] = useState<Record<string, Video | null>>({});
   const [trailerOpen, setTrailerOpen] = useState(false);
   const requestedLogoKeys = useRef(new Set<string>());
   const requestedTrailerKeys = useRef(new Set<string>());
+  const transitionTimeout = useRef<number | null>(null);
 
   const featuredMovies = useMemo(() => movies.slice(0, 5), [movies]);
   const currentMovie = featuredMovies[currentIndex];
@@ -127,19 +129,37 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
     }
   }, [featuredMovies]);
 
+  const goToSlide = useCallback((nextIndex: number, direction: 'next' | 'previous') => {
+    if (featuredMovies.length <= 1 || nextIndex === currentIndex || isTransitioning) return;
+
+    if (transitionTimeout.current) {
+      window.clearTimeout(transitionTimeout.current);
+    }
+
+    setSlideDirection(direction);
+    setIsTransitioning(true);
+    transitionTimeout.current = window.setTimeout(() => {
+      setCurrentIndex(nextIndex);
+      setIsTransitioning(false);
+      transitionTimeout.current = null;
+    }, 480);
+  }, [currentIndex, featuredMovies.length, isTransitioning]);
+
   useEffect(() => {
     if (featuredMovies.length <= 1 || isPaused) return;
 
-    const interval = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % featuredMovies.length);
-        setIsTransitioning(false);
-      }, 500);
-    }, 8000);
+    const interval = window.setInterval(() => {
+      goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
+    }, 8500);
 
-    return () => clearInterval(interval);
-  }, [featuredMovies.length, isPaused]);
+    return () => window.clearInterval(interval);
+  }, [currentIndex, featuredMovies.length, goToSlide, isPaused]);
+
+  useEffect(() => () => {
+    if (transitionTimeout.current) {
+      window.clearTimeout(transitionTimeout.current);
+    }
+  }, []);
 
   useEffect(() => {
     const syncWatchlistState = async () => {
@@ -239,32 +259,45 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="relative h-[60vh] md:h-[70vh] min-h-[400px] max-h-[600px] -mt-14 mb-8 overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      className="hero-banner relative -mt-14 mb-8 min-h-[520px] h-[72vh] max-h-[720px] overflow-hidden bg-black"
+      aria-roledescription="carousel"
+      aria-label="Featured titles"
     >
       <div className="absolute inset-0">
         {featuredMovies.map((movie, index) => {
           const url = getBackdropUrl(movie.backdrop_path, 'original');
+          const movieKey = `${movie.media_type || 'movie'}-${movie.id}`;
+          const scene = trailers[movieKey];
           return (
             <div
               key={movie.id}
               className={cn(
-                'absolute inset-0 transition-all duration-1000 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]',
+                'hero-slide absolute inset-0 overflow-hidden transition-[opacity,transform,filter] duration-1000 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]',
                 index === currentIndex
                   ? 'opacity-100 scale-100 translate-x-0 blur-0'
-                  : 'pointer-events-none opacity-0 scale-[1.08] translate-x-6 blur-[2px]'
+                  : cn(
+                    'pointer-events-none opacity-0 scale-[1.08] blur-[3px]',
+                    slideDirection === 'next' ? 'translate-x-10' : '-translate-x-10'
+                  )
               )}
-              style={{
-                animation: index === currentIndex ? 'kenburns 3s ease-out forwards' : 'none'
-              }}
             >
               {url && (
                 <img
                   src={url}
                   alt=""
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover opacity-75"
                   loading={index === 0 ? 'eager' : 'lazy'}
+                />
+              )}
+              {index === currentIndex && scene?.key && (
+                <iframe
+                  key={`${movieKey}-${scene.key}`}
+                  src={`${getYouTubeEmbedUrl(scene.key)}&mute=1&controls=0&loop=1&playlist=${scene.key}&playsinline=1&modestbranding=1&disablekb=1`}
+                  title=""
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  allow="autoplay; encrypted-media"
+                  className="pointer-events-none absolute inset-0 h-full w-full scale-[1.3] object-cover opacity-60"
                 />
               )}
             </div>
@@ -272,29 +305,40 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
         })}
       </div>
 
-      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/60" />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-      <div className="absolute inset-0 shadow-[inset_0_0_150px_60px_hsl(var(--background))]" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/20" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/55" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
+      <div className="absolute inset-0 shadow-[inset_0_0_180px_45px_rgba(0,0,0,0.95)]" />
+      {currentTrailer?.key && (
+        <div className="absolute right-5 top-24 z-10 flex items-center gap-2 border border-white/25 bg-black/45 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.18em] text-white/75 backdrop-blur-md sm:right-8 lg:right-10">
+          <VolumeX className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+          <span>Scene · muted</span>
+        </div>
+      )}
 
       <div className="absolute inset-0 flex items-center">
-        <div className="container mx-auto px-4 lg:px-6 pt-14">
-          <div className="flex items-center gap-6 lg:gap-10">
+        <div className="container mx-auto px-5 pt-16 sm:px-8 lg:px-10">
+          <div className="flex items-center gap-8 lg:gap-16">
             <div className={cn(
-              'flex-1 max-w-2xl transition-all duration-500',
-              isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
+              'max-w-2xl flex-1 transition-all duration-500',
+              isTransitioning ? 'translate-y-5 opacity-0' : 'translate-y-0 opacity-100'
             )}>
-              <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
-                <span className="bg-white text-black px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide shadow-lg">
+              <div className="mb-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60 sm:text-xs">
+                <span className="h-px w-8 bg-white/60" />
+                <span>Featured selection</span>
+              </div>
+
+              <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
+                <span className="border border-white/40 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black shadow-lg">
                   {mediaType === 'tv' ? 'TV Series' : 'Movie'}
                 </span>
-                <div className="flex items-center gap-1.5 bg-background/50 backdrop-blur-sm px-2 py-1 rounded-full">
-                  <svg className="w-4 h-4 text-yellow-400 fill-yellow-400" viewBox="0 0 24 24">
+                <div className="flex items-center gap-1.5 border border-white/20 bg-black/40 px-2 py-1 text-white backdrop-blur-sm">
+                  <svg className="h-3.5 w-3.5 fill-white text-white" viewBox="0 0 24 24">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
-                  <span className="font-semibold text-sm">{rating}</span>
+                  <span className="text-xs font-semibold">{rating}</span>
                 </div>
-                <span className="text-muted-foreground text-sm bg-background/30 backdrop-blur-sm px-2 py-1 rounded-full">
+                <span className="border border-white/20 bg-black/40 px-2 py-1 text-xs text-white/70 backdrop-blur-sm">
                   {year}
                 </span>
               </div>
@@ -304,29 +348,27 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                   <img
                     src={logoUrl}
                     alt={title}
-                    className="max-h-20 sm:max-h-24 md:max-h-28 lg:max-h-32 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] filter brightness-110"
+                    className="max-h-20 w-auto object-contain drop-shadow-[0_5px_10px_rgba(0,0,0,0.95)] filter brightness-110 sm:max-h-24 md:max-h-28 lg:max-h-32"
                     loading="eager"
                   />
                 </div>
               ) : (
-                <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-3 md:mb-4 leading-tight tracking-wider text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] [text-shadow:_0_0_40px_hsl(var(--primary)/0.4),_0_4px_12px_rgba(0,0,0,0.95)]">
+                <h1 className="mb-3 text-4xl font-black leading-[0.95] tracking-[-0.045em] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] sm:text-5xl md:mb-4 md:text-6xl lg:text-7xl">
                   {title}
                 </h1>
               )}
 
-              <p className="text-muted-foreground text-sm md:text-base leading-relaxed mb-5 md:mb-6 max-w-xl line-clamp-3 md:line-clamp-none">
+              <p className="mb-6 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base md:mb-7 md:line-clamp-none">
                 {overview}
               </p>
 
               <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                 <Button
                   size="default"
-                  className="bg-white text-black hover:bg-gray-200 shadow-lg text-sm md:text-base px-3 md:px-6 h-9 md:h-11"
+                  className="h-10 rounded-none border border-white bg-white px-4 text-sm font-bold uppercase tracking-[0.08em] text-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:bg-zinc-200 md:h-12 md:px-6 md:text-base"
                   onClick={handlePlay}
                 >
-                  <svg className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2 fill-current" viewBox="0 0 24 24">
-                    <polygon points="5 3 19 12 5 21 5 3"/>
-                  </svg>
+                  <Play className="mr-1.5 h-4 w-4 fill-current md:mr-2 md:h-5 md:w-5" />
                   Watch
                 </Button>
                 {currentTrailer && (
@@ -334,9 +376,9 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                     size="default"
                     variant="outline"
                     onClick={handleTrailerClick}
-                    className="backdrop-blur-sm border-white/50 hover:bg-white/20 text-foreground text-sm md:text-base px-3 md:px-6 h-9 md:h-11"
+                    className="h-10 rounded-none border-white/35 bg-black/25 px-4 text-sm font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white hover:text-black md:h-12 md:px-6 md:text-base"
                   >
-                    <Play className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" />
+                    <Play className="mr-1.5 h-4 w-4 md:mr-2 md:h-5 md:w-5" />
                     Trailer
                   </Button>
                 )}
@@ -345,17 +387,14 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                   variant="secondary"
                   onClick={handleAddToList}
                   disabled={inWatchlist}
-                  className="backdrop-blur-sm bg-secondary/80 hover:bg-secondary text-sm md:text-base px-3 md:px-6 h-9 md:h-11"
+                  className="h-10 rounded-none border border-white/20 bg-white/[0.08] px-4 text-sm font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white/15 md:h-12 md:px-6 md:text-base"
                 >
                   {inWatchlist ? (
                     <svg className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19"/>
-                      <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
+                    <Plus className="mr-1.5 h-4 w-4 md:mr-2 md:h-5 md:w-5" />
                   )}
                   {inWatchlist ? 'Added' : 'My List'}
                 </Button>
@@ -367,13 +406,16 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
             )}>
               {posterUrl && (
-                <div className="relative group">
+                <div className="group relative border border-white/25 bg-black/70 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.65)]">
                   <img
                     src={posterUrl}
                     alt={title}
-                    className="w-40 lg:w-48 rounded-lg shadow-2xl ring-1 ring-border/50"
+                    className="w-40 lg:w-52"
                   />
-                  <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="pointer-events-none absolute inset-2 bg-gradient-to-t from-black/55 via-transparent to-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <div className="absolute -bottom-3 -left-3 border border-white/25 bg-black px-2 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-white/70">
+                    Classic pick
+                  </div>
                 </div>
               )}
             </div>
@@ -382,29 +424,61 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       </div>
 
       {featuredMovies.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/10 bg-black/30 px-3 py-2 backdrop-blur-md">
-          {featuredMovies.map((_, index) => (
+        <div className="absolute bottom-6 left-5 right-5 z-10 flex items-center justify-between gap-4 sm:left-8 sm:right-8 lg:left-10 lg:right-10">
+          <div className="flex items-center gap-2 border border-white/20 bg-black/45 p-1.5 backdrop-blur-md">
             <button
-              key={index}
               type="button"
-              aria-label={`Show featured title ${index + 1}`}
-              aria-current={index === currentIndex ? 'true' : undefined}
-              onClick={() => {
-                if (index === currentIndex) return;
-                setIsTransitioning(true);
-                window.setTimeout(() => {
-                  setCurrentIndex(index);
-                  setIsTransitioning(false);
-                }, 260);
-              }}
-              className={cn(
-                'h-2 rounded-full transition-all duration-500',
-                index === currentIndex
-                  ? 'w-8 bg-white'
-                  : 'w-2 bg-white/35 hover:bg-white/70'
-              )}
-            />
-          ))}
+              aria-label="Previous featured title"
+              onClick={() => goToSlide((currentIndex - 1 + featuredMovies.length) % featuredMovies.length, 'previous')}
+              className="flex h-8 w-8 items-center justify-center text-white/70 transition-colors hover:bg-white hover:text-black disabled:opacity-30"
+              disabled={isTransitioning}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-1.5 px-1">
+              {featuredMovies.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`Show featured title ${index + 1}`}
+                  aria-current={index === currentIndex ? 'true' : undefined}
+                  onClick={() => goToSlide(index, index > currentIndex ? 'next' : 'previous')}
+                  className={cn(
+                    'h-1.5 transition-all duration-500',
+                    index === currentIndex
+                      ? 'w-9 bg-white'
+                      : 'w-1.5 bg-white/35 hover:bg-white/75'
+                  )}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              aria-label="Next featured title"
+              onClick={() => goToSlide((currentIndex + 1) % featuredMovies.length, 'next')}
+              className="flex h-8 w-8 items-center justify-center text-white/70 transition-colors hover:bg-white hover:text-black disabled:opacity-30"
+              disabled={isTransitioning}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={isPaused ? 'Resume automatic slides' : 'Pause automatic slides'}
+              onClick={() => setIsPaused((paused) => !paused)}
+              className="flex h-9 w-9 items-center justify-center border border-white/20 bg-black/45 text-white/75 backdrop-blur-md transition-colors hover:bg-white hover:text-black"
+            >
+              {isPaused ? <Play className="h-3.5 w-3.5 fill-current" /> : <Pause className="h-3.5 w-3.5" />}
+            </button>
+            {currentTrailer?.key && (
+              <div className="hidden items-center gap-2 border border-white/20 bg-black/45 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.16em] text-white/70 backdrop-blur-md sm:flex">
+                <VolumeX className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+                Muted scene
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -416,9 +490,21 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       />
 
       <style>{`
-        @keyframes kenburns {
-          0% { transform: scale(1); }
-          100% { transform: scale(1.05); }
+        @keyframes hero-scene-drift {
+          0% { transform: scale(1.28) translate3d(0, 0, 0); }
+          100% { transform: scale(1.36) translate3d(-1.5%, -0.5%, 0); }
+        }
+
+        .hero-slide > img,
+        .hero-slide > iframe {
+          animation: hero-scene-drift 18s ease-in-out alternate infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-slide > img,
+          .hero-slide > iframe {
+            animation: none;
+          }
         }
       `}</style>
     </div>

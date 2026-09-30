@@ -151,8 +151,8 @@ const Header = () => {
       <header className={cn(
         'site-header z-[60] flex w-full items-center justify-between transition-all duration-300 ease-out',
         scrollMode === 'floating'
-          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl border border-amber-100/20 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
-          : 'relative h-20 border-b border-white/10 bg-zinc-950 px-3 sm:h-[92px] sm:px-8'
+          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl border border-white/20 bg-black/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
+          : 'relative h-20 border-b border-white/10 bg-black px-3 sm:h-[92px] sm:px-8'
       )}>
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
           {scrollMode === 'floating' ? (
@@ -180,8 +180,8 @@ const Header = () => {
                 className={cn(
                   'inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] transition-colors duration-200 lg:text-[11px]',
                   isActive
-                    ? 'border-amber-300 text-amber-100'
-                    : 'text-zinc-400 hover:border-amber-300/60 hover:text-white'
+                    ? 'border-white text-white'
+                    : 'text-zinc-400 hover:border-white/60 hover:text-white'
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
@@ -193,9 +193,9 @@ const Header = () => {
             type="button"
             onClick={() => toast.info('The Live section is not available yet.')}
             title="Live"
-            className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-amber-300/60 hover:text-white lg:text-[11px]"
+            className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/60 hover:text-white lg:text-[11px]"
           >
-            <Radio className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+            <Radio className="h-3.5 w-3.5 text-white" aria-hidden="true" />
             Live
           </button>
         </nav>
@@ -203,7 +203,7 @@ const Header = () => {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={openSearch}
-            className="flex h-9 w-9 items-center justify-center rounded-sm border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-amber-200/50 hover:bg-white/[0.06] hover:text-amber-100 sm:h-10 sm:w-10"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-white/60 hover:bg-white/[0.08] hover:text-white sm:h-10 sm:w-10"
             aria-label="Search"
           >
             <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -215,7 +215,7 @@ const Header = () => {
               onClick={() => navigate('/auth?mode=signup')}
               aria-label="Create an account"
               title="Sign up"
-              className="flex h-9 w-9 items-center justify-center rounded-sm border border-amber-100/45 bg-amber-100 text-zinc-950 transition-colors duration-200 hover:bg-white sm:h-10 sm:w-10"
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-white bg-white text-zinc-950 transition-colors duration-200 hover:bg-zinc-200 sm:h-10 sm:w-10"
             >
               <UserRound className="h-[18px] w-[18px]" />
             </button>
@@ -225,7 +225,7 @@ const Header = () => {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 aria-label="Open profile menu"
                 aria-expanded={userDropdownOpen}
-                className="overflow-hidden rounded-sm border border-white/20 transition-colors duration-200 hover:border-amber-200/60"
+                className="overflow-hidden rounded-sm border border-white/20 transition-colors duration-200 hover:border-white/70"
               >
                 <Avatar className="h-8 w-8 rounded-sm sm:h-10 sm:w-10">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
@@ -294,8 +294,8 @@ const Header = () => {
               className={cn(
                 'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
                 isActive
-                  ? 'bg-amber-100 text-zinc-950 shadow-sm'
-                  : 'text-zinc-400 hover:bg-white/[0.06] hover:text-amber-100'
+                   ? 'bg-white text-zinc-950 shadow-sm'
+                   : 'text-zinc-400 hover:bg-white/[0.08] hover:text-white'
               )}
             >
               <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -307,7 +307,7 @@ const Header = () => {
           type="button"
           onClick={() => toast.info('The Live section is not available yet.')}
           aria-label="Live"
-          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-amber-100"
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-white"
         >
           <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
           <span>Live</span>
