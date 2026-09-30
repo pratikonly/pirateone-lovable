@@ -37,6 +37,7 @@ These routes use the shared application layout and navigation:
 | `/watchlist` | Local/cloud watchlist and signed-in collections |
 | `/settings` | Identity, profile, playback preferences, statistics, notifications, and data clearing |
 | `/help` | Feedback form, FAQs, tips, feature information, and server guidance |
+| `/sports` | Opens the separate Strike sports application |
 | `/watch/:type/:id` | Movie or TV title details and playback |
 
 ### Standalone routes
@@ -73,6 +74,8 @@ The floating navigation provides:
 
 The active route is highlighted. Live is currently a placeholder button and does not open a page.
 
+A separate floating quick-actions button links to Help, Watchlist, and Sports.
+
 The account/header area provides:
 
 - Global search button.
@@ -93,28 +96,6 @@ Route changes use client-side React Router navigation. The shared layout remains
 - A See all action opens `/search?q=...`.
 
 The layout also has a separate `/` keyboard handler that navigates to `/search`, so the exact result can depend on which handler processes the key first.
-
-### Site visit counting
-
-On layout/header mount, the app:
-
-1. Calls the `increment_site_visits` Supabase RPC.
-2. Reads the `site_visits` row with ID `1`.
-3. Displays the returned total.
-
-Errors are logged and the count falls back to zero.
-
-The displayed visitor count also participates in a numeric unlock interaction using the code `12418`.
-
-### PirateOne logo unlock
-
-Clicking the PirateOne logo starts an eight-second numeric listener:
-
-- Desktop accepts numeric keyboard input.
-- Mobile focuses a hidden numeric input.
-- Entering `12418` reveals a “Made by Pratik” external link.
-- Wrong or incomplete input expires and resets.
-- The unlocked state is held only in the current React session.
 
 ### F4 overlay
 
@@ -808,9 +789,9 @@ The page documents:
 
 The page also documents the library statuses Watching, Completed, Dropped, and Plan to Watch. Plan to Watch is represented by watchlist membership rather than a separate status value in the current status helper.
 
-## 13. Live navigation button
+## 13. Sports (`/sports`)
 
-The floating navigation includes a Live button marked as coming soon. It currently displays a short notification and has no destination page.
+The Sports page links to the separate Strike streaming application and shows a feature overview.
 
 ## 14. Streaming server status (`/server`)
 

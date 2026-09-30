@@ -22,6 +22,8 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import ServerStatus from "./pages/ServerStatus";
 import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay";
+import FloatingQuickActions from "./components/FloatingQuickActions";
+import Sports from "./pages/Sports";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,7 @@ const App = () => (
               <SpeedInsights />
                <ShortcutLoadingOverlay />
               <BrowserRouter>
+                <FloatingQuickActions />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
@@ -48,6 +51,7 @@ const App = () => (
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
+                    <Route path="/sports" element={<Sports />} />
                     <Route path="/watch/:type/:id" element={<Watch />} />
                   </Route>
                   <Route path="/server" element={<ServerStatus />} />

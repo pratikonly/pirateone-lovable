@@ -1,7 +1,7 @@
 {
   "name": "PirateOne",
   "short_name": "PirateOne",
-  "description": "Free streaming for movies, TV shows, and anime.",
+  "description": "Free streaming for movies, TV shows, anime, and live sports.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
