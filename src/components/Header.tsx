@@ -1,4 +1,4 @@
-import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound, Home, Clapperboard, Tv, Sparkles, Radio } from 'lucide-react';
+import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound, Home, Clapperboard, Tv, Radio } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
@@ -11,11 +11,30 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import pirateOneLogo from '@/assets/pirateone-logo.png';
+import animeIcon from '@/assets/anime-icon.svg';
+
+const AnimeNavIcon = ({ className }: { className?: string }) => (
+  <span
+    className={cn('inline-block shrink-0 bg-current', className)}
+    style={{
+      maskImage: `url(${animeIcon})`,
+      WebkitMaskImage: `url(${animeIcon})`,
+      maskRepeat: 'no-repeat',
+      WebkitMaskRepeat: 'no-repeat',
+      maskPosition: 'center',
+      WebkitMaskPosition: 'center',
+      maskSize: 'contain',
+      WebkitMaskSize: 'contain',
+    }}
+    aria-hidden="true"
+  />
+);
 
 const Header = () => {
   const [scrollMode, setScrollMode] = useState<'top' | 'floating'>(
     () => (typeof window !== 'undefined' && window.scrollY > 1 ? 'floating' : 'top')
   );
+  const [mobileNavMode, setMobileNavMode] = useState<'attached' | 'floating'>('attached');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -37,10 +56,18 @@ const Header = () => {
   useEffect(() => {
     const handleScroll = () => {
       setScrollMode(window.scrollY > 1 ? 'floating' : 'top');
+      const distanceFromBottom =
+        document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
+      setMobileNavMode(distanceFromBottom <= 16 ? 'attached' : 'floating');
     };
 
+    handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -113,7 +140,7 @@ const Header = () => {
     { label: 'Home', path: '/', Icon: Home },
     { label: 'Movies', path: '/movies', Icon: Clapperboard },
     { label: 'Series', path: '/series', Icon: Tv },
-    { label: 'Anime', path: '/anime', Icon: Sparkles },
+    { label: 'Anime', path: '/anime', Icon: AnimeNavIcon },
   ];
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
@@ -248,7 +275,12 @@ const Header = () => {
 
       <nav
         aria-label="Mobile main navigation"
-        className="mobile-bottom-nav fixed inset-x-2 bottom-2 z-[65] mx-auto grid max-w-md grid-cols-5 gap-1 rounded-md border border-white/60 bg-[#f5f0e6]/95 p-1.5 text-zinc-600 shadow-[0_12px_40px_rgba(0,0,0,0.42)] backdrop-blur-2xl md:hidden"
+        className={cn(
+          'mobile-bottom-nav fixed z-[65] mx-auto grid grid-cols-5 gap-1 text-zinc-300 backdrop-blur-2xl transition-[inset,border-radius,box-shadow,background-color] duration-300 md:hidden',
+          mobileNavMode === 'attached'
+            ? 'inset-x-0 bottom-0 w-full max-w-none rounded-none border-x-0 border-b-0 border-t border-white/10 bg-zinc-950/95 px-3 pb-[calc(0.375rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_30px_rgba(0,0,0,0.42)]'
+            : 'inset-x-3 bottom-3 max-w-md rounded-xl border border-white/15 bg-zinc-950/90 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
+        )}
       >
         {navItems.map(({ label, path, Icon }) => {
           const isActive = path === '/'
@@ -260,10 +292,10 @@ const Header = () => {
               to={path}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-sm py-1.5 text-[9px] font-medium transition-colors',
+                'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
                 isActive
-                  ? 'bg-[#e8ddca] text-[#382b1b] shadow-sm'
-                  : 'text-[#756b5e] hover:bg-black/[0.04] hover:text-[#2f261c]'
+                  ? 'bg-amber-100 text-zinc-950 shadow-sm'
+                  : 'text-zinc-400 hover:bg-white/[0.06] hover:text-amber-100'
               )}
             >
               <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -275,7 +307,7 @@ const Header = () => {
           type="button"
           onClick={() => toast.info('The Live section is not available yet.')}
           aria-label="Live"
-          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-sm py-1.5 text-[9px] font-medium text-[#756b5e] transition-colors hover:bg-black/[0.04] hover:text-[#2f261c]"
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-amber-100"
         >
           <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
           <span>Live</span>
