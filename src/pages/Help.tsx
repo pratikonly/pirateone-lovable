@@ -427,7 +427,7 @@ const Help = () => {
               {[
                 { group:'Global', color:'#a855f7', keys:[
                   { key:'/', action:'Open & focus the Search bar' },
-                  { key:'Esc', action:'Close sidebar / dismiss panels' },
+                  { key:'Esc', action:'Dismiss panels' },
                 ]},
                 { group:'Watch Page', color:'#3b82f6', keys:[
                   { key:'Server N', action:'Switch server from the server menu' },

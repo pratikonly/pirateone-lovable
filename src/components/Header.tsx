@@ -1,5 +1,5 @@
 import { Button } from './ui/button';
-import { Menu, Settings, RefreshCw, LogIn, LogOut, Search, X, Loader2 } from 'lucide-react';
+import { Settings, RefreshCw, LogIn, LogOut, Search, X, Loader2 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
@@ -11,12 +11,7 @@ import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 
-interface HeaderProps {
-  onMenuToggle: () => void;
-  sidebarCollapsed?: boolean;
-}
-
-const Header = ({ onMenuToggle, sidebarCollapsed = false }: HeaderProps) => {
+const Header = () => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -132,12 +127,9 @@ const Header = ({ onMenuToggle, sidebarCollapsed = false }: HeaderProps) => {
 
   return (
     <>
-      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 transition-[left] duration-300', sidebarCollapsed ? 'lg:left-8' : 'lg:left-60')}>
-        <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9" onClick={onMenuToggle}>
-          <Menu className="w-5 h-5" />
-        </Button>
+      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 lg:left-60')}>
         <div className="hidden lg:block flex-1" />
-        <div className="lg:hidden flex-1" />
+        <div className="flex-1" />
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Global search icon — LEFT of visitor count */}

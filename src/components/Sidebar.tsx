@@ -1,20 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import pirateOneLogo from '@/assets/pirateone-logo.png';
 import pratikLogo from '@/assets/pratik-logo.png';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-  desktopCollapsed?: boolean;
-}
-
 const SECRET_CODE = '12418';
 
-const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) => {
-
+const Sidebar = () => {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -135,16 +127,10 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
     )},
   ];
 
-  const handleNavClick = () => {
-    onClose();
-  };
-
   return (
     <aside className={cn(
-      "fixed left-0 top-0 h-screen w-64 lg:w-60 bg-sidebar/5 backdrop-blur-sm border-r border-border flex flex-col z-50",
-      "transition-transform duration-300 ease-in-out",
-      isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-      desktopCollapsed && "lg:-translate-x-full"
+      "relative w-full bg-sidebar/5 backdrop-blur-sm border-b border-border flex flex-col",
+      "lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-60 lg:border-b-0 lg:border-r lg:z-50"
     )}>
       {/* Logo Section */}
       <div className="p-4 lg:p-5 border-b border-sidebar-border">
@@ -175,12 +161,6 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
               onClick={handleLogoTap}
               className="h-auto w-full max-w-[180px] object-contain invert dark:invert-0 cursor-pointer select-none"
             />
-            <button
-              onClick={onClose}
-              className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
           {pratikVisible && (
             <a
@@ -206,7 +186,6 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={handleNavClick}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
               'hover:bg-sidebar-accent',
@@ -229,7 +208,6 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
         <div className="pt-4 mt-4 border-t border-sidebar-border">
           <NavLink
             to={sportsItem.path}
-            onClick={handleNavClick}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group',
               isActive(sportsItem.path)
@@ -254,7 +232,6 @@ const Sidebar = ({ isOpen, onClose, desktopCollapsed = false }: SidebarProps) =>
           <NavLink
             key={item.path}
             to={item.path}
-            onClick={handleNavClick}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
               'hover:bg-sidebar-accent',
