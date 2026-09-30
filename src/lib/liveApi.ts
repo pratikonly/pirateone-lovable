@@ -65,7 +65,12 @@ const getBroadCategory = (sourceCategory: string, channelName: string): string =
   ) {
     return 'Kids & Family';
   }
-  if (category.includes('educational')) return 'Educational';
+  if (
+    category === 'music'
+    || /\b(music|mtv|vh1|9xm|b4u music|music india|mtv beats|zee music)\b/i.test(channelName)
+  ) {
+    return 'Music';
+  }
 
   return 'Entertainment';
 };
