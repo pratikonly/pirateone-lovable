@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { isSupabaseConfigured, supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   session: Session | null;
@@ -42,6 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+
     // Get current session once on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       applySession(session);
@@ -57,6 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Sign-up is unavailable because authentication is not configured for this app.') };
+    }
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -66,15 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Sign-in is unavailable because authentication is not configured for this app.') };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
   const signOut = async () => {
+    if (!isSupabaseConfigured) return;
     await supabase.auth.signOut();
   };
 
   const resetPassword = async (email: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Password reset is unavailable because authentication is not configured for this app.') };
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });

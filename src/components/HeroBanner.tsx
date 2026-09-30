@@ -250,10 +250,10 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
             <div
               key={movie.id}
               className={cn(
-                'absolute inset-0 transition-all duration-700 ease-out',
+                'absolute inset-0 transition-all duration-1000 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]',
                 index === currentIndex
-                  ? 'opacity-100 scale-100'
-                  : 'opacity-0 scale-105'
+                  ? 'opacity-100 scale-100 translate-x-0 blur-0'
+                  : 'pointer-events-none opacity-0 scale-[1.08] translate-x-6 blur-[2px]'
               )}
               style={{
                 animation: index === currentIndex ? 'kenburns 3s ease-out forwards' : 'none'
@@ -382,17 +382,27 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       </div>
 
       {featuredMovies.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/10 bg-black/30 px-3 py-2 backdrop-blur-md">
           {featuredMovies.map((_, index) => (
-            <div
+            <button
               key={index}
+              type="button"
+              aria-label={`Show featured title ${index + 1}`}
+              aria-current={index === currentIndex ? 'true' : undefined}
+              onClick={() => {
+                if (index === currentIndex) return;
+                setIsTransitioning(true);
+                window.setTimeout(() => {
+                  setCurrentIndex(index);
+                  setIsTransitioning(false);
+                }, 260);
+              }}
               className={cn(
-                'h-2 rounded-full transition-all duration-300',
+                'h-2 rounded-full transition-all duration-500',
                 index === currentIndex
-                  ? 'w-6 bg-primary'
-                  : 'w-2 bg-white/40'
+                  ? 'w-8 bg-white'
+                  : 'w-2 bg-white/35 hover:bg-white/70'
               )}
-              
             />
           ))}
         </div>

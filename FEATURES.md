@@ -18,7 +18,6 @@ PirateOne is a movie, TV-series, and anime discovery and streaming web applicati
 - Create private or public collections when signed in.
 - Check the availability of the configured streaming servers.
 - Submit feedback and read help/FAQ information.
-- Open the separate Strike sports website.
 
 The application does not host or store video files. Video playback and downloads are delegated to third-party providers.
 
@@ -38,7 +37,6 @@ These routes use the shared application layout and navigation:
 | `/watchlist` | Local/cloud watchlist and signed-in collections |
 | `/settings` | Identity, profile, playback preferences, statistics, notifications, and data clearing |
 | `/help` | Feedback form, FAQs, tips, feature information, and server guidance |
-| `/sports` | Links to the separate Strike sports application |
 | `/watch/:type/:id` | Movie or TV title details and playback |
 
 ### Standalone routes
@@ -65,24 +63,20 @@ Anime catalog items use the media type returned by TMDB, normally movie or TV. T
 
 ### Navigation
 
-The persistent navigation provides links to:
+The floating navigation provides:
 
 - Home
-- Search
 - Movies
-- Web Series
+- Series
 - Anime
-- Sports
-- Watchlist
-- Help
+- Live (coming soon)
 
-The active route is highlighted, including child routes such as a watch page.
+The active route is highlighted. Live is currently a placeholder button and does not open a page.
 
 The account/header area provides:
 
 - Global search button.
-- Site visit count.
-- Sign In button for guests.
+- Profile button that opens sign-up for guests.
 - Avatar/account menu for signed-in users.
 - Get New Identity.
 - Settings.
@@ -814,19 +808,9 @@ The page documents:
 
 The page also documents the library statuses Watching, Completed, Dropped, and Plan to Watch. Plan to Watch is represented by watchlist membership rather than a separate status value in the current status helper.
 
-## 13. Sports (`/sports`)
+## 13. Live navigation button
 
-The Sports page links to the external Strike application:
-
-`https://strike-main.vercel.app/`
-
-The page provides:
-
-- A Visit Strike action.
-- Two external preview links.
-- A Go to Strike action.
-
-All links open the external application in a new tab with `noopener noreferrer`.
+The floating navigation includes a Live button marked as coming soon. It currently displays a short notification and has no destination page.
 
 ## 14. Streaming server status (`/server`)
 

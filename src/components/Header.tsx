@@ -1,7 +1,6 @@
-import { Button } from './ui/button';
-import { Settings, RefreshCw, LogIn, LogOut, Search, X, Loader2 } from 'lucide-react';
+import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { getInitials } from '@/lib/pirateIdentity';
 import { usePirateIdentity } from '@/contexts/PirateIdentityContext';
@@ -10,15 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const Header = () => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
-  const [visitorCount, setVisitorCount] = useState<number>(0);
-  const [showVisitorCount, setShowVisitorCount] = useState(false);
-  const [secretInput, setSecretInput] = useState('');
-  const [isListeningForCode, setIsListeningForCode] = useState(false);
 
   // Global search overlay
   const [searchOpen, setSearchOpen] = useState(false);
@@ -30,6 +26,7 @@ const Header = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { identity, isLoading, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user, signOut } = useAuth();
 
@@ -54,28 +51,6 @@ const Header = () => {
     };
     loadProfile();
   }, [user, userDropdownOpen]);
-
-  useEffect(() => {
-    const trackVisit = async () => {
-      try { await supabase.rpc('increment_site_visits'); } catch (e) { console.error(e); }
-      const { data } = await supabase.from('site_visits').select('total_count').eq('id', 1).maybeSingle();
-      setVisitorCount(data?.total_count || 0);
-    };
-    trackVisit();
-  }, []);
-
-  useEffect(() => {
-    if (!isListeningForCode) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const newInput = secretInput + e.key;
-      if ('12418'.startsWith(newInput)) {
-        setSecretInput(newInput);
-        if (newInput === '12418') { setShowVisitorCount(true); setIsListeningForCode(false); setSecretInput(''); }
-      } else { setSecretInput(''); setIsListeningForCode(false); }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isListeningForCode, secretInput]);
 
   // Global search fetch
   useEffect(() => {
@@ -121,54 +96,96 @@ const Header = () => {
   const handleSettingsClick = () => { setUserDropdownOpen(false); navigate('/settings'); };
   const handleRegenerateIdentity = async () => { try { await regenerateIdentity(); } catch (e) { console.error(e); } };
   const handleSignOut = async () => { setUserDropdownOpen(false); await signOut(); navigate('/'); };
+  const navItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Movies', path: '/movies' },
+    { label: 'Series', path: '/series' },
+    { label: 'Anime', path: '/anime' },
+  ];
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
   const displayAvatarUrl = profileAvatarUrl || identity?.imagePath || null;
 
   return (
     <>
-      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 xl:left-60')}>
-        <div className="hidden xl:block flex-1" />
-        <div className="flex-1" />
+      <header className="fixed inset-x-0 top-3 z-40 mx-auto flex h-[58px] w-[calc(100%-1.25rem)] max-w-6xl items-center justify-between rounded-2xl border border-white/[0.09] bg-zinc-950/75 px-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.38)] backdrop-blur-2xl sm:top-4 sm:h-16 sm:w-[calc(100%-2.5rem)] sm:px-4">
+        <NavLink to="/" aria-label="PirateOne home" className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-105 max-[360px]:h-8 max-[360px]:w-8 sm:h-11 sm:w-11">
+          <img
+            src="/favicon.svg"
+            alt="PirateOne"
+            className="h-9 w-9 object-contain brightness-0 invert sm:h-10 sm:w-10"
+          />
+        </NavLink>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Global search icon — LEFT of visitor count */}
+        <nav aria-label="Main navigation" className="mx-1 flex min-w-0 flex-1 items-center justify-center gap-0.5 max-[360px]:mx-0 sm:mx-4 sm:gap-1">
+          {navItems.map((item) => {
+            const isActive = item.path === '/'
+              ? location.pathname === '/'
+              : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'rounded-lg px-1 py-2 text-[9px] font-medium tracking-wide transition-all duration-300 max-[360px]:px-0.5 sm:px-3 sm:text-xs',
+                  isActive
+                    ? 'bg-white/[0.11] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+                    : 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
+                )}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15 sm:mx-1" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={() => toast.info('Live is coming soon.')}
+            title="Live — coming soon"
+            className="flex shrink-0 items-center gap-1 rounded-lg px-1 py-2 text-[9px] font-semibold tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-xs"
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />
+            </span>
+            Live
+            <span className="hidden rounded-full border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 lg:inline">
+              SOON
+            </span>
+          </button>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             onClick={openSearch}
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-muted/50 border border-border hover:bg-muted hover:border-primary/40 transition-all duration-200 text-muted-foreground hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white sm:h-10 sm:w-10"
             aria-label="Search"
           >
-            <Search className="w-4 h-4" />
+            <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
           </button>
 
-          {showVisitorCount && (
-            <div className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground select-none">
-              <span>{visitorCount} visits</span>
-            </div>
-          )}
-          {!showVisitorCount && (
-            <div
-              className="px-2 py-1 rounded-full bg-muted/50 border border-border text-xs text-muted-foreground select-none cursor-default"
-              onClick={() => { if (!showVisitorCount) setIsListeningForCode(true); }}
-            >
-              <span>{visitorCount} visits</span>
-            </div>
-          )}
-
           {!user ? (
-            <Button variant="outline" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
-              <LogIn className="w-4 h-4" />
-              Sign In
-            </Button>
+            <button
+              type="button"
+              onClick={() => navigate('/auth?mode=signup')}
+              aria-label="Create an account"
+              title="Sign up"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-zinc-950 shadow-[0_4px_18px_rgba(255,255,255,0.12)] transition-all duration-200 hover:scale-105 hover:bg-zinc-200 sm:h-10 sm:w-10"
+            >
+              <UserRound className="h-[18px] w-[18px]" />
+            </button>
           ) : (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="rounded-full border-2 border-primary/50 hover:border-primary transition-colors overflow-hidden"
+                aria-label="Open profile menu"
+                aria-expanded={userDropdownOpen}
+                className="overflow-hidden rounded-xl border border-white/20 transition-colors hover:border-white/50"
               >
-                <Avatar className="w-9 h-9">
+                <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
-                  <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                  <AvatarFallback className="bg-zinc-800 text-zinc-100 text-xs">
                     {isLoading ? '...' : getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>

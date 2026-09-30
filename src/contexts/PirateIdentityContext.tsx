@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { getGuestIdentity, regenerateIdentity as regenerateFromAPI, type PirateIdentity } from '@/lib/pirateIdentity';
+import { getGuestIdentity, getStoredIdentity, regenerateIdentity as regenerateFromAPI, type PirateIdentity } from '@/lib/pirateIdentity';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { isSupabaseConfigured, supabase } from '@/integrations/supabase/client';
 
 interface PirateIdentityContextType {
   identity: PirateIdentity | null;
@@ -47,8 +47,19 @@ export function PirateIdentityProvider({ children }: { children: ReactNode }) {
             setIdentity(pirateIdentity);
           }
         } else {
-          const pirateIdentity = await getGuestIdentity();
-          setIdentity(pirateIdentity);
+          if (isSupabaseConfigured) {
+            const pirateIdentity = await getGuestIdentity();
+            setIdentity(pirateIdentity);
+          } else {
+            setIdentity(getStoredIdentity() || {
+              id: 0,
+              name: 'Guest Pirate',
+              role: 'Pirate',
+              bounty: '0',
+              imagePath: '',
+              fetchedAt: new Date().toISOString(),
+            });
+          }
         }
       } catch (error) {
         console.error('Failed to load pirate identity:', error);

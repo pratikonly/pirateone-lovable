@@ -5,11 +5,17 @@ import { brokeredPreviewStorage } from './previewAuthStorage';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+
+// Keep public browsing available when auth has not been configured in this environment.
+// AuthContext checks isSupabaseConfigured before making any requests.
+const clientUrl = SUPABASE_URL || 'https://not-configured.invalid';
+const clientKey = SUPABASE_PUBLISHABLE_KEY || 'not-configured';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient<Database>(clientUrl, clientKey, {
   auth: {
     storage: brokeredPreviewStorage(),
     persistSession: true,
