@@ -8,15 +8,6 @@ interface CollectionInfoProps {
   currentMovieId: number;
 }
 
-function getColumns(count: number): number {
-  if (count <= 2) return 2;
-  if (count <= 4) return 2;
-  if (count <= 6) return 3;
-  if (count <= 9) return 3;
-  if (count <= 12) return 4;
-  return 5;
-}
-
 const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) => {
   const navigate = useNavigate();
   const [collection, setCollection] = useState<CollectionDetails | null>(null);
@@ -45,9 +36,12 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
     return (
       <div className="h-full bg-card/50 rounded-lg p-3 border border-border/50 animate-pulse">
         <div className="h-4 w-36 bg-muted rounded mb-3" />
-        <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div
+            className="grid justify-start gap-1.5"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(42px, 56px))' }}
+          >
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="w-full aspect-[2/3] bg-muted rounded" />
+              <div key={i} className="w-full aspect-[2/3] bg-muted rounded" />
           ))}
         </div>
       </div>
@@ -55,9 +49,6 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
   }
 
   if (!collection || collection.parts.length <= 1) return null;
-
-  const count = collection.parts.length;
-  const cols = getColumns(count);
 
   return (
     <div className="bg-white/5 rounded-lg p-3 border border-border/50">
@@ -69,8 +60,8 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
       </div>
 
       <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+        className="grid justify-start gap-1.5"
+        style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(42px, 56px))' }}
       >
         {collection.parts.map((movie: Movie) => {
           const isCurrentMovie = movie.id === currentMovieId;
@@ -81,7 +72,7 @@ const CollectionInfo = ({ collectionId, currentMovieId }: CollectionInfoProps) =
               key={movie.id}
               onClick={() => !isCurrentMovie && navigate(`/watch/movie/${movie.id}`)}
               disabled={isCurrentMovie}
-              className={`group transition-all ${isCurrentMovie ? 'cursor-default' : 'hover:scale-105'}`}
+              className={`group min-w-0 transition-all ${isCurrentMovie ? 'cursor-default' : 'hover:scale-105'}`}
             >
               <div className={`relative w-full rounded overflow-hidden border ${
                 isCurrentMovie ? 'border-primary ring-1 ring-primary/30' : 'border-transparent hover:border-primary/40'

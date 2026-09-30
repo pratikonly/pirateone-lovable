@@ -533,25 +533,33 @@ const Watch = () => {
                 'w-full mx-auto flex flex-col gap-3',
                 theaterMode ? 'max-w-none' : 'max-w-4xl'
               )}>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <Button variant="ghost" onClick={() => navigate(-1)} className="text-white hover:bg-white/10">
                     <ArrowLeft className="w-4 h-4 mr-2" />Back
                   </Button>
-                  <Button variant="outline" size="sm" onClick={toggleTheater}
-                    className="border-zinc-700 bg-zinc-950/60 text-white hover:bg-zinc-800 gap-2">
-                    {theaterMode ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                    <span className="hidden sm:inline">{theaterMode ? 'Exit Theater' : 'Theater'}</span>
+                </div>
+                <div className="relative isolate">
+                  <VideoPlayer
+                    id={movieId} type={mediaType} title={title}
+                    poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
+                    season={mediaType === 'tv' ? season   : undefined}
+                    episode={mediaType === 'tv' ? episode : undefined}
+                    server={selectedServer}
+                    progressSeconds={watchProgress?.currentTime}
+                    imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleTheater}
+                    aria-pressed={theaterMode}
+                    title={theaterMode ? 'Exit theater mode' : 'Enter theater mode'}
+                    className="absolute right-3 top-3 z-30 h-8 gap-1.5 rounded-full border-white/25 bg-black/65 px-3 text-white shadow-lg backdrop-blur-sm hover:border-white/40 hover:bg-black/85"
+                  >
+                    {theaterMode ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+                    <span className="text-[11px]">{theaterMode ? 'Exit Theater' : 'Theater'}</span>
                   </Button>
                 </div>
-                <VideoPlayer
-                  id={movieId} type={mediaType} title={title}
-                  poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
-                  season={mediaType === 'tv' ? season   : undefined}
-                  episode={mediaType === 'tv' ? episode : undefined}
-                  server={selectedServer}
-                  progressSeconds={watchProgress?.currentTime}
-                  imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
-                />
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

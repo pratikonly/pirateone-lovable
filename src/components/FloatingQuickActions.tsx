@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Boxes, CircleHelp, Trophy } from 'lucide-react';
+import { Bookmark, CircleHelp, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import sportsMark from '../../attached_assets/Pasted--svg-width-26-height-26-viewBox-0-0-512-512-xmlns-http-_1790753681226.svg';
 
 const quickActions = [
   { label: 'Sports', to: '/sports', Icon: Trophy },
@@ -41,7 +42,7 @@ const FloatingQuickActions = () => {
   return (
     <div
       ref={menuRef}
-      className="fixed bottom-5 right-5 z-[70] flex flex-col items-center gap-3 sm:bottom-7 sm:right-7"
+      className="quick-actions-fab fixed bottom-[5.25rem] right-2 z-[70] flex flex-col items-center gap-3 sm:bottom-3 sm:right-3"
     >
       {isOpen && (
         <nav
@@ -75,11 +76,11 @@ const FloatingQuickActions = () => {
         aria-controls={isOpen ? 'floating-quick-actions' : undefined}
         onClick={() => setIsOpen((open) => !open)}
         className={cn(
-          'flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-black text-white shadow-[0_10px_36px_rgba(0,0,0,0.6)] transition-all duration-300 hover:scale-105 hover:border-white/30 hover:shadow-[0_10px_40px_rgba(255,255,255,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
-          isOpen && 'rotate-90'
+          'flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black text-white shadow-[0_8px_28px_rgba(0,0,0,0.58)] transition-all duration-300 hover:scale-105 hover:border-amber-200/40 hover:shadow-[0_8px_28px_rgba(212,175,55,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
+          isOpen && 'scale-95'
         )}
       >
-        <Boxes className="h-7 w-7" strokeWidth={2.2} aria-hidden="true" />
+        <img src={sportsMark} alt="" className="h-6 w-6 brightness-0 invert" aria-hidden="true" />
       </button>
     </div>
   );

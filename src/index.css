@@ -84,6 +84,12 @@
     font-family: 'Inter', sans-serif;
   }
 
+  @media (max-width: 639px) {
+    body {
+      padding-bottom: 5.25rem;
+    }
+  }
+
   h1, h2, h3, .font-display {
   font-family: 'Inter', sans-serif;
   font-weight: 800;
@@ -248,8 +254,10 @@
   color: #6255bc;
 }
 
-/* YouTube-style theater mode hides the shared site header without changing other pages. */
-body.watch-theater-active header.fixed.top-0 {
+/* Keep global chrome out of the video when theater mode is active. */
+body.watch-theater-active .site-header,
+body.watch-theater-active .mobile-bottom-nav,
+body.watch-theater-active .quick-actions-fab {
   display: none;
 }
 
