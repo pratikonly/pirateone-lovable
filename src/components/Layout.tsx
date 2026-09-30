@@ -30,7 +30,7 @@ const Layout = () => {
     <div className="min-h-screen bg-background relative overflow-x-hidden">
       <BackdropLayer />
 
-      <main className="min-h-screen pt-0 relative z-10">
+      <main className={`relative z-10 min-h-screen ${location.pathname === '/' ? 'pt-0' : 'pt-6 sm:pt-8'}`}>
         <div key={`${location.pathname}${location.search}`} className="page-transition">
           <Outlet />
         </div>

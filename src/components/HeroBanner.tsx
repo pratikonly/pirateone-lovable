@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Pause, Play, Plus, VolumeX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Plus } from 'lucide-react';
 import { Movie, getBackdropUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, getYouTubeEmbedUrl, Video } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb } from '@/lib/watchlistDb';
@@ -32,7 +32,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const [inWatchlist, setInWatchlist] = useState(false);
   const [logos, setLogos] = useState<Record<string, string | null>>({});
@@ -173,24 +172,24 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
         return;
       }
 
-      if (data?.event === 'onStateChange' && Number(data.info) === 0 && !isPaused) {
+      if (data?.event === 'onStateChange' && Number(data.info) === 0) {
         goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
       }
     };
 
     window.addEventListener('message', handleSceneMessage);
     return () => window.removeEventListener('message', handleSceneMessage);
-  }, [currentIndex, featuredMovies.length, goToSlide, isPaused]);
+  }, [currentIndex, featuredMovies.length, goToSlide]);
 
   useEffect(() => {
-    if (featuredMovies.length <= 1 || isPaused || currentTrailer?.key) return;
+    if (featuredMovies.length <= 1 || currentTrailer?.key) return;
 
     const interval = window.setInterval(() => {
       goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
     }, 8500);
 
     return () => window.clearInterval(interval);
-  }, [currentIndex, currentTrailer?.key, featuredMovies.length, goToSlide, isPaused]);
+  }, [currentIndex, currentTrailer?.key, featuredMovies.length, goToSlide]);
 
   useEffect(() => () => {
     if (transitionTimeout.current) {
@@ -324,12 +323,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-black/70" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-transparent" />
       <div className="absolute inset-0 shadow-[inset_0_0_180px_45px_rgba(0,0,0,0.95)]" />
-      {currentTrailer?.key && (
-        <div className="absolute right-5 top-24 z-20 flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.18em] text-white/75 backdrop-blur-md sm:right-8 lg:right-10">
-          <VolumeX className="h-3.5 w-3.5 text-white" aria-hidden="true" />
-          <span>Scene · muted</span>
-        </div>
-      )}
 
       <div className="relative z-10 flex min-h-[680px] items-center md:h-full md:min-h-0">
         <div className="container mx-auto px-5 pb-16 pt-24 sm:px-8 lg:px-10">
@@ -338,22 +331,17 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               'min-w-0 transition-all duration-500',
               isTransitioning ? 'translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
             )}>
-              <div className="mb-4 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60 sm:text-xs">
-                <span className="h-px w-8 bg-white/60" />
-                <span>Featured selection</span>
-              </div>
-
               <div className="mb-4 flex flex-wrap items-center gap-2 md:gap-3">
-                <span className="border border-white/40 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black shadow-lg">
+                <span className="rounded-full border border-white/40 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black shadow-lg">
                   {mediaType === 'tv' ? 'TV Series' : 'Movie'}
                 </span>
-                <div className="flex items-center gap-1.5 border border-white/20 bg-black/40 px-2 py-1 text-white backdrop-blur-sm">
-                  <svg className="h-3.5 w-3.5 fill-white text-white" viewBox="0 0 24 24">
+                <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-white backdrop-blur-sm">
+                  <svg className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" viewBox="0 0 24 24">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
                   <span className="text-xs font-semibold">{rating}</span>
                 </div>
-                <span className="border border-white/20 bg-black/40 px-2 py-1 text-xs text-white/70 backdrop-blur-sm">
+                <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-xs text-white/70 backdrop-blur-sm">
                   {year}
                 </span>
               </div>
@@ -376,7 +364,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                 <Button
                   size="default"
-                  className="h-10 rounded-none border border-white bg-white px-4 text-sm font-bold uppercase tracking-[0.08em] text-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:bg-zinc-200 md:h-12 md:px-6 md:text-base"
+                  className="h-9 rounded-full border border-white bg-white px-3.5 text-xs font-bold uppercase tracking-[0.08em] text-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] hover:bg-zinc-200 md:h-10 md:px-4 md:text-sm"
                   onClick={handlePlay}
                 >
                   <Play className="mr-1.5 h-4 w-4 fill-current md:mr-2 md:h-5 md:w-5" />
@@ -387,7 +375,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                     size="default"
                     variant="outline"
                     onClick={handleTrailerClick}
-                    className="h-10 rounded-none border-white/35 bg-black/25 px-4 text-sm font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white hover:text-black md:h-12 md:px-6 md:text-base"
+                    className="h-9 rounded-full border-white/35 bg-black/25 px-3.5 text-xs font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white hover:text-black md:h-10 md:px-4 md:text-sm"
                   >
                     <Play className="mr-1.5 h-4 w-4 md:mr-2 md:h-5 md:w-5" />
                     Trailer
@@ -398,7 +386,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                   variant="secondary"
                   onClick={handleAddToList}
                   disabled={inWatchlist}
-                  className="h-10 rounded-none border border-white/20 bg-white/[0.08] px-4 text-sm font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white/15 md:h-12 md:px-6 md:text-base"
+                  className="h-9 rounded-full border border-white/20 bg-white/[0.08] px-3.5 text-xs font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm hover:bg-white/15 md:h-10 md:px-4 md:text-sm"
                 >
                   {inWatchlist ? (
                     <svg className="w-4 h-4 md:w-5 md:h-5 mr-1.5 md:mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -416,8 +404,8 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               'relative min-w-0 transition-all duration-500',
               isTransitioning ? 'translate-x-4 opacity-0' : 'translate-x-0 opacity-100'
             )}>
-              <div className="relative aspect-video overflow-hidden rounded-[2rem] border border-white/20 bg-black p-2 shadow-[0_24px_80px_rgba(0,0,0,0.75)] sm:p-3">
-                <div className="relative h-full w-full overflow-hidden rounded-[1.5rem] bg-black">
+              <div className="relative aspect-video overflow-hidden bg-black/20">
+                <div className="relative h-full w-full overflow-hidden">
                   {currentTrailer?.key ? (
                     <iframe
                       ref={sceneIframeRef}
@@ -440,10 +428,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.62),transparent_18%,transparent_82%,rgba(0,0,0,0.62))]" />
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/75 to-transparent" />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/80 to-transparent" />
-                  <div className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full border border-white/20 bg-black/65 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-white/70 backdrop-blur-md sm:bottom-5 sm:left-5">
-                    <VolumeX className="h-3.5 w-3.5 text-white" aria-hidden="true" />
-                    Muted scene
-                  </div>
                 </div>
               </div>
             </div>
@@ -491,22 +475,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label={isPaused ? 'Resume automatic slides' : 'Pause automatic slides'}
-              onClick={() => setIsPaused((paused) => !paused)}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white/75 backdrop-blur-md transition-colors hover:bg-white hover:text-black"
-            >
-              {isPaused ? <Play className="h-3.5 w-3.5 fill-current" /> : <Pause className="h-3.5 w-3.5" />}
-            </button>
-            {currentTrailer?.key && (
-              <div className="hidden items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.16em] text-white/70 backdrop-blur-md sm:flex">
-                <VolumeX className="h-3.5 w-3.5 text-white" aria-hidden="true" />
-                Muted scene
-              </div>
-            )}
-          </div>
         </div>
       )}
 

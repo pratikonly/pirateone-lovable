@@ -31,10 +31,6 @@ const AnimeNavIcon = ({ className }: { className?: string }) => (
 );
 
 const Header = () => {
-  const [scrollMode, setScrollMode] = useState<'top' | 'floating'>(
-    () => (typeof window !== 'undefined' && window.scrollY > 1 ? 'floating' : 'top')
-  );
-  const [mobileNavMode, setMobileNavMode] = useState<'attached' | 'floating'>('attached');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -52,23 +48,6 @@ const Header = () => {
   const location = useLocation();
   const { identity, isLoading, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user, signOut } = useAuth();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollMode(window.scrollY > 1 ? 'floating' : 'top');
-      const distanceFromBottom =
-        document.documentElement.scrollHeight - (window.scrollY + window.innerHeight);
-      setMobileNavMode(distanceFromBottom <= 16 ? 'attached' : 'floating');
-    };
-
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
-    };
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -148,22 +127,12 @@ const Header = () => {
 
   return (
     <>
-      <header className={cn(
-        'site-header z-[60] flex w-full items-center justify-between transition-all duration-300 ease-out',
-        scrollMode === 'floating'
-          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl rounded-full border border-white/20 bg-black/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
-          : 'relative h-20 border-b border-white/10 bg-black px-3 sm:h-[92px] sm:px-8'
-      )}>
+      <header
+        key={`${location.pathname}${location.search}`}
+        className="site-header nav-page-change fixed inset-x-3 top-3 z-[60] mx-auto flex h-14 w-[calc(100%-1.5rem)] max-w-6xl items-center justify-between rounded-full border border-white/15 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out sm:inset-x-4 sm:h-16 sm:w-[calc(100%-2rem)] sm:px-5"
+      >
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
-          {scrollMode === 'floating' ? (
-            <img src={pirateOneLogo} alt="PirateOne" className="h-9 w-9 object-contain" />
-          ) : (
-            <img
-              src={pirateOneLogo}
-              alt="PirateOne"
-              className="h-14 w-14 object-contain sm:h-16 sm:w-16"
-            />
-          )}
+          <img src={pirateOneLogo} alt="PirateOne" className="h-10 w-10 object-contain sm:h-11 sm:w-11" />
         </NavLink>
 
         <nav aria-label="Main navigation" className="mx-5 hidden min-w-0 flex-1 items-center justify-center gap-3 md:flex lg:gap-5">
@@ -203,10 +172,10 @@ const Header = () => {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={openSearch}
-             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-white/60 hover:bg-white/[0.08] hover:text-white sm:h-10 sm:w-10"
+             className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-white/60 hover:bg-white/[0.08] hover:text-white sm:h-9 sm:w-9"
             aria-label="Search"
           >
-            <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+             <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
 
           {!user ? (
@@ -215,9 +184,9 @@ const Header = () => {
               onClick={() => navigate('/auth?mode=signup')}
               aria-label="Create an account"
               title="Sign up"
-               className="flex h-9 w-9 items-center justify-center rounded-full border border-white bg-white text-zinc-950 transition-colors duration-200 hover:bg-zinc-200 sm:h-10 sm:w-10"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-zinc-950 transition-colors duration-200 hover:bg-zinc-200 sm:h-9 sm:w-9"
             >
-              <UserRound className="h-[18px] w-[18px]" />
+              <UserRound className="h-4 w-4" />
             </button>
           ) : (
             <div className="relative" ref={dropdownRef}>
@@ -227,7 +196,7 @@ const Header = () => {
                 aria-expanded={userDropdownOpen}
                  className="overflow-hidden rounded-full border border-white/20 transition-colors duration-200 hover:border-white/70"
               >
-                 <Avatar className="h-8 w-8 rounded-full sm:h-10 sm:w-10">
+                 <Avatar className="h-7 w-7 rounded-full sm:h-8 sm:w-8">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
                    <AvatarFallback className="rounded-full bg-zinc-800 text-zinc-100 text-xs">
                     {isLoading ? '...' : getInitials(displayName)}
@@ -271,16 +240,11 @@ const Header = () => {
           )}
         </div>
       </header>
-      {scrollMode === 'floating' && <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />}
+      <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />
 
       <nav
         aria-label="Mobile main navigation"
-        className={cn(
-          'mobile-bottom-nav fixed z-[65] mx-auto grid grid-cols-5 gap-1 text-zinc-300 backdrop-blur-2xl transition-[inset,border-radius,box-shadow,background-color] duration-300 md:hidden',
-          mobileNavMode === 'attached'
-            ? 'inset-x-0 bottom-0 w-full max-w-none rounded-none border-x-0 border-b-0 border-t border-white/10 bg-zinc-950/95 px-3 pb-[calc(0.375rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_30px_rgba(0,0,0,0.42)]'
-             : 'inset-x-3 bottom-3 max-w-md rounded-full border border-white/15 bg-zinc-950/90 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
-        )}
+        className="mobile-bottom-nav fixed inset-x-3 bottom-3 z-[65] mx-auto grid max-w-md grid-cols-5 gap-1 rounded-full border border-white/15 bg-zinc-950/95 p-1.5 text-zinc-300 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-300 md:hidden"
       >
         {navItems.map(({ label, path, Icon }) => {
           const isActive = path === '/'
