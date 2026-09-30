@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, Video } from '@/lib/tmdb';
@@ -9,6 +9,17 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import TrailerModal from './TrailerModal';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
+
+const preloadImage = (src: string | null) => {
+  if (!src) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => resolve();
+    image.src = src;
+  });
+};
 
 interface HeroBannerProps {
   movies: Movie[];
@@ -26,9 +37,17 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const [logos, setLogos] = useState<Record<string, string | null>>({});
   const [trailers, setTrailers] = useState<Record<string, Video | null>>({});
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const requestedLogoKeys = useRef(new Set<string>());
+  const requestedTrailerKeys = useRef(new Set<string>());
 
-  const featuredMovies = movies.slice(0, 5);
+  const featuredMovies = useMemo(() => movies.slice(0, 5), [movies]);
   const currentMovie = featuredMovies[currentIndex];
+  const logoKey = currentMovie
+    ? `${currentMovie.media_type || 'movie'}-${currentMovie.id}`
+    : '';
+  const logoPath = logos[logoKey];
+  const logoUrl = logoPath ? getLogoUrl(logoPath, 'w500') : null;
+  const isLogoReady = !currentMovie || logos[logoKey] !== undefined;
 
   useEffect(() => {
     if (currentMovie?.backdrop_path) {
@@ -44,7 +63,8 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
     const fetchLogos = async () => {
       const logoPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
-        if (logos[key] !== undefined) return;
+        if (requestedLogoKeys.current.has(key)) return;
+        requestedLogoKeys.current.add(key);
 
         try {
           const mediaType = movie.media_type || 'movie';
@@ -57,6 +77,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
             .sort((a, b) => b.width - a.width);
 
           const logoPath = englishLogos[0]?.file_path || null;
+          await preloadImage(logoPath ? getLogoUrl(logoPath, 'w500') : null);
           setLogos(prev => ({ ...prev, [key]: logoPath }));
         } catch {
           setLogos(prev => ({ ...prev, [key]: null }));
@@ -75,7 +96,8 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
     const fetchTrailers = async () => {
       const trailerPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
-        if (trailers[key] !== undefined) return;
+        if (requestedTrailerKeys.current.has(key)) return;
+        requestedTrailerKeys.current.add(key);
 
         try {
           const mediaType = movie.media_type || 'movie';
@@ -136,7 +158,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
     syncWatchlistState();
   }, [currentMovie, user]);
 
-  if (isLoading || !currentMovie) {
+  if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
         className="relative h-[60vh] md:h-[70vh] min-h-[400px] max-h-[600px] -mt-14 mb-8 overflow-hidden"
@@ -189,10 +211,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const rating = currentMovie.vote_average?.toFixed(1) || 'N/A';
   const year = (currentMovie.release_date || currentMovie.first_air_date)?.split('-')[0] || '';
   const mediaType = currentMovie.media_type || 'movie';
-
-  const logoKey = `${mediaType}-${currentMovie.id}`;
-  const logoPath = logos[logoKey];
-  const logoUrl = logoPath ? getLogoUrl(logoPath, 'w500') : null;
 
   const currentTrailer = trailers[logoKey];
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
@@ -7,6 +7,7 @@ import BackdropLayer from './BackdropLayer';
 
 const Layout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -34,8 +35,10 @@ const Layout = () => {
       <Sidebar />
       <Header />
 
-      <main className="pt-0 min-h-screen relative z-10 lg:ml-60">
-        <Outlet />
+      <main className="pt-0 min-h-screen relative z-10 xl:ml-60">
+        <div key={`${location.pathname}${location.search}`} className="page-transition">
+          <Outlet />
+        </div>
       </main>
 
 

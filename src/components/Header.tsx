@@ -127,8 +127,8 @@ const Header = () => {
 
   return (
     <>
-      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 lg:left-60')}>
-        <div className="hidden lg:block flex-1" />
+      <header className={cn('fixed top-0 right-0 left-0 h-14 z-40 flex items-center justify-between px-4 lg:px-6 xl:left-60')}>
+        <div className="hidden xl:block flex-1" />
         <div className="flex-1" />
 
         <div className="flex items-center gap-2 sm:gap-3">

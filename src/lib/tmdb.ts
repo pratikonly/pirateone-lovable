@@ -139,6 +139,15 @@ export const getBackdropUrl = (path: string | null, size: 'w780' | 'w1280' | 'or
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const TMDB_CACHE_TTL = 5 * 60 * 1000;
+
+type CacheEntry = {
+  expiresAt: number;
+  data: unknown;
+};
+
+const responseCache = new Map<string, CacheEntry>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 const fetchTMDB = async <T>(endpoint: string, params: Record<string, string> = {}): Promise<T> => {
   const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
@@ -148,13 +157,36 @@ const fetchTMDB = async <T>(endpoint: string, params: Record<string, string> = {
     url.searchParams.set(key, value);
   });
 
-  const response = await fetch(url.toString());
-
-  if (!response.ok) {
-    throw new Error(`TMDB API error: ${response.status}`);
+  const cacheKey = url.toString();
+  const cached = responseCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data as T;
   }
+  responseCache.delete(cacheKey);
 
-  return response.json();
+  const inFlight = inFlightRequests.get(cacheKey);
+  if (inFlight) return inFlight as Promise<T>;
+
+  const request = fetch(cacheKey)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`TMDB API error: ${response.status}`);
+      }
+      return response.json() as Promise<T>;
+    })
+    .then(data => {
+      responseCache.set(cacheKey, {
+        data,
+        expiresAt: Date.now() + TMDB_CACHE_TTL,
+      });
+      return data;
+    })
+    .finally(() => {
+      inFlightRequests.delete(cacheKey);
+    });
+
+  inFlightRequests.set(cacheKey, request);
+  return request;
 };
 
 export const getTrending = async (mediaType: 'movie' | 'tv' | 'all' = 'all', timeWindow: 'day' | 'week' = 'week') => {

@@ -129,11 +129,11 @@ const Sidebar = () => {
 
   return (
     <aside className={cn(
-      "relative w-full bg-sidebar/5 backdrop-blur-sm border-b border-border flex flex-col",
-      "lg:fixed lg:left-0 lg:top-0 lg:h-screen lg:w-60 lg:border-b-0 lg:border-r lg:z-50"
+      "relative w-full pt-14 bg-sidebar/5 backdrop-blur-sm border-b border-border flex flex-col",
+      "xl:fixed xl:left-0 xl:top-0 xl:h-screen xl:w-60 xl:pt-0 xl:border-b-0 xl:border-r xl:z-50"
     )}>
       {/* Logo Section */}
-      <div className="p-4 lg:p-5 border-b border-sidebar-border">
+      <div className="p-3 border-b border-sidebar-border flex-shrink-0 xl:p-5">
         {/* Hidden input to trigger mobile keyboard */}
         <input
           ref={hiddenInputRef}
@@ -159,7 +159,7 @@ const Sidebar = () => {
               src={pirateOneLogo}
               alt="PirateOne"
               onClick={handleLogoTap}
-              className="h-auto w-full max-w-[180px] object-contain invert dark:invert-0 cursor-pointer select-none"
+              className="h-auto w-auto max-w-[145px] object-contain invert dark:invert-0 cursor-pointer select-none xl:w-full xl:max-w-[180px]"
             />
           </div>
           {pratikVisible && (
@@ -181,13 +181,13 @@ const Sidebar = () => {
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex items-center gap-1 p-2 overflow-x-auto scrollbar-hide xl:flex-1 xl:flex-col xl:items-stretch xl:gap-0 xl:p-3 xl:space-y-1 xl:overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+              'flex shrink-0 items-center gap-2 px-3 py-2.5 rounded-lg whitespace-nowrap transition-all duration-200 group xl:gap-3',
               'hover:bg-sidebar-accent',
               isActive(item.path)
                 ? 'bg-primary/15 text-primary border-l-2 border-primary'
@@ -205,11 +205,11 @@ const Sidebar = () => {
         ))}
 
         {/* Sports */}
-        <div className="pt-4 mt-4 border-t border-sidebar-border">
+        <div className="shrink-0 ml-1 pl-1 border-l border-sidebar-border xl:ml-0 xl:mt-4 xl:pt-4 xl:pl-0 xl:border-l-0 xl:border-t">
           <NavLink
             to={sportsItem.path}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-300 group',
+              'flex shrink-0 items-center gap-2 px-3 py-2.5 rounded-lg whitespace-nowrap transition-all duration-300 group xl:gap-3',
               isActive(sportsItem.path)
                 ? 'bg-[#00e5ff]/15 text-[#00e5ff] border border-[#00e5ff]/30 shadow-[0_0_12px_rgba(0,229,255,0.15)]'
                 : 'text-sidebar-foreground bg-[#00e5ff]/[0.03] border border-[#00e5ff]/10 backdrop-blur-sm hover:bg-[#00e5ff]/10 hover:text-[#00e5ff] hover:border-[#00e5ff]/30 hover:shadow-[0_0_16px_rgba(0,229,255,0.2)]'
@@ -227,13 +227,13 @@ const Sidebar = () => {
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="p-3 border-t border-sidebar-border space-y-1">
+      <div className="flex items-center gap-1 p-2 border-t border-sidebar-border overflow-x-auto scrollbar-hide xl:block xl:p-3 xl:space-y-1">
         {bottomItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
+              'flex shrink-0 items-center gap-2 px-3 py-2.5 rounded-lg whitespace-nowrap transition-all duration-200 group xl:gap-3',
               'hover:bg-sidebar-accent',
               isActive(item.path)
                 ? 'bg-primary/15 text-primary border-l-2 border-primary'

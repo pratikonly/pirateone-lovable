@@ -29,9 +29,31 @@ const Index = () => {
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
   const [anime, setAnime] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHeroLoading, setIsHeroLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchData = async () => {
+      const trendingPromise = getTrending('all', 'week')
+        .then(data => {
+          if (!cancelled) {
+            setTrending(data);
+            setIsHeroLoading(false);
+          }
+        })
+        .catch(error => {
+          console.error('Failed to fetch featured content:', error);
+          if (!cancelled) {
+            setIsHeroLoading(false);
+            toast({
+              title: 'Error loading featured content',
+              description: 'Please check your TMDb API key in settings.',
+              variant: 'destructive',
+            });
+          }
+        });
+
       try {
         // Load watch progress if user is logged in
         if (user) {
@@ -49,7 +71,6 @@ const Index = () => {
         }
 
         const [
-          trendingData,
           popularMoviesData,
           topRatedMoviesData,
           nowPlayingData,
@@ -57,7 +78,6 @@ const Index = () => {
           topRatedTVData,
           animeSearches,
         ] = await Promise.all([
-          getTrending('all', 'week'),
           getPopularMovies(),
           getTopRatedMovies(),
           getNowPlayingMovies(),
@@ -77,31 +97,39 @@ const Index = () => {
           index === self.findIndex(t => t.id === item.id)
         );
 
-        setTrending(trendingData);
-        setPopularMovies(popularMoviesData.results);
-        setTopRatedMovies(topRatedMoviesData.results);
-        setNowPlaying(nowPlayingData.results);
-        setPopularTV(popularTVData.results);
-        setTopRatedTV(topRatedTVData.results);
-        setAnime(uniqueAnime.slice(0, 20));
+        if (!cancelled) {
+          setPopularMovies(popularMoviesData.results);
+          setTopRatedMovies(topRatedMoviesData.results);
+          setNowPlaying(nowPlayingData.results);
+          setPopularTV(popularTVData.results);
+          setTopRatedTV(topRatedTVData.results);
+          setAnime(uniqueAnime.slice(0, 20));
+        }
       } catch (error) {
         console.error('Failed to fetch movies:', error);
-        toast({
-          title: 'Error loading content',
-          description: 'Please check your TMDb API key in settings.',
-          variant: 'destructive',
-        });
+        if (!cancelled) {
+          toast({
+            title: 'Error loading content',
+            description: 'Please check your TMDb API key in settings.',
+            variant: 'destructive',
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
+
+      await trendingPromise;
     };
 
     fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [toast, user]);
 
   return (
     <div className="pb-6">
-      <HeroBanner movies={trending} isLoading={isLoading} />
+      <HeroBanner movies={trending} isLoading={isHeroLoading} />
 
       {/* Continue Watching Section */}
       {user && watchProgress.length > 0 && (
