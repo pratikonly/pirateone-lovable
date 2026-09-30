@@ -1,6 +1,5 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
 import DisclaimerFooter from './DisclaimerFooter';
 
@@ -77,7 +76,6 @@ const Layout = () => {
         </div>
       </main>
 
-      {hasSharedPageLayout && <WelcomeNotification />}
     </div>
   );
 };

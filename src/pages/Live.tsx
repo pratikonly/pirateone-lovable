@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Clapperboard,
+  Music,
   Newspaper,
   Radio,
   RefreshCw,
@@ -25,6 +26,7 @@ const LIVE_CATEGORY_OPTIONS = [
   { label: 'Sports', Icon: Trophy },
   { label: 'Entertainment', Icon: Sparkles },
   { label: 'Movies', Icon: Clapperboard },
+  { label: 'Music', Icon: Music },
   { label: 'Kids & Family', Icon: Users },
 ] as const;
 type LiveCategory = (typeof LIVE_CATEGORY_OPTIONS)[number]['label'];
@@ -129,6 +131,7 @@ const Live = () => {
       Sports: 0,
       Entertainment: 0,
       Movies: 0,
+      Music: 0,
       'Kids & Family': 0,
     };
     channels.forEach((channel) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Bell, Trash2, User, RefreshCw, Upload,
+  Trash2, User, RefreshCw, Upload,
   Camera, Pencil, Check, X, Shield, Zap, AlertTriangle, Film, TrendingUp, Tv, Clock, Anchor
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -136,7 +136,6 @@ const Settings = () => {
   const [autoplay, setAutoplay]                 = useState(() => { try { return localStorage.getItem('pirateone_autoplay') !== 'false'; } catch { return true; } });
   const [defaultQuality, setDefaultQuality]     = useState(() => { try { return localStorage.getItem('pirateone_quality') || 'auto'; } catch { return 'auto'; } });
   const [saveWatchHistory, setSaveWatchHistory] = useState(() => { try { return localStorage.getItem('pirateone_save_history') !== 'false'; } catch { return true; } });
-  const [showWelcomeNotification, setShowWelcomeNotification] = useState(() => { try { return !localStorage.getItem('pirateone_welcome_shown'); } catch { return true; } });
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [confirmClearWatchlist, setConfirmClearWatchlist] = useState(false);
   const [isRegenerating, setIsRegenerating]   = useState(false);
@@ -402,13 +401,6 @@ const Settings = () => {
                     </Select>
                   </div>
                 </div>
-              </Section>
-
-              <Section>
-                <SectionLabel icon={<Bell size={13}/>} label="Notifications" />
-                <SettingRow label="Welcome notification"
-                  description={showWelcomeNotification?'Will show on your next visit':'Already dismissed — click Reset to show again'}
-                  right={<button className="s-btn" onClick={() => { try { localStorage.removeItem('pirateone_welcome_shown'); } catch {} setShowWelcomeNotification(true); toast({ title:'Welcome notification reset' }); }} disabled={showWelcomeNotification}>Reset</button>} />
               </Section>
 
               <Section>
