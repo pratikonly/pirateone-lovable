@@ -38,6 +38,37 @@ const getJson = async (url: string, signal?: AbortSignal, noStore = false): Prom
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === 'object' ? value as Record<string, unknown> : null;
 
+const getBroadCategory = (sourceCategory: string, channelName: string): string => {
+  const category = sourceCategory.toLocaleLowerCase();
+
+  if (
+    category.includes('news')
+    || /\b(news|cnbc|cnn|bbc|ndtv|republic|india today|abp|times now|news18|wion|aaj tak|tv9)\b/i.test(channelName)
+  ) {
+    return 'News';
+  }
+  if (
+    category === 'sports'
+    || /\b(sports?|cricket|football|tennis|espn|eurosport|willow|bein sports|ten sports|sony sports)\b/i.test(channelName)
+  ) {
+    return 'Sports';
+  }
+  if (
+    category === 'movies'
+    || /\b(movies?|cinema|film|hbo|star movies|sony pix|zee cinema)\b/i.test(channelName)
+  ) {
+    return 'Movies';
+  }
+  if (
+    category === 'kids'
+    || /\b(kids?|cartoon|nick(?:elodeon)?|pogo|hungama|disney junior|sonic|baby tv)\b/i.test(channelName)
+  ) {
+    return 'Kids & Family';
+  }
+
+  return 'Entertainment';
+};
+
 export const fetchLiveChannels = async (signal?: AbortSignal): Promise<LiveChannel[]> => {
   const payload = asRecord(await getJson(`${LIVE_API_BASE}/api/public/channels`, signal));
   if (!payload || !Array.isArray(payload.channels)) {
@@ -50,12 +81,14 @@ export const fetchLiveChannels = async (signal?: AbortSignal): Promise<LiveChann
       return [];
     }
 
+    const sourceCategory = typeof channel.category === 'string' && channel.category.trim()
+      ? channel.category.trim()
+      : '';
+
     return [{
       id: String(channel.id),
       name: channel.name,
-      category: typeof channel.category === 'string' && channel.category.trim()
-        ? channel.category
-        : 'Uncategorized',
+      category: getBroadCategory(sourceCategory, channel.name),
       logo: typeof channel.logo === 'string' && channel.logo.trim() ? channel.logo : null,
     }];
   });

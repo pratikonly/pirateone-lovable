@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Radio, Search, Tv2, RefreshCw } from 'lucide-react';
+import {
+  Clapperboard,
+  Newspaper,
+  Radio,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Trophy,
+  Tv2,
+  Users,
+} from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import LivePlayer from '@/components/LivePlayer';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -10,6 +20,14 @@ const LIVE_CHANNELS_QUERY_KEY = ['live', 'channels'];
 const INITIAL_CHANNEL_COUNT = 48;
 const LAST_LIVE_CHANNEL_KEY = 'pirateone:last-live-channel';
 const EMPTY_CHANNELS: LiveChannel[] = [];
+const LIVE_CATEGORY_OPTIONS = [
+  { label: 'News', Icon: Newspaper },
+  { label: 'Sports', Icon: Trophy },
+  { label: 'Entertainment', Icon: Sparkles },
+  { label: 'Movies', Icon: Clapperboard },
+  { label: 'Kids & Family', Icon: Users },
+] as const;
+type LiveCategory = (typeof LIVE_CATEGORY_OPTIONS)[number]['label'];
 
 const ChannelLogo = ({ channel }: { channel: LiveChannel }) => {
   const [imageFailed, setImageFailed] = useState(!channel.logo);
@@ -50,7 +68,8 @@ const Live = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlQuery = searchParams.get('q') ?? '';
-  const selectedCategory = searchParams.get('category') || 'All';
+  const requestedCategory = searchParams.get('category') ?? '';
+  const selectedCategory = LIVE_CATEGORY_OPTIONS.find(({ label }) => label === requestedCategory)?.label ?? '';
   const [searchInput, setSearchInput] = useState(urlQuery);
   const debouncedQuery = useDebounce(searchInput, 350);
   const [visibleCount, setVisibleCount] = useState(INITIAL_CHANNEL_COUNT);
@@ -104,13 +123,22 @@ const Live = () => {
     setSearchParams(nextParams, { replace: true });
   }, [debouncedQuery, searchString, setSearchParams, urlQuery]);
 
-  const categories = useMemo(() => [
-    'All',
-    ...Array.from(new Set(channels.map((channel) => channel.category))).sort((a, b) => a.localeCompare(b)),
-  ], [channels]);
+  const categoryCounts = useMemo(() => {
+    const counts: Record<LiveCategory, number> = {
+      News: 0,
+      Sports: 0,
+      Entertainment: 0,
+      Movies: 0,
+      'Kids & Family': 0,
+    };
+    channels.forEach((channel) => {
+      if (channel.category in counts) counts[channel.category as LiveCategory] += 1;
+    });
+    return counts;
+  }, [channels]);
   const normalizedQuery = debouncedQuery.trim().toLocaleLowerCase();
   const filteredChannels = useMemo(() => channels.filter((channel) => {
-    const matchesCategory = selectedCategory === 'All' || channel.category === selectedCategory;
+    const matchesCategory = !selectedCategory || channel.category === selectedCategory;
     const matchesQuery = !normalizedQuery
       || channel.name.toLocaleLowerCase().includes(normalizedQuery)
       || channel.category.toLocaleLowerCase().includes(normalizedQuery);
@@ -124,7 +152,12 @@ const Live = () => {
       if (group) group.push(channel);
       else groups.set(channel.category, [channel]);
     });
-    return Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+    const orderedGroups: Array<[string, LiveChannel[]]> = [];
+    LIVE_CATEGORY_OPTIONS.forEach(({ label }) => {
+      const group = groups.get(label);
+      if (group) orderedGroups.push([label, group]);
+    });
+    return orderedGroups;
   }, [visibleChannels]);
   const selectedChannel = channels.find((channel) => channel.id === channelId);
 
@@ -132,9 +165,9 @@ const Live = () => {
     setVisibleCount(INITIAL_CHANNEL_COUNT);
   }, [normalizedQuery, selectedCategory]);
 
-  const updateCategory = (category: string) => {
+  const updateCategory = (category: LiveCategory) => {
     const nextParams = new URLSearchParams(searchParams);
-    if (category === 'All') nextParams.delete('category');
+    if (category === selectedCategory) nextParams.delete('category');
     else nextParams.set('category', category);
     setSearchParams(nextParams, { replace: true });
   };
@@ -195,7 +228,7 @@ const Live = () => {
         </div>
       </header>
 
-      <section aria-label="Filter channels" className="space-y-3">
+      <section aria-label="Filter channels" className="space-y-3.5">
         <label className="relative block max-w-xl">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden="true" />
           <input
@@ -208,22 +241,48 @@ const Live = () => {
           />
         </label>
 
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Channel categories">
-          {categories.map((category) => (
+        <div>
+          <div className="mb-2.5 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-300">Browse categories</h2>
+              <p className="mt-1 text-[11px] text-zinc-500">Select a category to filter; select it again to show all channels.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" aria-label="Channel categories">
+            {LIVE_CATEGORY_OPTIONS.map(({ label, Icon }) => {
+              const isSelected = selectedCategory === label;
+              const count = categoryCounts[label];
+              return (
             <button
-              key={category}
+              key={label}
               type="button"
-              onClick={() => updateCategory(category)}
-              aria-pressed={selectedCategory === category}
-              className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
-                selectedCategory === category
-                  ? 'border-white bg-white text-zinc-950'
-                  : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/25 hover:text-white'
+              onClick={() => updateCategory(label)}
+              aria-pressed={isSelected}
+              disabled={channelsQuery.isSuccess && count === 0}
+              className={`group flex min-h-[72px] min-w-0 items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
+                isSelected
+                  ? 'border-red-400/40 bg-gradient-to-br from-red-500/20 via-red-500/[0.08] to-zinc-950 shadow-[0_8px_28px_rgba(239,68,68,0.1)]'
+                  : 'border-white/10 bg-white/[0.025] hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]'
               }`}
             >
-              {category}
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition-colors ${
+                isSelected
+                  ? 'border-red-300/20 bg-red-400/15 text-red-200'
+                  : 'border-white/[0.06] bg-white/[0.04] text-zinc-400 group-hover:text-zinc-200'
+              }`}>
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={`block truncate text-xs font-semibold ${isSelected ? 'text-white' : 'text-zinc-200'}`}>
+                  {label}
+                </span>
+                <span className="mt-1 block text-[10px] text-zinc-500">{count.toLocaleString()} channels</span>
+              </span>
+              {isSelected && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" aria-hidden="true" />}
             </button>
-          ))}
+              );
+            })}
+          </div>
         </div>
       </section>
 
