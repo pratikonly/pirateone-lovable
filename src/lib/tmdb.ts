@@ -289,7 +289,7 @@ export const getYouTubeEmbedUrl = (key: string) => {
   return `https://www.youtube.com/embed/${key}?autoplay=1&rel=0`;
 };
 
-export type ServerType = 'videasy' | 'autoembed' | 'vidsrc' | 'vidify' | 'movies111' | 'twoembed' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'vidup' | 'vidsrccc' | 'vidzee' | 'vidking';
+export type ServerType = 'vidstuck' | 'videasy' | 'autoembed' | 'vidsrc' | 'movies111' | 'twoembed' | 'vidrock' | 'vidfast' | 'vidlink' | 'vidsrcsu' | 'vidnest' | 'vidup' | 'vidsrccc' | 'vidzee' | 'vidking';
 
 export interface ServerInfo {
   id: ServerType;
@@ -315,8 +315,8 @@ export const MOVIE_TV_SERVERS: ServerInfo[] = [
 
 // Anime servers (also support movies & TV)
 export const ANIME_SERVERS: ServerInfo[] = [
+  { id: 'vidstuck', name: 'VIDSTUCK', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'videasy', name: 'Videasy', supportsMovies: true, supportsTV: true, supportsAnime: true },
-  { id: 'vidify', name: 'Vidify', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidnest', name: 'VidNest', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidsrccc', name: 'VidSrc.cc', supportsMovies: true, supportsTV: true, supportsAnime: true },
   { id: 'vidzee', name: 'VidZee', supportsMovies: true, supportsTV: true, supportsAnime: true },
@@ -336,6 +336,26 @@ export const getPlayerUrl = (
   imdbId?: string
 ) => {
   const accent = 'FD105E';
+
+  // VIDSTUCK — primary server for movies, TV, and anime titles using TMDB IDs.
+  if (server === 'vidstuck') {
+    const contentType = type === 'movie' ? 'movie' : 'tv';
+    const path = contentType === 'movie'
+      ? `/embed/movie/${id}`
+      : `/embed/tv/${id}/${season || 1}/${episode || 1}`;
+    const qs = new URLSearchParams({
+      branding: 'PirateOne',
+      color: accent,
+      overlay: 'true',
+    });
+    if (contentType === 'tv') {
+      qs.set('nextEpisode', 'true');
+      qs.set('episodeSelector', 'true');
+      qs.set('autoplayNextEpisode', 'true');
+    }
+    if (progressSeconds && progressSeconds > 0) qs.set('progress', String(Math.floor(progressSeconds)));
+    return `https://vidstuck.xyz${path}?${qs.toString()}`;
+  }
 
   // VidKing (movies & TV only)
   if (server === 'vidking') {
@@ -406,17 +426,6 @@ export const getPlayerUrl = (
       return `https://vidsrc-embed.ru/embed/movie?tmdb=${id}`;
     }
     return `https://vidsrc-embed.ru/embed/tv?tmdb=${id}&season=${season || 1}&episode=${episode || 1}`;
-  }
-
-  // Vidify
-  if (server === 'vidify') {
-    if (type === 'movie') {
-      return `https://player.vidify.top/embed/movie/${id}`;
-    }
-    if (type === 'anime') {
-      return `https://player.vidify.top/embed/anime/${id}/${episode || 1}?dub=${isDub}`;
-    }
-    return `https://player.vidify.top/embed/tv/${id}/${season || 1}/${episode || 1}`;
   }
 
   // 111Movies

@@ -6,6 +6,7 @@ import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
 import { cn } from '@/lib/utils';
+import { Button } from './ui/button';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -60,17 +61,24 @@ const Layout = () => {
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} sidebarCollapsed={desktopCollapsed} />
 
       {/* Desktop sidebar collapse toggle */}
-      <button
+      <Button
         onClick={toggleDesktop}
         aria-label={desktopCollapsed ? 'Open sidebar' : 'Close sidebar'}
+        title={desktopCollapsed ? 'Open sidebar' : 'Close sidebar'}
+        variant="outline"
+        size="icon"
         className={cn(
-          'hidden lg:flex fixed top-1/2 -translate-y-1/2 z-50 items-center justify-center w-7 h-16 rounded-r-lg',
-          'bg-zinc-900/80 border border-l-0 border-border backdrop-blur-sm text-muted-foreground hover:text-primary transition-all duration-300',
-          desktopCollapsed ? 'left-0' : 'left-60'
+          'group hidden lg:flex fixed top-1/2 -translate-y-1/2 z-[60] h-10 w-10 rounded-full',
+          'bg-card/95 border-border shadow-lg backdrop-blur-md text-muted-foreground hover:text-foreground hover:bg-accent',
+          'focus-visible:ring-2 focus-visible:ring-ring transition-[left,background-color,color,transform] duration-300',
+          desktopCollapsed ? 'left-3' : 'left-[220px]'
         )}
       >
-        {desktopCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-      </button>
+        {desktopCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+        <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          {desktopCollapsed ? 'Open sidebar' : 'Close sidebar'}
+        </span>
+      </Button>
 
       <main className={cn('pt-0 min-h-screen relative z-10 transition-[margin] duration-300', desktopCollapsed ? 'lg:ml-0' : 'lg:ml-60')}>
         <Outlet />
