@@ -452,7 +452,7 @@ const Watch = () => {
   };
 
   if (isLoading) return (
-    <div className="p-8 pt-20">
+    <div className="p-8 pt-8">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
         <div className="space-y-4">
           <div className="aspect-video bg-zinc-900 rounded-lg animate-pulse" />
@@ -488,7 +488,7 @@ const Watch = () => {
 
   return (
     <div className={cn('min-h-screen text-white bg-transparent', theaterMode && 'watch-theater-mode')}>
-      <div className={cn('p-4 md:p-8', theaterMode ? 'pt-4 md:pt-6' : 'pt-20')}>
+      <div className={cn('p-4 md:p-8', theaterMode ? 'pt-4 md:pt-6' : 'pt-4 md:pt-8')}>
         <div className="max-w-7xl mx-auto">
           <div className={cn(
             'grid grid-cols-1 gap-6 lg:items-stretch',

@@ -159,7 +159,7 @@ const Watchlist = () => {
   const selectedCollection = collections.find(c => c.id === selectedId);
 
   return (
-    <div className="p-8 pt-20">
+    <div className="p-8 pt-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <h1 className="text-4xl font-bold">My List</h1>

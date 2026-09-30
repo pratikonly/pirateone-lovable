@@ -197,7 +197,7 @@ const Search = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col p-4 lg:p-8 pt-20">
+    <div className="min-h-screen flex flex-col p-4 lg:p-8 pt-4 lg:pt-8">
       <h1 className="font-display text-3xl lg:text-4xl mb-6 lg:mb-8">Search</h1>
 
       {/* ── Mode toggle ── */}

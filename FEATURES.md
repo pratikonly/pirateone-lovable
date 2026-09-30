@@ -64,7 +64,7 @@ Anime catalog items use the media type returned by TMDB, normally movie or TV. T
 
 ### Navigation
 
-The floating navigation provides:
+The global navbar provides:
 
 - Home
 - Movies
@@ -75,7 +75,7 @@ The floating navigation provides:
 The active route is highlighted. Live currently displays an availability message and does not open a page.
 
 A separate floating quick-actions button links to Help, Watchlist, and Sports.
-The shared navbar contracts into a floating bar while scrolling down, expands back while scrolling up, and returns to its hero-top position at the top of the page. It is shown across all routes.
+At the top of each page, the full-width navbar sits in the page flow and shows the white PirateOne wordmark. After scrolling, it becomes a compact floating bar with only the brand mark; the full navbar returns at the top.
 On mobile, the main route links appear in a bottom navigation bar instead of the top navbar. Live appears without a “coming soon” badge.
 
 The account/header area provides:

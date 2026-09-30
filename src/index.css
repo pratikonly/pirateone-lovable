@@ -84,7 +84,7 @@
     font-family: 'Inter', sans-serif;
   }
 
-  @media (max-width: 639px) {
+  @media (max-width: 767px) {
     body {
       padding-bottom: 5.25rem;
     }
@@ -256,6 +256,7 @@
 
 /* Keep global chrome out of the video when theater mode is active. */
 body.watch-theater-active .site-header,
+body.watch-theater-active .site-header-spacer,
 body.watch-theater-active .mobile-bottom-nav,
 body.watch-theater-active .quick-actions-fab {
   display: none;

@@ -118,7 +118,7 @@ const Movies = () => {
   }, [activeTab, nowPlaying, popularMovies, topRatedMovies, hasMoreNowPlaying, hasMorePopular, hasMoreTopRated]);
 
   return (
-    <div className="p-4 lg:p-6 pt-20">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
       <h1 className="font-display text-3xl lg:text-4xl mb-6">Movies</h1>
 
       <Tabs defaultValue="popular" className="w-full" onValueChange={setActiveTab}>

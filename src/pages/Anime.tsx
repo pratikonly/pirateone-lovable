@@ -101,7 +101,7 @@ const Anime = () => {
   }, [loadMore]);
 
   return (
-    <div className="p-4 lg:p-6 pt-20">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
       <h1 className="font-display text-3xl lg:text-4xl mb-2">Anime</h1>
       <p className="text-muted-foreground text-sm mb-6">Popular anime series and movies</p>
 

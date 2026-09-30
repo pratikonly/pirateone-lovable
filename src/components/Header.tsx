@@ -10,9 +10,12 @@ import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import pirateOneLogo from '@/assets/pirateone-logo.png';
 
 const Header = () => {
-  const [scrollMode, setScrollMode] = useState<'top' | 'floating'>('top');
+  const [scrollMode, setScrollMode] = useState<'top' | 'floating'>(
+    () => (typeof window !== 'undefined' && window.scrollY > 1 ? 'floating' : 'top')
+  );
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -32,34 +35,8 @@ const Header = () => {
   const { user, signOut } = useAuth();
 
   useEffect(() => {
-    let previousY = window.scrollY;
-    let direction = 0;
-    let directionOrigin = previousY;
-
-    if (previousY > 32) setScrollMode('floating');
-
     const handleScroll = () => {
-      const currentY = window.scrollY;
-      if (currentY <= 32) {
-        setScrollMode('top');
-        previousY = currentY;
-        direction = 0;
-        directionOrigin = currentY;
-        return;
-      }
-
-      const nextDirection = Math.sign(currentY - previousY);
-      if (nextDirection !== 0 && nextDirection !== direction) {
-        direction = nextDirection;
-        directionOrigin = previousY;
-      }
-
-      if (direction > 0 && currentY - directionOrigin > 8) {
-        setScrollMode('floating');
-      } else if (direction < 0 && directionOrigin - currentY > 8) {
-        setScrollMode('top');
-      }
-      previousY = currentY;
+      setScrollMode(window.scrollY > 1 ? 'floating' : 'top');
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -145,20 +122,24 @@ const Header = () => {
   return (
     <>
       <header className={cn(
-        'site-header fixed inset-x-0 z-[60] mx-auto flex h-[58px] items-center justify-between rounded-full border px-2.5 backdrop-blur-2xl transition-all duration-500 ease-out sm:h-16 sm:px-4',
+        'site-header z-[60] flex w-full items-center justify-between transition-all duration-300 ease-out',
         scrollMode === 'floating'
-          ? 'top-3 w-[calc(100%-2rem)] max-w-5xl scale-[0.985] border-amber-200/20 bg-zinc-950/90 shadow-[0_16px_48px_rgba(0,0,0,0.55),0_0_22px_rgba(212,175,55,0.08)]'
-          : 'top-3 w-[calc(100%-1.25rem)] max-w-6xl border-white/[0.11] bg-zinc-950/70 shadow-[0_12px_40px_rgba(0,0,0,0.38)] sm:top-4'
+          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl border border-amber-100/20 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
+          : 'relative h-20 border-b border-white/10 bg-zinc-950 px-3 sm:h-[92px] sm:px-8'
       )}>
-        <NavLink to="/" aria-label="PirateOne home" className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-300 hover:scale-105 hover:bg-amber-100/10 max-[360px]:h-8 max-[360px]:w-8 sm:h-11 sm:w-11">
-          <img
-            src="/favicon.svg"
-            alt="PirateOne"
-            className="h-9 w-9 object-contain brightness-0 invert transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(253,230,138,0.7)] sm:h-10 sm:w-10"
-          />
+        <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
+          {scrollMode === 'floating' ? (
+            <img src="/favicon.svg" alt="PirateOne" className="h-8 w-8 object-contain brightness-0 invert" />
+          ) : (
+            <img
+              src={pirateOneLogo}
+              alt="PirateOne"
+              className="h-auto max-h-[4.5rem] w-[min(46vw,13rem)] object-contain brightness-0 invert"
+            />
+          )}
         </NavLink>
 
-        <nav aria-label="Main navigation" className="mx-1 hidden min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full border border-white/[0.06] bg-black/20 p-1 max-[360px]:mx-0 sm:mx-4 sm:flex sm:gap-1 sm:p-1.5">
+        <nav aria-label="Main navigation" className="mx-5 hidden min-w-0 flex-1 items-center justify-center gap-3 md:flex lg:gap-5">
           {navItems.map((item) => {
             const isActive = item.path === '/'
               ? location.pathname === '/'
@@ -170,33 +151,32 @@ const Header = () => {
                 to={item.path}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center justify-center gap-1 rounded-full border border-transparent px-1 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] transition-all duration-300 max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-[11px] sm:tracking-[0.12em]',
+                  'inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] transition-colors duration-200 lg:text-[11px]',
                   isActive
-                    ? 'border-amber-200/20 bg-gradient-to-b from-amber-100/[0.14] to-amber-500/[0.06] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_3px_14px_rgba(212,175,55,0.08)]'
-                    : 'text-zinc-400 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_5px_16px_rgba(0,0,0,0.3)]'
+                    ? 'border-amber-300 text-amber-100'
+                    : 'text-zinc-400 hover:border-amber-300/60 hover:text-white'
                 )}
               >
-                <Icon className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {item.label}
               </NavLink>
             );
           })}
-          <span className="mx-0.5 h-5 w-px shrink-0 bg-amber-100/20 sm:mx-1" aria-hidden="true" />
           <button
             type="button"
             onClick={() => toast.info('The Live section is not available yet.')}
             title="Live"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-transparent px-1 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/15 hover:bg-amber-100/[0.07] hover:text-amber-100 max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
+            className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-amber-300/60 hover:text-white lg:text-[11px]"
           >
             <Radio className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
             Live
           </button>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={openSearch}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-zinc-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-amber-100/[0.08] hover:text-amber-100 hover:shadow-[0_4px_18px_rgba(212,175,55,0.12)] sm:h-10 sm:w-10"
+            className="flex h-9 w-9 items-center justify-center rounded-sm border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-amber-200/50 hover:bg-white/[0.06] hover:text-amber-100 sm:h-10 sm:w-10"
             aria-label="Search"
           >
             <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -208,7 +188,7 @@ const Header = () => {
               onClick={() => navigate('/auth?mode=signup')}
               aria-label="Create an account"
               title="Sign up"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-100/55 bg-gradient-to-br from-amber-50 to-amber-300 text-zinc-950 shadow-[0_4px_18px_rgba(212,175,55,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-105 hover:from-white hover:to-amber-100 hover:shadow-[0_6px_24px_rgba(212,175,55,0.28)] sm:h-10 sm:w-10"
+              className="flex h-9 w-9 items-center justify-center rounded-sm border border-amber-100/45 bg-amber-100 text-zinc-950 transition-colors duration-200 hover:bg-white sm:h-10 sm:w-10"
             >
               <UserRound className="h-[18px] w-[18px]" />
             </button>
@@ -218,11 +198,11 @@ const Header = () => {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 aria-label="Open profile menu"
                 aria-expanded={userDropdownOpen}
-                className="overflow-hidden rounded-full border border-white/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/60 hover:shadow-[0_4px_18px_rgba(212,175,55,0.16)]"
+                className="overflow-hidden rounded-sm border border-white/20 transition-colors duration-200 hover:border-amber-200/60"
               >
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                <Avatar className="h-8 w-8 rounded-sm sm:h-10 sm:w-10">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
-                  <AvatarFallback className="bg-zinc-800 text-zinc-100 text-xs">
+                  <AvatarFallback className="rounded-sm bg-zinc-800 text-zinc-100 text-xs">
                     {isLoading ? '...' : getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
@@ -264,10 +244,11 @@ const Header = () => {
           )}
         </div>
       </header>
+      {scrollMode === 'floating' && <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />}
 
       <nav
         aria-label="Mobile main navigation"
-        className="mobile-bottom-nav fixed inset-x-2 bottom-2 z-[65] mx-auto grid max-w-md grid-cols-5 gap-1 rounded-2xl border border-white/60 bg-[#f5f0e6]/95 p-1.5 text-zinc-600 shadow-[0_12px_40px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:hidden"
+        className="mobile-bottom-nav fixed inset-x-2 bottom-2 z-[65] mx-auto grid max-w-md grid-cols-5 gap-1 rounded-md border border-white/60 bg-[#f5f0e6]/95 p-1.5 text-zinc-600 shadow-[0_12px_40px_rgba(0,0,0,0.42)] backdrop-blur-2xl md:hidden"
       >
         {navItems.map(({ label, path, Icon }) => {
           const isActive = path === '/'
@@ -279,7 +260,7 @@ const Header = () => {
               to={path}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[9px] font-medium transition-colors',
+                'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-sm py-1.5 text-[9px] font-medium transition-colors',
                 isActive
                   ? 'bg-[#e8ddca] text-[#382b1b] shadow-sm'
                   : 'text-[#756b5e] hover:bg-black/[0.04] hover:text-[#2f261c]'
@@ -294,7 +275,7 @@ const Header = () => {
           type="button"
           onClick={() => toast.info('The Live section is not available yet.')}
           aria-label="Live"
-          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[9px] font-medium text-[#756b5e] transition-colors hover:bg-black/[0.04] hover:text-[#2f261c]"
+          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-sm py-1.5 text-[9px] font-medium text-[#756b5e] transition-colors hover:bg-black/[0.04] hover:text-[#2f261c]"
         >
           <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
           <span>Live</span>

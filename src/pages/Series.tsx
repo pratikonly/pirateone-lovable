@@ -106,7 +106,7 @@ const Series = () => {
   }, [activeTab, popularTV, topRatedTV, hasMorePopular, hasMoreTopRated]);
 
   return (
-    <div className="p-4 lg:p-6 pt-20">
+    <div className="p-4 lg:p-6 pt-4 lg:pt-6">
       <h1 className="font-display text-3xl lg:text-4xl mb-6">Web Series</h1>
 
       <Tabs defaultValue="popular" className="w-full" onValueChange={setActiveTab}>
