@@ -140,36 +140,43 @@ const Index = () => {
           title="Trending Now" 
           movies={trending} 
           isLoading={isHeroLoading} 
+          animateCards
         />
         <MovieRow 
           title="Now Playing" 
           movies={catalog?.nowPlaying ?? []}
           isLoading={isLoading} 
+          animateCards
         />
         <MovieRow 
           title="Top Rated Movies" 
           movies={catalog?.topRatedMovies ?? []}
           isLoading={isLoading} 
+          animateCards
         />
         <MovieRow 
           title="Popular TV Shows" 
           movies={catalog?.popularTV ?? []}
           isLoading={isLoading} 
+          animateCards
         />
         <MovieRow 
           title="Top Rated TV Shows" 
           movies={catalog?.topRatedTV ?? []}
           isLoading={isLoading} 
+          animateCards
         />
         <MovieRow 
           title="Anime" 
           movies={catalog?.anime ?? []}
           isLoading={isLoading} 
+          animateCards
         />
         <MovieRow 
           title="Popular Movies" 
           movies={catalog?.popularMovies ?? []}
           isLoading={isLoading} 
+          animateCards
         />
       </div>
     </div>

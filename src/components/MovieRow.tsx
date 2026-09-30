@@ -9,9 +9,10 @@ interface MovieRowProps {
   title: string;
   movies: Movie[];
   isLoading?: boolean;
+  animateCards?: boolean;
 }
 
-const MovieRow = ({ title, movies, isLoading }: MovieRowProps) => {
+const MovieRow = ({ title, movies, isLoading, animateCards = false }: MovieRowProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -94,7 +95,12 @@ const MovieRow = ({ title, movies, isLoading }: MovieRowProps) => {
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {movies.map((movie, index) => (
-          <MovieCard key={`${movie.id}-${movie.media_type}`} movie={movie} index={index} />
+          <MovieCard
+            key={`${movie.id}-${movie.media_type}`}
+            movie={movie}
+            index={index}
+            animateFromBelow={animateCards}
+          />
         ))}
       </div>
     </section>

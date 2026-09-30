@@ -117,6 +117,15 @@ const Live = () => {
     return matchesCategory && matchesQuery;
   }), [channels, normalizedQuery, selectedCategory]);
   const visibleChannels = filteredChannels.slice(0, visibleCount);
+  const visibleChannelGroups = useMemo(() => {
+    const groups = new Map<string, LiveChannel[]>();
+    visibleChannels.forEach((channel) => {
+      const group = groups.get(channel.category);
+      if (group) group.push(channel);
+      else groups.set(channel.category, [channel]);
+    });
+    return Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+  }, [visibleChannels]);
   const selectedChannel = channels.find((channel) => channel.id === channelId);
 
   useEffect(() => {
@@ -136,6 +145,34 @@ const Live = () => {
       pathname: `/live/${encodeURIComponent(channel.id)}`,
       search: query ? `?${query}` : '',
     });
+  };
+
+  const renderChannelButton = (channel: LiveChannel) => {
+    const isSelected = channel.id === channelId;
+    return (
+      <button
+        key={channel.id}
+        type="button"
+        onClick={() => selectChannel(channel)}
+        aria-current={isSelected ? 'true' : undefined}
+        className={`group flex min-w-0 items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors sm:gap-3 sm:p-3 ${
+          isSelected
+            ? 'border-red-500/45 bg-red-500/[0.09]'
+            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'
+        }`}
+      >
+        <ChannelLogo channel={channel} />
+        <span className="min-w-0 flex-1">
+          <span className={`block truncate text-xs font-semibold sm:text-sm ${isSelected ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>
+            {channel.name}
+          </span>
+          <span className="mt-1 block truncate text-[10px] text-zinc-500 sm:text-[11px]">
+            {channel.category}
+          </span>
+        </span>
+        {isSelected && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-label="Selected" />}
+      </button>
+    );
   };
 
   const channelListError = channelsQuery.error
@@ -229,35 +266,19 @@ const Live = () => {
           ) : (
             <>
               <div className="max-h-[62vh] overflow-y-auto pr-1 lg:max-h-[calc(100vh-17rem)]">
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
-                  {visibleChannels.map((channel) => {
-                    const isSelected = channel.id === channelId;
-                    return (
-                      <button
-                        key={channel.id}
-                        type="button"
-                        onClick={() => selectChannel(channel)}
-                        aria-current={isSelected ? 'true' : undefined}
-                        className={`group flex min-w-0 items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors sm:gap-3 sm:p-3 ${
-                          isSelected
-                            ? 'border-red-500/45 bg-red-500/[0.09]'
-                            : 'border-white/[0.06] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]'
-                        }`}
-                      >
-                        <ChannelLogo channel={channel} />
-                        <span className="min-w-0 flex-1">
-                          <span className={`block truncate text-xs font-semibold sm:text-sm ${isSelected ? 'text-white' : 'text-zinc-200 group-hover:text-white'}`}>
-                            {channel.name}
-                          </span>
-                          <span className="mt-1 block truncate text-[10px] text-zinc-500 sm:text-[11px]">
-                            {channel.category}
-                          </span>
-                        </span>
-                        {isSelected && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500" aria-label="Selected" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                {visibleChannelGroups.map(([category, categoryChannels]) => (
+                  <section key={category} className="mb-4 last:mb-0" aria-label={`${category} channels`}>
+                    <div className="mb-2 flex items-center justify-between px-1">
+                      <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                        {category}
+                      </h3>
+                      <span className="text-[10px] text-zinc-600">{categoryChannels.length}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                      {categoryChannels.map(renderChannelButton)}
+                    </div>
+                  </section>
+                ))}
               </div>
               {visibleChannels.length < filteredChannels.length && (
                 <button

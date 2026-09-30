@@ -17,9 +17,10 @@ interface MovieCardProps {
   movie: Movie;
   index?: number;
   className?: string;
+  animateFromBelow?: boolean;
 }
 
-const MovieCard = ({ movie, index = 0, className }: MovieCardProps) => {
+const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: MovieCardProps) => {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -91,10 +92,11 @@ const MovieCard = ({ movie, index = 0, className }: MovieCardProps) => {
           ref={cardRef}
           className={cn(
             'group relative cursor-pointer card-hover shrink-0',
-            'animate-fade-in w-[100px] md:w-[120px] lg:w-[130px]',
+            'w-[100px] md:w-[120px] lg:w-[130px]',
+            animateFromBelow ? 'animate-home-show-enter' : 'animate-fade-in',
             className
           )}
-          style={{ animationDelay: `${index * 50}ms` }}
+          style={{ animationDelay: `${index * (animateFromBelow ? 36 : 50)}ms` }}
           onClick={handlePlay}
         >
           {/* Poster Image */}

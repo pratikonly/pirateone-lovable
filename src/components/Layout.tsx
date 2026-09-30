@@ -67,7 +67,7 @@ const Layout = () => {
       {hasSharedPageLayout && <BackdropLayer />}
 
       <main className={`relative z-10 ${hasSharedPageLayout ? `min-h-screen ${isHome ? 'pt-0' : 'pt-6 sm:pt-8'}` : ''}`}>
-        <div key={pathname} className={`page-transition ${isHome ? 'home-page-transition' : ''}`}>
+        <div key={pathname} className="page-transition">
           <Suspense fallback={<PageLoadingFallback />}>
             <Outlet />
           </Suspense>
