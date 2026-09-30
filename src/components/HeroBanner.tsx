@@ -12,9 +12,10 @@ import { useSetBackdropUrl } from '@/contexts/BackdropContext';
 
 interface HeroBannerProps {
   movies: Movie[];
+  isLoading?: boolean;
 }
 
-const HeroBanner = ({ movies }: HeroBannerProps) => {
+const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const navigate = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
   const { user } = useAuth();
@@ -135,7 +136,51 @@ const HeroBanner = ({ movies }: HeroBannerProps) => {
     syncWatchlistState();
   }, [currentMovie, user]);
 
-  if (!currentMovie) return null;
+  if (isLoading || !currentMovie) {
+    return (
+      <div
+        className="relative h-[60vh] md:h-[70vh] min-h-[400px] max-h-[600px] -mt-14 mb-8 overflow-hidden"
+        role="status"
+        aria-label="Loading featured titles"
+      >
+        <div className="absolute inset-0 bg-muted/40 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/50" />
+        <div className="absolute inset-0 flex items-center">
+          <div className="container mx-auto px-4 lg:px-6 pt-14">
+            <div className="flex items-center gap-6 lg:gap-10">
+              <div className="flex-1 max-w-2xl space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-7 w-20 rounded-full bg-muted animate-shimmer" />
+                  <div className="h-7 w-14 rounded-full bg-muted animate-shimmer" />
+                  <div className="h-7 w-12 rounded-full bg-muted animate-shimmer" />
+                </div>
+                <div className="h-14 sm:h-16 md:h-20 w-[72%] max-w-lg rounded-md bg-muted animate-shimmer" />
+                <div className="space-y-2.5 max-w-xl">
+                  <div className="h-3.5 w-full rounded bg-muted animate-shimmer" />
+                  <div className="h-3.5 w-[92%] rounded bg-muted animate-shimmer" />
+                  <div className="h-3.5 w-[64%] rounded bg-muted animate-shimmer" />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <div className="h-11 w-28 rounded-md bg-primary/15 animate-shimmer" />
+                  <div className="h-11 w-28 rounded-md bg-muted animate-shimmer" />
+                  <div className="h-11 w-24 rounded-md bg-muted animate-shimmer" />
+                </div>
+              </div>
+              <div className="hidden md:block w-40 lg:w-48 aspect-[2/3] rounded-lg border border-border bg-muted animate-shimmer" />
+            </div>
+          </div>
+        </div>
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="h-2 w-6 rounded-full bg-muted-foreground/40 animate-pulse" />
+          {[...Array(4)].map((_, index) => (
+            <div key={index} className="h-2 w-2 rounded-full bg-muted animate-pulse" />
+          ))}
+        </div>
+        <span className="sr-only">Loading featured titles</span>
+      </div>
+    );
+  }
 
   const backdropUrl = getBackdropUrl(currentMovie.backdrop_path, 'original');
   const posterUrl = getImageUrl(currentMovie.poster_path, 'w300');

@@ -42,10 +42,12 @@ const MovieRow = ({ title, movies, isLoading }: MovieRowProps) => {
         <div className="flex gap-3 lg:gap-4 overflow-x-auto scrollbar-hide">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="w-[100px] md:w-[120px] lg:w-[130px] shrink-0">
-              <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
-              <div className="pt-1.5 space-y-1">
-                <div className="h-2.5 bg-muted rounded animate-pulse" />
-                <div className="h-2.5 w-2/3 bg-muted rounded animate-pulse" />
+              <div className="relative aspect-[2/3] overflow-hidden rounded-lg border border-border bg-muted animate-shimmer">
+                <div className="absolute right-1.5 top-1.5 h-5 w-9 rounded bg-background/70" />
+              </div>
+              <div className="pt-2 space-y-1.5">
+                <div className="h-3 bg-muted rounded animate-shimmer" />
+                <div className={cn('h-2.5 bg-muted rounded animate-shimmer', i % 3 === 0 ? 'w-1/2' : i % 2 === 0 ? 'w-3/4' : 'w-2/3')} />
               </div>
             </div>
           ))}

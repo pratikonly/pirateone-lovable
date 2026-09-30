@@ -218,7 +218,7 @@ const Watch = () => {
   const [season, setSeason]                 = useState(1);
   const [episode, setEpisode]               = useState(1);
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
-  const [selectedServer, setSelectedServer] = useState<ServerType>('videasy');
+  const [selectedServer, setSelectedServer] = useState<ServerType>('vidstuck');
   const [serverOpen, setServerOpen]         = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const toggleTheater = useCallback(() => {
@@ -327,16 +327,19 @@ const Watch = () => {
     const handleMessage = async (event: MessageEvent) => {
       if (document.hidden) return;
       if (!userRef.current) return;
-      if (event.origin !== 'https://player.videasy.net') return;
+      if (event.origin !== 'https://player.videasy.net' && event.origin !== 'https://vidstuck.xyz') return;
 
       try {
         const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (!msg || msg.type !== 'PLAYER_EVENT') return;
-        const payload = msg.data;
-        if (!payload || payload.event !== 'timeupdate') return;
+        if (!msg) return;
+        const isVideasyEvent = msg.type === 'PLAYER_EVENT' && msg.data?.event === 'timeupdate';
+        const isVidstuckEvent = event.origin === 'https://vidstuck.xyz'
+          && typeof msg.timestamp === 'number'
+          && typeof msg.duration === 'number';
+        if (!isVideasyEvent && !isVidstuckEvent) return;
 
-        const currentTime: number = payload.currentTime;
-        const duration: number    = payload.duration;
+        const currentTime: number = isVideasyEvent ? msg.data.currentTime : msg.timestamp;
+        const duration: number    = isVideasyEvent ? msg.data.duration : msg.duration;
         if (typeof currentTime !== 'number' || typeof duration !== 'number' || duration <= 0) return;
 
         const pct = (currentTime / duration) * 100;
@@ -570,8 +573,7 @@ const Watch = () => {
 
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
-                      className={cn('h-9 px-3 hover:bg-zinc-800 flex items-center gap-2 min-w-[110px]',
-                        selectedServer === 'autoembed' ? 'bg-primary text-primary-foreground' : 'border-zinc-700')}
+                      className="h-9 px-3 flex items-center gap-2 min-w-[110px]"
                       onClick={handleServerToggle}>
                       <Server className="w-4 h-4" />
                       <span className="font-medium">Server {currentServerNumber}</span>
@@ -594,7 +596,7 @@ const Watch = () => {
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
                               {animeServers.map((srv, i) => {
-                                const isDead = srv.id === 'vidsrccc' || srv.id === 'vidify';
+                                const isDead = srv.id === 'vidsrccc';
                                 const num = i + 1;
                                 return isDead ? (
                                   <div key={srv.id}

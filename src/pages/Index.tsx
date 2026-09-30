@@ -101,7 +101,7 @@ const Index = () => {
 
   return (
     <div className="pb-6">
-      <HeroBanner movies={trending} />
+      <HeroBanner movies={trending} isLoading={isLoading} />
 
       {/* Continue Watching Section */}
       {user && watchProgress.length > 0 && (
