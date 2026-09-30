@@ -17,7 +17,7 @@ import LivePlayer from '@/components/LivePlayer';
 import { useDebounce } from '@/hooks/useDebounce';
 import { fetchLiveChannels, getLiveApiErrorMessage, LiveChannel } from '@/lib/liveApi';
 
-const LIVE_CHANNELS_QUERY_KEY = ['live', 'channels'];
+const LIVE_CHANNELS_QUERY_KEY = ['live', 'channels', 'broad-categories-v2'];
 const INITIAL_CHANNEL_COUNT = 48;
 const LAST_LIVE_CHANNEL_KEY = 'pirateone:last-live-channel';
 const EMPTY_CHANNELS: LiveChannel[] = [];
