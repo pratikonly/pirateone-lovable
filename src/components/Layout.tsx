@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import Header from './Header';
 import WelcomeNotification from './WelcomeNotification';
 import BackdropLayer from './BackdropLayer';
 
@@ -30,8 +29,6 @@ const Layout = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
       <BackdropLayer />
-
-      <Header />
 
       <main className="min-h-screen pt-0 relative z-10">
         <div key={`${location.pathname}${location.search}`} className="page-transition">

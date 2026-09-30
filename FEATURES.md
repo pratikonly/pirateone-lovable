@@ -75,6 +75,7 @@ The floating navigation provides:
 The active route is highlighted. Live is currently a placeholder button and does not open a page.
 
 A separate floating quick-actions button links to Help, Watchlist, and Sports.
+The shared navbar contracts into a floating bar while scrolling down, expands back while scrolling up, and returns to its hero-top position at the top of the page. It is shown across all routes.
 
 The account/header area provides:
 
@@ -86,6 +87,8 @@ The account/header area provides:
 - Sign Out.
 
 Route changes use client-side React Router navigation. The shared layout remains mounted, and route content uses a page transition instead of a full browser reload.
+
+A large PirateOne wordmark is centered in the footer on every route.
 
 ### Global search shortcut
 

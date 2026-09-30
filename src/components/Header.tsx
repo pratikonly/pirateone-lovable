@@ -1,4 +1,4 @@
-import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound } from 'lucide-react';
+import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound, Home, Clapperboard, Tv, Sparkles } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const Header = () => {
+  const [scrollMode, setScrollMode] = useState<'top' | 'floating'>('top');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
@@ -29,6 +30,41 @@ const Header = () => {
   const location = useLocation();
   const { identity, isLoading, isRegenerating, regenerateIdentity } = usePirateIdentity();
   const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    let previousY = window.scrollY;
+    let direction = 0;
+    let directionOrigin = previousY;
+
+    if (previousY > 32) setScrollMode('floating');
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY <= 32) {
+        setScrollMode('top');
+        previousY = currentY;
+        direction = 0;
+        directionOrigin = currentY;
+        return;
+      }
+
+      const nextDirection = Math.sign(currentY - previousY);
+      if (nextDirection !== 0 && nextDirection !== direction) {
+        direction = nextDirection;
+        directionOrigin = previousY;
+      }
+
+      if (direction > 0 && currentY - directionOrigin > 8) {
+        setScrollMode('floating');
+      } else if (direction < 0 && directionOrigin - currentY > 8) {
+        setScrollMode('top');
+      }
+      previousY = currentY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -97,10 +133,10 @@ const Header = () => {
   const handleRegenerateIdentity = async () => { try { await regenerateIdentity(); } catch (e) { console.error(e); } };
   const handleSignOut = async () => { setUserDropdownOpen(false); await signOut(); navigate('/'); };
   const navItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Movies', path: '/movies' },
-    { label: 'Series', path: '/series' },
-    { label: 'Anime', path: '/anime' },
+    { label: 'Home', path: '/', Icon: Home },
+    { label: 'Movies', path: '/movies', Icon: Clapperboard },
+    { label: 'Series', path: '/series', Icon: Tv },
+    { label: 'Anime', path: '/anime', Icon: Sparkles },
   ];
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
@@ -108,49 +144,56 @@ const Header = () => {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-3 z-40 mx-auto flex h-[58px] w-[calc(100%-1.25rem)] max-w-6xl items-center justify-between rounded-2xl border border-white/[0.09] bg-zinc-950/75 px-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.38)] backdrop-blur-2xl sm:top-4 sm:h-16 sm:w-[calc(100%-2.5rem)] sm:px-4">
-        <NavLink to="/" aria-label="PirateOne home" className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 hover:scale-105 max-[360px]:h-8 max-[360px]:w-8 sm:h-11 sm:w-11">
+      <header className={cn(
+        'fixed inset-x-0 z-[60] mx-auto flex h-[58px] items-center justify-between rounded-full border px-2.5 backdrop-blur-2xl transition-all duration-500 ease-out sm:h-16 sm:px-4',
+        scrollMode === 'floating'
+          ? 'top-3 w-[calc(100%-2rem)] max-w-5xl scale-[0.985] border-amber-200/20 bg-zinc-950/90 shadow-[0_16px_48px_rgba(0,0,0,0.55),0_0_22px_rgba(212,175,55,0.08)]'
+          : 'top-3 w-[calc(100%-1.25rem)] max-w-6xl border-white/[0.11] bg-zinc-950/70 shadow-[0_12px_40px_rgba(0,0,0,0.38)] sm:top-4'
+      )}>
+        <NavLink to="/" aria-label="PirateOne home" className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-300 hover:scale-105 hover:bg-amber-100/10 max-[360px]:h-8 max-[360px]:w-8 sm:h-11 sm:w-11">
           <img
             src="/favicon.svg"
             alt="PirateOne"
-            className="h-9 w-9 object-contain brightness-0 invert sm:h-10 sm:w-10"
+            className="h-9 w-9 object-contain brightness-0 invert transition-all duration-300 group-hover:drop-shadow-[0_0_8px_rgba(253,230,138,0.7)] sm:h-10 sm:w-10"
           />
         </NavLink>
 
-        <nav aria-label="Main navigation" className="mx-1 flex min-w-0 flex-1 items-center justify-center gap-0.5 max-[360px]:mx-0 sm:mx-4 sm:gap-1">
+        <nav aria-label="Main navigation" className="mx-1 flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full border border-white/[0.06] bg-black/20 p-1 max-[360px]:mx-0 sm:mx-4 sm:gap-1 sm:p-1.5">
           {navItems.map((item) => {
             const isActive = item.path === '/'
               ? location.pathname === '/'
               : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+            const Icon = item.Icon;
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'rounded-lg px-1 py-2 text-[9px] font-medium tracking-wide transition-all duration-300 max-[360px]:px-0.5 sm:px-3 sm:text-xs',
+                  'inline-flex items-center justify-center gap-1 rounded-full border border-transparent px-1 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] transition-all duration-300 max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-[11px] sm:tracking-[0.12em]',
                   isActive
-                    ? 'bg-white/[0.11] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
-                    : 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
+                    ? 'border-amber-200/20 bg-gradient-to-b from-amber-100/[0.14] to-amber-500/[0.06] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_3px_14px_rgba(212,175,55,0.08)]'
+                    : 'text-zinc-400 hover:-translate-y-0.5 hover:border-white/10 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_5px_16px_rgba(0,0,0,0.3)]'
                 )}
               >
+                <Icon className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
                 {item.label}
               </NavLink>
             );
           })}
-          <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15 sm:mx-1" aria-hidden="true" />
+          <span className="mx-0.5 h-5 w-px shrink-0 bg-amber-100/20 sm:mx-1" aria-hidden="true" />
           <button
             type="button"
             onClick={() => toast.info('Live is coming soon.')}
             title="Live — coming soon"
-            className="flex shrink-0 items-center gap-1 rounded-lg px-1 py-2 text-[9px] font-semibold tracking-wide text-zinc-300 transition-colors hover:bg-white/[0.06] hover:text-white max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-xs"
+            className="flex shrink-0 items-center gap-1 rounded-full border border-transparent px-1 py-2 text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/15 hover:bg-amber-100/[0.07] hover:text-amber-100 max-[360px]:px-0.5 sm:gap-1.5 sm:px-3 sm:text-[11px] sm:tracking-[0.12em]"
           >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-50" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-300" />
             </span>
             Live
-            <span className="hidden rounded-full border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 lg:inline">
+            <span className="hidden rounded-full border border-amber-100/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-amber-100/50 lg:inline">
               SOON
             </span>
           </button>
@@ -159,7 +202,7 @@ const Header = () => {
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             onClick={openSearch}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-zinc-300 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white sm:h-10 sm:w-10"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.04] text-zinc-300 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-amber-100/[0.08] hover:text-amber-100 hover:shadow-[0_4px_18px_rgba(212,175,55,0.12)] sm:h-10 sm:w-10"
             aria-label="Search"
           >
             <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -171,7 +214,7 @@ const Header = () => {
               onClick={() => navigate('/auth?mode=signup')}
               aria-label="Create an account"
               title="Sign up"
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-zinc-950 shadow-[0_4px_18px_rgba(255,255,255,0.12)] transition-all duration-200 hover:scale-105 hover:bg-zinc-200 sm:h-10 sm:w-10"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-100/55 bg-gradient-to-br from-amber-50 to-amber-300 text-zinc-950 shadow-[0_4px_18px_rgba(212,175,55,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-105 hover:from-white hover:to-amber-100 hover:shadow-[0_6px_24px_rgba(212,175,55,0.28)] sm:h-10 sm:w-10"
             >
               <UserRound className="h-[18px] w-[18px]" />
             </button>
@@ -181,7 +224,7 @@ const Header = () => {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 aria-label="Open profile menu"
                 aria-expanded={userDropdownOpen}
-                className="overflow-hidden rounded-xl border border-white/20 transition-colors hover:border-white/50"
+                className="overflow-hidden rounded-full border border-white/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-200/60 hover:shadow-[0_4px_18px_rgba(212,175,55,0.16)]"
               >
                 <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
@@ -230,7 +273,7 @@ const Header = () => {
 
       {/* ── Global Search Overlay ── */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center" style={{ paddingTop: '18vh' }}>
+        <div className="fixed inset-0 z-[80] flex flex-col items-center" style={{ paddingTop: '18vh' }}>
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={closeSearch} />
 

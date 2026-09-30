@@ -58,13 +58,6 @@ const VideoPlayer = forwardRef<HTMLIFrameElement, VideoPlayerProps>(
       return () => clearInterval(interval);
     }, [reportBlock]);
 
-    // Block top-level navigation hijacks
-    useEffect(() => {
-      const blockNav = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-      window.addEventListener('beforeunload', blockNav);
-      return () => window.removeEventListener('beforeunload', blockNav);
-    }, []);
-
     // When the iframe first loads, open a 12-second protection window.
     // This covers both the auto-load moment and the player's own "click to play" button.
     const handleIframeLoad = useCallback(() => {

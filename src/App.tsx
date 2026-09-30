@@ -24,6 +24,8 @@ import ServerStatus from "./pages/ServerStatus";
 import ShortcutLoadingOverlay from "./components/ShortcutLoadingOverlay";
 import FloatingQuickActions from "./components/FloatingQuickActions";
 import Sports from "./pages/Sports";
+import Header from "./components/Header";
+import BrandFooter from "./components/BrandFooter";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +40,7 @@ const App = () => (
               <SpeedInsights />
                <ShortcutLoadingOverlay />
               <BrowserRouter>
+                <Header />
                 <FloatingQuickActions />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
@@ -57,6 +60,7 @@ const App = () => (
                   <Route path="/server" element={<ServerStatus />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
+                <BrandFooter />
               </BrowserRouter>
             </PirateIdentityProvider>
         </BackdropProvider>

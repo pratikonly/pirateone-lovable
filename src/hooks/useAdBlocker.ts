@@ -204,15 +204,7 @@ export const useAdBlocker = ({ enabled = true, onAdBlocked }: UseAdBlockerOption
     return () => window.removeEventListener('message', handle, true);
   }, [enabled, log]);
 
-  // ── 5. Block beforeunload hijacks ────────────────────────────────────────────
-  useEffect(() => {
-    if (!enabled) return;
-    const block = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', block);
-    return () => window.removeEventListener('beforeunload', block);
-  }, [enabled]);
-
-  // ── 6. Block document.write/writeln injection ────────────────────────────────
+  // ── 5. Block document.write/writeln injection ────────────────────────────────
   useEffect(() => {
     if (!enabled) return;
     const origWrite = document.write.bind(document);
