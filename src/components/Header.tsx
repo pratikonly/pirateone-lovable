@@ -10,7 +10,7 @@ import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import pirateSkullLogo from '@/assets/pirate-skull-logo.png';
+import pirateOneLogo from '@/assets/logo.svg';
 import animeIcon from '@/assets/anime-icon.svg';
 
 const AnimeNavIcon = ({ className }: { className?: string }) => (
@@ -156,10 +156,10 @@ const Header = () => {
       )}>
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
           {scrollMode === 'floating' ? (
-            <img src={pirateSkullLogo} alt="PirateOne" className="h-9 w-9 object-contain" />
+            <img src={pirateOneLogo} alt="PirateOne" className="h-9 w-9 object-contain" />
           ) : (
             <img
-              src={pirateSkullLogo}
+              src={pirateOneLogo}
               alt="PirateOne"
               className="h-14 w-14 object-contain sm:h-16 sm:w-16"
             />

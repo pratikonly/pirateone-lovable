@@ -80,8 +80,8 @@ const FloatingQuickActions = () => {
         aria-controls={isOpen ? 'floating-quick-actions' : undefined}
         onClick={() => setIsOpen((open) => !open)}
         className={cn(
-          'flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-black text-white shadow-[0_8px_28px_rgba(0,0,0,0.58)] transition-all duration-300 hover:scale-105 hover:border-amber-200/40 hover:shadow-[0_8px_28px_rgba(212,175,55,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
-          isOpen && 'rotate-90'
+          'flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-zinc-950/95 text-zinc-300 shadow-[0_8px_28px_rgba(0,0,0,0.58)] transition-all duration-300 hover:scale-105 hover:border-white/35 hover:bg-white hover:text-zinc-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80',
+          isOpen && 'rotate-90 bg-white text-zinc-950'
         )}
       >
         <Boxes className="h-6 w-6" strokeWidth={2.2} aria-hidden="true" />

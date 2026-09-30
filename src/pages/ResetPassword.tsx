@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
-import pirateOneLogo from '@/assets/pirate-skull-logo.png';
+import pirateOneLogo from '@/assets/logo.svg';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -48,7 +48,7 @@ const ResetPassword = () => {
     return (
       <div style={{ minHeight:'100vh', background:'#080808', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
         <div style={{ textAlign:'center', maxWidth:'400px' }}>
-          <img src={pirateOneLogo} alt="PirateOne" style={{ height:'36px', filter:'invert(1)', marginBottom:'24px' }} />
+          <img src={pirateOneLogo} alt="PirateOne" style={{ height:'36px', marginBottom:'24px' }} />
           <h1 style={{ color:'#fff', fontSize:'1.4rem', fontWeight:700, marginBottom:'12px' }}>Invalid Reset Link</h1>
           <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'0.9rem', marginBottom:'24px' }}>This link is invalid or has expired. Please request a new password reset.</p>
           <button onClick={() => navigate('/auth')} style={{ padding:'12px 28px', borderRadius:'10px', background:'#fff', color:'#0a0a0a', fontWeight:700, border:'none', cursor:'pointer', fontSize:'0.9rem' }}>
@@ -63,7 +63,7 @@ const ResetPassword = () => {
     <div style={{ minHeight:'100vh', background:'#080808', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
       <div style={{ width:'100%', maxWidth:'420px', background:'rgba(14,14,14,0.88)', backdropFilter:'blur(28px)', border:'1px solid rgba(255,255,255,0.09)', borderRadius:'18px', padding:'40px 36px' }}>
         <div style={{ textAlign:'center', marginBottom:'28px' }}>
-          <img src={pirateOneLogo} alt="PirateOne" style={{ height:'36px', filter:'invert(1)', marginBottom:'12px' }} />
+          <img src={pirateOneLogo} alt="PirateOne" style={{ height:'36px', marginBottom:'12px' }} />
           <h1 style={{ color:'#fff', fontSize:'1.5rem', fontWeight:700, marginBottom:'6px' }}>Set New Password</h1>
           <p style={{ color:'rgba(255,255,255,0.38)', fontSize:'0.875rem' }}>Choose a strong password for your account</p>
         </div>

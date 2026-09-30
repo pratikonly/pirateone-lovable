@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
-import pirateOneLogo from '@/assets/pirate-skull-logo.png';
+import pirateOneLogo from '@/assets/logo.svg';
 
 const ALL_POSTERS = [
   '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
@@ -310,7 +310,7 @@ const Auth = () => {
         }}>
           {/* Logo */}
           <div className="fu1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '36px' }}>
-            <img src={pirateOneLogo} alt="PirateOne" style={{ height: '40px', objectFit: 'contain', filter: 'invert(1)', marginBottom: '10px' }} />
+            <img src={pirateOneLogo} alt="PirateOne" style={{ height: '40px', objectFit: 'contain', marginBottom: '10px' }} />
             <p style={{ fontSize: '0.7rem', letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.32)' }}>
               Your streaming haven
             </p>
