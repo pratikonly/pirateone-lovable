@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, LogIn, UserPlus, ArrowLeft } from 'lucide-react';
-import pirateOneLogo from '@/assets/pirateone-logo.png';
+import pirateOneLogo from '@/assets/pirate-skull-logo.png';
 
 const ALL_POSTERS = [
   '/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',

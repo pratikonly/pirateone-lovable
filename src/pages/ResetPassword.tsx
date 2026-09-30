@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
-import pirateOneLogo from '@/assets/pirateone-logo.png';
+import pirateOneLogo from '@/assets/pirate-skull-logo.png';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');

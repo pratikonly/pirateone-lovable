@@ -10,7 +10,7 @@ import { searchMulti, Movie, getImageUrl } from '@/lib/tmdb';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import pirateOneLogo from '@/assets/pirateone-logo.png';
+import pirateSkullLogo from '@/assets/pirate-skull-logo.png';
 import animeIcon from '@/assets/anime-icon.svg';
 
 const AnimeNavIcon = ({ className }: { className?: string }) => (
@@ -151,17 +151,17 @@ const Header = () => {
       <header className={cn(
         'site-header z-[60] flex w-full items-center justify-between transition-all duration-300 ease-out',
         scrollMode === 'floating'
-          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl border border-white/20 bg-black/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
+          ? 'fixed inset-x-3 top-3 mx-auto h-14 w-[calc(100%-1.5rem)] max-w-6xl rounded-full border border-white/20 bg-black/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] sm:inset-x-4 sm:w-[calc(100%-2rem)] sm:px-5'
           : 'relative h-20 border-b border-white/10 bg-black px-3 sm:h-[92px] sm:px-8'
       )}>
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
           {scrollMode === 'floating' ? (
-            <img src="/favicon.svg" alt="PirateOne" className="h-8 w-8 object-contain brightness-0 invert" />
+            <img src={pirateSkullLogo} alt="PirateOne" className="h-9 w-9 object-contain" />
           ) : (
             <img
-              src={pirateOneLogo}
+              src={pirateSkullLogo}
               alt="PirateOne"
-              className="h-auto max-h-[4.5rem] w-[min(46vw,13rem)] object-contain brightness-0 invert"
+              className="h-14 w-14 object-contain sm:h-16 sm:w-16"
             />
           )}
         </NavLink>
@@ -178,10 +178,10 @@ const Header = () => {
                 to={item.path}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'inline-flex items-center justify-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] transition-colors duration-200 lg:text-[11px]',
+                  'inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] transition-colors duration-200 lg:text-[11px]',
                   isActive
-                    ? 'border-white text-white'
-                    : 'text-zinc-400 hover:border-white/60 hover:text-white'
+                    ? 'border-white bg-white text-black'
+                    : 'text-zinc-400 hover:border-white/40 hover:bg-white/[0.08] hover:text-white'
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
@@ -193,7 +193,7 @@ const Header = () => {
             type="button"
             onClick={() => toast.info('The Live section is not available yet.')}
             title="Live"
-            className="flex shrink-0 items-center gap-2 border-b-2 border-transparent px-1 py-3 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/60 hover:text-white lg:text-[11px]"
+             className="flex shrink-0 items-center gap-2 rounded-full border border-transparent px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400 transition-colors duration-200 hover:border-white/40 hover:bg-white/[0.08] hover:text-white lg:text-[11px]"
           >
             <Radio className="h-3.5 w-3.5 text-white" aria-hidden="true" />
             Live
@@ -203,7 +203,7 @@ const Header = () => {
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <button
             onClick={openSearch}
-            className="flex h-9 w-9 items-center justify-center rounded-sm border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-white/60 hover:bg-white/[0.08] hover:text-white sm:h-10 sm:w-10"
+             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-zinc-300 transition-colors duration-200 hover:border-white/60 hover:bg-white/[0.08] hover:text-white sm:h-10 sm:w-10"
             aria-label="Search"
           >
             <Search className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
@@ -215,7 +215,7 @@ const Header = () => {
               onClick={() => navigate('/auth?mode=signup')}
               aria-label="Create an account"
               title="Sign up"
-              className="flex h-9 w-9 items-center justify-center rounded-sm border border-white bg-white text-zinc-950 transition-colors duration-200 hover:bg-zinc-200 sm:h-10 sm:w-10"
+               className="flex h-9 w-9 items-center justify-center rounded-full border border-white bg-white text-zinc-950 transition-colors duration-200 hover:bg-zinc-200 sm:h-10 sm:w-10"
             >
               <UserRound className="h-[18px] w-[18px]" />
             </button>
@@ -225,11 +225,11 @@ const Header = () => {
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 aria-label="Open profile menu"
                 aria-expanded={userDropdownOpen}
-                className="overflow-hidden rounded-sm border border-white/20 transition-colors duration-200 hover:border-white/70"
+                 className="overflow-hidden rounded-full border border-white/20 transition-colors duration-200 hover:border-white/70"
               >
-                <Avatar className="h-8 w-8 rounded-sm sm:h-10 sm:w-10">
+                 <Avatar className="h-8 w-8 rounded-full sm:h-10 sm:w-10">
                   {displayAvatarUrl ? <AvatarImage src={displayAvatarUrl} alt={displayName} className="object-cover" /> : null}
-                  <AvatarFallback className="rounded-sm bg-zinc-800 text-zinc-100 text-xs">
+                   <AvatarFallback className="rounded-full bg-zinc-800 text-zinc-100 text-xs">
                     {isLoading ? '...' : getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
@@ -279,7 +279,7 @@ const Header = () => {
           'mobile-bottom-nav fixed z-[65] mx-auto grid grid-cols-5 gap-1 text-zinc-300 backdrop-blur-2xl transition-[inset,border-radius,box-shadow,background-color] duration-300 md:hidden',
           mobileNavMode === 'attached'
             ? 'inset-x-0 bottom-0 w-full max-w-none rounded-none border-x-0 border-b-0 border-t border-white/10 bg-zinc-950/95 px-3 pb-[calc(0.375rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_30px_rgba(0,0,0,0.42)]'
-            : 'inset-x-3 bottom-3 max-w-md rounded-xl border border-white/15 bg-zinc-950/90 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
+             : 'inset-x-3 bottom-3 max-w-md rounded-full border border-white/15 bg-zinc-950/90 p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.55)]'
         )}
       >
         {navItems.map(({ label, path, Icon }) => {
@@ -292,7 +292,7 @@ const Header = () => {
               to={path}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
+                 'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
                 isActive
                    ? 'bg-white text-zinc-950 shadow-sm'
                    : 'text-zinc-400 hover:bg-white/[0.08] hover:text-white'
@@ -307,7 +307,7 @@ const Header = () => {
           type="button"
           onClick={() => toast.info('The Live section is not available yet.')}
           aria-label="Live"
-          className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+           className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-400 transition-colors hover:bg-white/[0.08] hover:text-white"
         >
           <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
           <span>Live</span>
