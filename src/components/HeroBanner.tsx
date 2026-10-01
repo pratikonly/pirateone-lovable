@@ -240,7 +240,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
+      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[95svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
