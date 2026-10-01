@@ -180,7 +180,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[95svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
+        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
         role="status"
         aria-label="Loading featured titles"
       >
@@ -240,7 +240,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[95svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
+      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
@@ -263,21 +263,32 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               )}
             >
               {artworkUrl && (
-                <img
-                  src={artworkUrl}
-                  alt=""
-                  className="h-full w-full object-cover opacity-75"
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  onError={(event) => {
-                    const image = event.currentTarget;
-                    if (posterUrl && image.dataset.posterFallback !== 'true' && artworkUrl !== posterUrl) {
-                      image.dataset.posterFallback = 'true';
-                      image.src = posterUrl;
-                    } else {
-                      image.style.display = 'none';
-                    }
-                  }}
-                />
+                <>
+                  <img
+                    src={artworkUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 h-full w-full scale-110 object-cover object-top opacity-55 blur-2xl"
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                  />
+                  <div className="absolute inset-x-0 bottom-0 top-16 overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_100%)]">
+                    <img
+                      src={artworkUrl}
+                      alt=""
+                      className="h-full w-full object-cover object-top opacity-80"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      onError={(event) => {
+                        const image = event.currentTarget;
+                        if (posterUrl && image.dataset.posterFallback !== 'true' && artworkUrl !== posterUrl) {
+                          image.dataset.posterFallback = 'true';
+                          image.src = posterUrl;
+                        } else {
+                          image.style.display = 'none';
+                        }
+                      }}
+                    />
+                  </div>
+                </>
               )}
             </div>
           );
