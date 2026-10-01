@@ -128,7 +128,10 @@ const Header = () => {
   return (
     <>
       <header
-        className="site-header nav-page-change fixed inset-x-3 top-3 z-[60] mx-auto flex h-14 w-[calc(100%-1.5rem)] max-w-6xl items-center justify-between rounded-full border border-white/15 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out sm:inset-x-4 sm:h-16 sm:w-[calc(100%-2rem)] sm:px-5"
+        className={cn(
+          'site-header nav-page-change fixed inset-x-3 top-3 z-[60] mx-auto flex h-14 w-[calc(100%-1.5rem)] max-w-6xl items-center justify-between rounded-full border border-white/15 bg-zinc-950/95 px-3 shadow-[0_10px_34px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out sm:inset-x-4 sm:h-16 sm:w-[calc(100%-2rem)] sm:px-5',
+          location.pathname === '/' && 'nav-page-change-home'
+        )}
       >
         <NavLink to="/" aria-label="PirateOne home" className="flex h-full shrink-0 items-center">
           <img src={pirateOneLogo} alt="PirateOne" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
