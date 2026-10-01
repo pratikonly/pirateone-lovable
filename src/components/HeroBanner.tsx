@@ -255,9 +255,9 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               className={cn(
                 'hero-slide absolute inset-0 overflow-hidden transition-[opacity,transform] duration-700 ease-out',
                 index === currentIndex
-                  ? 'opacity-100 translate-x-0'
+                  ? 'opacity-100 translate-x-0 translate-y-0'
                   : cn(
-                    'pointer-events-none opacity-0',
+                    'pointer-events-none opacity-0 translate-y-6',
                     slideDirection === 'next' ? 'translate-x-10' : '-translate-x-10'
                   )
               )}
