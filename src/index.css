@@ -286,7 +286,8 @@
 @media (prefers-reduced-motion: reduce) {
   .page-transition,
   .animate-home-show-enter,
-  .nav-page-change {
+  .nav-page-change,
+  .nav-page-change-home {
     animation: none;
   }
 }
