@@ -13,6 +13,9 @@ import {
   HoverCardTrigger,
 } from './ui/hover-card';
 
+// Cards already shown once skip their entrance animation on later visits (smoother page changes)
+const seenCards = new Set<string>();
+
 // Anime is saved to the account watchlist when possible, and falls back to this device's list
 const addToList = async (item: Movie, signedIn: boolean) => {
   if (signedIn) {
@@ -49,7 +52,9 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
   const cardRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [inWatchlist, setInWatchlist] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const cardKey = `${movie.media_type || 'movie'}-${movie.id}`;
+  const alreadySeen = useRef(seenCards.has(cardKey)).current;
+  const [imageLoaded, setImageLoaded] = useState(alreadySeen);
   const [popupSide, setPopupSide] = useState<'left' | 'right'>('right');
   
   const title = movie.title || movie.name || 'Untitled';
@@ -63,6 +68,10 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
   const mediaLabel = mediaType === 'tv' ? 'TV' : mediaType === 'anime' ? 'Anime' : 'Movie';
   const mediaLabelLong = mediaType === 'tv' ? 'TV Series' : mediaType === 'anime' ? 'Anime' : 'Movie';
   const overview = movie.overview || 'No description available.';
+
+  useEffect(() => {
+    seenCards.add(cardKey);
+  }, [cardKey]);
 
   useEffect(() => {
     const loadWatchlistState = async () => {
@@ -117,10 +126,10 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
           className={cn(
             'group relative cursor-pointer card-hover shrink-0',
             'w-[100px] md:w-[120px] lg:w-[130px]',
-            animateFromBelow ? 'animate-home-show-enter' : 'animate-fade-in',
+            !alreadySeen && (animateFromBelow ? 'animate-home-show-enter' : 'animate-fade-in'),
             className
           )}
-          style={{ animationDelay: `${index * (animateFromBelow ? 36 : 50)}ms` }}
+          style={alreadySeen ? undefined : { animationDelay: `${Math.min(index, 12) * (animateFromBelow ? 36 : 40)}ms` }}
           onClick={handlePlay}
         >
           {/* Poster Image */}

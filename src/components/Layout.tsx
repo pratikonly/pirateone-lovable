@@ -46,6 +46,8 @@ const Layout = () => {
 
   const pathname = location.pathname;
   const isHome = pathname === '/';
+  // Pages that open with a hero slider sit directly under the floating navbar
+  const hasHero = ['/', '/movies', '/series', '/anime'].includes(pathname);
   const hasSharedPageLayout = [
     '/',
     '/movies',
@@ -65,7 +67,7 @@ const Layout = () => {
     <div className={`relative overflow-x-hidden ${hasSharedPageLayout ? 'min-h-screen bg-background' : ''}`}>
       {hasSharedPageLayout && <BackdropLayer />}
 
-      <main className={`relative z-10 ${hasSharedPageLayout ? `min-h-screen ${isHome ? 'pt-0' : 'pt-6 sm:pt-8'}` : ''}`}>
+      <main className={`relative z-10 ${hasSharedPageLayout ? `min-h-screen ${hasHero ? 'pt-0' : 'pt-6 sm:pt-8'}` : ''}`}>
         <Suspense fallback={<PageLoadingFallback />}>
           <Outlet />
         </Suspense>

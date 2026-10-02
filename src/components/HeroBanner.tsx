@@ -25,13 +25,21 @@ const preloadImage = (src: string | null) => {
 const logoCache: Record<string, string | null> = {};
 const trailerCache: Record<string, Video | null> = {};
 
+// Which TMDB title to use for logo/trailer lookups (anime uses its matched TMDB title, if any)
+const getTmdbRef = (movie: Movie): { id: number; media_type: 'movie' | 'tv' } | null => {
+  if (movie.media_type === 'anime') return movie.tmdb_ref ?? null;
+  return { id: movie.id, media_type: movie.media_type === 'tv' ? 'tv' : 'movie' };
+};
+
 interface HeroBannerProps {
   movies: Movie[];
   isLoading?: boolean;
   onArtworkChange?: (artworkUrl: string | null) => void;
+  /** Slightly shorter hero for catalog pages (Movies / Series / Anime) */
+  compact?: boolean;
 }
 
-const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerProps) => {
+const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = false }: HeroBannerProps) => {
   const navigate = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
   const { user } = useAuth();
@@ -54,6 +62,9 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
   const logoUrl = logoPath ? getLogoUrl(logoPath, 'w500') : null;
   const isLogoReady = !currentMovie || logos[logoKey] !== undefined;
   const currentTrailer = trailers[logoKey];
+  const heroHeight = compact
+    ? 'h-[56svh] min-h-[400px] max-h-[560px] sm:h-[68svh] sm:min-h-[460px] sm:max-h-[720px]'
+    : 'h-[62svh] min-h-[430px] max-h-[620px] sm:h-[85svh] sm:min-h-[500px] sm:max-h-none';
   const currentArtworkUrl = currentMovie
     ? getBackdropUrl(currentMovie.backdrop_path, 'original') ||
       (currentMovie.poster_path ? getImageUrl(currentMovie.poster_path, 'w780') : null)
@@ -82,11 +93,17 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
         if (requestedLogoKeys.current.has(key) || key in logoCache) return;
         requestedLogoKeys.current.add(key);
 
+        const ref = getTmdbRef(movie);
+        if (!ref) {
+          logoCache[key] = null;
+          setLogos(prev => ({ ...prev, [key]: null }));
+          return;
+        }
+
         try {
-          const mediaType = movie.media_type || 'movie';
-          const images = mediaType === 'tv'
-            ? await getTVImages(movie.id)
-            : await getMovieImages(movie.id);
+          const images = ref.media_type === 'tv'
+            ? await getTVImages(ref.id)
+            : await getMovieImages(ref.id);
 
           const englishLogos = images.logos
             .filter(l => l.iso_639_1 === 'en' || l.iso_639_1 === null)
@@ -117,11 +134,21 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
         if (requestedTrailerKeys.current.has(key) || key in trailerCache) return;
         requestedTrailerKeys.current.add(key);
 
+        const anilistTrailer: Video | null = movie.trailer_key
+          ? { id: `anilist-${movie.id}`, key: movie.trailer_key, name: 'Trailer', site: 'YouTube', type: 'Trailer', official: true }
+          : null;
+        const ref = getTmdbRef(movie);
+
+        if (!ref) {
+          trailerCache[key] = anilistTrailer;
+          setTrailers(prev => ({ ...prev, [key]: anilistTrailer }));
+          return;
+        }
+
         try {
-          const mediaType = movie.media_type || 'movie';
-          const videos = mediaType === 'tv'
-            ? await getTVVideos(movie.id)
-            : await getMovieVideos(movie.id);
+          const videos = ref.media_type === 'tv'
+            ? await getTVVideos(ref.id)
+            : await getMovieVideos(ref.id);
 
           const trailer = videos.results.find(
             v => v.site === 'YouTube' && v.type === 'Trailer' && v.official
@@ -131,11 +158,12 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
             v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip')
           );
 
-          trailerCache[key] = trailer || null;
-          setTrailers(prev => ({ ...prev, [key]: trailer || null }));
+          const finalTrailer = trailer || anilistTrailer;
+          trailerCache[key] = finalTrailer;
+          setTrailers(prev => ({ ...prev, [key]: finalTrailer }));
         } catch {
-          trailerCache[key] = null;
-          setTrailers(prev => ({ ...prev, [key]: null }));
+          trailerCache[key] = anilistTrailer;
+          setTrailers(prev => ({ ...prev, [key]: anilistTrailer }));
         }
       });
 
@@ -183,14 +211,20 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
     const syncWatchlistState = async () => {
       if (!currentMovie) return;
       const mediaType = currentMovie.media_type || 'movie';
+      const wlType = mediaType as 'movie' | 'tv';
 
       if (user) {
-        const inDb = await isInWatchlistDb(currentMovie.id, mediaType);
-        setInWatchlist(inDb);
+        let inDb = false;
+        try {
+          inDb = await isInWatchlistDb(currentMovie.id, wlType);
+        } catch {
+          inDb = false;
+        }
+        setInWatchlist(inDb || (mediaType === 'anime' && isInWatchlist(currentMovie.id, wlType)));
         return;
       }
 
-      setInWatchlist(isInWatchlist(currentMovie.id, mediaType));
+      setInWatchlist(isInWatchlist(currentMovie.id, wlType));
     };
 
     syncWatchlistState();
@@ -199,7 +233,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="hero-banner relative mb-8 h-[62svh] min-h-[430px] max-h-[620px] overflow-hidden bg-background sm:h-[85svh] sm:min-h-[500px] sm:max-h-none"
+        className={cn("hero-banner relative mb-8 overflow-hidden bg-background", heroHeight)}
         style={{ '--hero-navbar-clearance': '5.75rem' } as React.CSSProperties}
         role="status"
         aria-label="Loading featured titles"
@@ -242,10 +276,16 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
   const handleAddToList = async () => {
     if (inWatchlist) return;
 
+    const item = { ...currentMovie, media_type: mediaType };
     if (user) {
-      await addToWatchlistDb({ ...currentMovie, media_type: mediaType });
+      try {
+        await addToWatchlistDb(item);
+      } catch (error) {
+        if (mediaType !== 'anime') throw error;
+        addToWatchlist(item); // anime falls back to this device's list
+      }
     } else {
-      addToWatchlist({ ...currentMovie, media_type: mediaType });
+      addToWatchlist(item);
     }
 
     setInWatchlist(true);
@@ -260,7 +300,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
 
   return (
     <div
-      className="hero-banner relative mb-8 h-[62svh] min-h-[430px] max-h-[620px] overflow-hidden sm:h-[85svh] sm:min-h-[500px] sm:max-h-none"
+      className={cn("hero-banner relative mb-8 overflow-hidden", heroHeight)}
       style={{ '--hero-navbar-clearance': '5.75rem' } as React.CSSProperties}
       aria-roledescription="carousel"
       aria-label="Featured titles"
@@ -324,7 +364,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
             )}>
               <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-4 md:gap-3">
                 <span className="rounded-full border border-white/40 bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black shadow-lg">
-                  {mediaType === 'tv' ? 'TV Series' : 'Movie'}
+                  {mediaType === 'tv' ? 'TV Series' : mediaType === 'anime' ? 'Anime' : 'Movie'}
                 </span>
                 <div className="flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-white backdrop-blur-sm">
                   <svg className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" viewBox="0 0 24 24">

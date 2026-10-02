@@ -12,6 +12,10 @@ export interface Movie {
   first_air_date?: string;
   media_type?: 'movie' | 'tv' | 'anime';
   genre_ids?: number[];
+  /** Anime only: YouTube key of the AniList trailer */
+  trailer_key?: string | null;
+  /** Anime only: matching TMDB title, used for hero logo/trailer lookups */
+  tmdb_ref?: { id: number; media_type: 'movie' | 'tv' } | null;
 }
 
 export interface CastMember {
@@ -222,6 +226,21 @@ export const getPopularTV = async (page = 1) => {
 export const getTopRatedTV = async (page = 1) => {
   const data = await fetchTMDB<{ results: Movie[]; total_pages: number }>('/tv/top_rated', { page: String(page) });
   return { results: data.results.map(m => ({ ...m, media_type: 'tv' as const })), totalPages: data.total_pages };
+};
+
+export const getOnTheAirTV = async (page = 1) => {
+  const data = await fetchTMDB<{ results: Movie[]; total_pages: number }>('/tv/on_the_air', { page: String(page) });
+  return { results: data.results.map(m => ({ ...m, media_type: 'tv' as const })), totalPages: data.total_pages };
+};
+
+export const getDiscoverByGenre = async (mediaType: 'movie' | 'tv', genreId: number, page = 1) => {
+  const data = await fetchTMDB<{ results: Movie[]; total_pages: number }>(`/discover/${mediaType}`, {
+    with_genres: String(genreId),
+    sort_by: 'popularity.desc',
+    'vote_count.gte': '100',
+    page: String(page),
+  });
+  return { results: data.results.map(m => ({ ...m, media_type: mediaType })), totalPages: data.total_pages };
 };
 
 export const searchMultiPaginated = async (query: string, page = 1) => {
