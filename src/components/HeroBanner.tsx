@@ -180,7 +180,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
+        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-background"
         role="status"
         aria-label="Loading featured titles"
       >
@@ -240,7 +240,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-black"
+      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-background"
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
@@ -271,7 +271,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                     className="absolute inset-0 h-full w-full scale-110 object-cover object-top opacity-55 blur-2xl"
                     loading={index === 0 ? 'eager' : 'lazy'}
                   />
-                  <div className="absolute inset-x-0 bottom-0 top-16 overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_100%)]">
+                  <div className="absolute inset-x-0 bottom-0 top-16 overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_86%,transparent_100%)]">
                     <img
                       src={artworkUrl}
                       alt=""
@@ -296,9 +296,15 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       </div>
 
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/20" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
       <div className="absolute inset-0 shadow-[inset_0_0_100px_20px_rgba(0,0,0,0.25)]" />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%]"
+        style={{
+          background:
+            'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background)) 8%, hsl(var(--background) / 0.85) 38%, hsl(var(--background) / 0.4) 72%, transparent 100%)',
+        }}
+      />
 
       <div className="relative z-10 flex h-full items-center">
         <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
