@@ -347,7 +347,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
               )}
             >
               {artworkUrl && (
-                  <div className="absolute inset-x-0 bottom-0 top-[var(--hero-navbar-clearance)] overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,black_0%,black_86%,transparent_100%)]">
+                  <div className="absolute inset-x-0 bottom-0 top-[var(--hero-navbar-clearance)] overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_86%,transparent_100%)]">
                     <img
                       src={artworkUrl}
                       alt=""

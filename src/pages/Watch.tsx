@@ -69,10 +69,10 @@ const DownloadMenu = ({ primaryUrl, bunnyUrl }: { primaryUrl: string; bunnyUrl: 
   return (
     <div className="relative inline-block">
       <Button ref={btnRef} variant="outline" size="sm"
-        className="h-9 px-3 border-zinc-700 hover:bg-zinc-800 flex items-center gap-2"
-        onClick={handleToggle}>
-        <Download className="w-4 h-4" />Download
-        <ChevronDown className={cn('w-3.5 h-3.5 ml-1 transition-transform', open && 'rotate-180')} />
+        className="h-9 w-10 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1"
+        onClick={handleToggle} aria-label="Download options" title="Download options">
+        <Download className="w-4 h-4" />
+        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
       </Button>
       {open && (
         <>
@@ -149,12 +149,13 @@ const SmartAddToList = ({ tmdbId, mediaType, title, posterPath, backdropPath, vo
       <Button
         variant={inWatchlist ? 'default' : 'outline'}
         size="sm"
-        className={cn('min-w-[130px] border-zinc-700 hover:bg-zinc-800 flex items-center gap-1.5', inWatchlist && 'bg-white text-black hover:bg-gray-200')}
+        className={cn('h-9 w-10 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1', inWatchlist && 'bg-white text-black hover:bg-gray-200')}
         onClick={() => setOpen(!open)}
+        aria-label={inWatchlist ? 'Manage list' : 'Add to list'}
+        title={inWatchlist ? 'Manage list' : 'Add to list'}
       >
         {inWatchlist ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-        Add to List
-        <ChevronDown className={cn('w-3.5 h-3.5 ml-1 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
       </Button>
 
       {open && (
@@ -649,7 +650,6 @@ const Watch = () => {
                     <ArrowLeft className="w-4 h-4 mr-2" />Back
                   </Button>
                 </div>
-                <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                 <div className="relative isolate">
                   {isReleaseLocked && releaseWindow ? (
                     <ReleaseCountdown
@@ -686,7 +686,8 @@ const Watch = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="min-w-0 flex-1 truncate text-xl md:text-2xl font-bold">{title}</h1>
+                <div className="flex items-center gap-2 flex-wrap sm:justify-end">
                   <SmartAddToList
                     tmdbId={movieId}
                     mediaType={mediaType}
