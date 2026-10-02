@@ -154,6 +154,16 @@ const Index = () => {
           onArtworkChange={handleHeroArtworkChange}
         />
 
+        {/* Soft shadow straddling the hero/content joint to hide any seam (net layout height 0) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none relative z-20 -mb-12 -mt-28 h-40"
+          style={{
+            background:
+              'linear-gradient(to bottom, transparent 0%, hsl(var(--background) / 0.35) 50%, transparent 100%)',
+          }}
+        />
+
         {/* Continue Watching Section */}
         {user && watchProgress.length > 0 && (
           <div className="px-4 lg:px-6">
