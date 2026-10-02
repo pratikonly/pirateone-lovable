@@ -299,9 +299,15 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
         })}
       </div>
 
-      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
-      <div className="absolute inset-0 shadow-[inset_0_0_100px_20px_rgba(0,0,0,0.25)]" />
+      {/* Overlays fade out toward the bottom so they never end in a hard line */}
+      <div
+        className="pointer-events-none absolute inset-0 [mask-image:linear-gradient(to_bottom,black_0%,black_50%,transparent_100%)]"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
+        <div className="absolute inset-0 shadow-[inset_0_0_100px_20px_rgba(0,0,0,0.25)]" />
+      </div>
       <div className="relative z-10 flex h-full items-center pt-[var(--hero-navbar-clearance)] sm:pt-0">
         <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
             <div className={cn(
@@ -398,4 +404,3 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
 };
 
 export default HeroBanner;
-
