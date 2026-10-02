@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus } from 'lucide-react';
+import { Play, Plus, Volume2, VolumeX } from 'lucide-react';
 import { Movie, getBackdropUrl, getImageUrl, getMovieImages, getTVImages, getLogoUrl, getMovieVideos, getTVVideos, Video } from '@/lib/tmdb';
 import { addToWatchlist, isInWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb } from '@/lib/watchlistDb';
@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import TrailerModal from './TrailerModal';
+import HeroTrailerBackground from './HeroTrailerBackground';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
 
 const preloadImage = (src: string | null) => {
@@ -50,6 +51,28 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
   const [logos, setLogos] = useState<Record<string, string | null>>(() => ({ ...logoCache }));
   const [trailers, setTrailers] = useState<Record<string, Video | null>>(() => ({ ...trailerCache }));
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [canAutoplayVideo, setCanAutoplayVideo] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
+  const handleVideoPlayingChange = useCallback((playing: boolean) => setVideoPlaying(playing), []);
+
+  // Background trailers: desktop only, respects reduced motion and data saver
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 768px) and (prefers-reduced-motion: no-preference)');
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    const update = () => setCanAutoplayVideo(query.matches && !connection?.saveData);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  // Pause (unmount) the background video while the tab is hidden
+  useEffect(() => {
+    const onVisibility = () => setPageVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
   const requestedLogoKeys = useRef(new Set<string>());
   const requestedTrailerKeys = useRef(new Set<string>());
   const transitionTimeout = useRef<number | null>(null);
@@ -196,10 +219,10 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
 
     const interval = window.setInterval(() => {
       goToSlide((currentIndex + 1) % featuredMovies.length, 'next');
-    }, 8500);
+    }, videoPlaying ? 24000 : 8500);
 
     return () => window.clearInterval(interval);
-  }, [currentIndex, featuredMovies.length, goToSlide]);
+  }, [currentIndex, featuredMovies.length, goToSlide, videoPlaying]);
 
   useEffect(() => () => {
     if (transitionTimeout.current) {
@@ -340,6 +363,15 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
                         }
                       }}
                     />
+                    {index === currentIndex && canAutoplayVideo && currentTrailer?.site === 'YouTube' && (
+                      <HeroTrailerBackground
+                        key={currentTrailer.key}
+                        videoKey={currentTrailer.key}
+                        active={!isTransitioning && !trailerOpen && pageVisible}
+                        muted={isMuted}
+                        onPlayingChange={handleVideoPlayingChange}
+                      />
+                    )}
                   </div>
               )}
             </div>
@@ -432,6 +464,17 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
             </div>
         </div>
       </div>
+
+      {videoPlaying && (
+        <button
+          type="button"
+          onClick={() => setIsMuted(muted => !muted)}
+          aria-label={isMuted ? 'Unmute trailer' : 'Mute trailer'}
+          className="absolute bottom-16 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60 sm:right-10"
+        >
+          {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
+      )}
 
       <TrailerModal
         isOpen={trailerOpen}
