@@ -268,8 +268,11 @@ const Watch = () => {
   useEffect(() => { userRef.current           = user;           }, [user]);
   useEffect(() => { detailsRef.current        = details;        }, [details]);
 
+  // Fetch details only when the title changes (NOT when auth resolves),
+  // otherwise the skeleton is shown a second time once `user` loads.
   useEffect(() => {
     if (!movieId) { setIsLoading(false); return; }
+    let cancelled = false;
     setIsLoading(true);
     setLogoUrl(null);
     const run = async () => {
@@ -279,6 +282,7 @@ const Watch = () => {
           : mediaType === 'movie'
             ? await getMovieDetails(movieId)
             : await getTVDetails(movieId);
+        if (cancelled) return;
         setDetails(data);
         if (data.backdrop_path) setBackdropUrl(getBackdropUrl(data.backdrop_path, 'original'));
         if (mediaType === 'anime') {
@@ -287,18 +291,30 @@ const Watch = () => {
           try {
             const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
             const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
-            if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
+            if (logo && !cancelled) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
           } catch { /* logo optional */ }
         }
-        let listed = user ? await isInWatchlistDb(movieId, wlType) : isInWatchlist(movieId, wlType);
-        if (!listed && mediaType === 'anime') listed = isInWatchlist(movieId, wlType);
-        setInWatchlist(listed);
       } catch (e) { console.error('fetchDetails failed:', e); }
-      finally { setIsLoading(false); }
+      finally { if (!cancelled) setIsLoading(false); }
     };
     run();
-    return () => { setBackdropUrl(null); };
-  }, [movieId, mediaType, setBackdropUrl, user]);
+    return () => { cancelled = true; setBackdropUrl(null); };
+  }, [movieId, mediaType, setBackdropUrl]);
+
+  // Watchlist state is separate: it may re-run when `user` loads without touching the page skeleton
+  useEffect(() => {
+    if (!movieId) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        let listed = user ? await isInWatchlistDb(movieId, wlType) : isInWatchlist(movieId, wlType);
+        if (!listed && mediaType === 'anime') listed = isInWatchlist(movieId, wlType);
+        if (!cancelled) setInWatchlist(listed);
+      } catch { if (!cancelled) setInWatchlist(false); }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [movieId, mediaType, wlType, user]);
 
   // Anime ids are AniList ids: start at episode 1 on a server that understands them
   useEffect(() => {
@@ -595,17 +611,15 @@ const Watch = () => {
                       <div className="text-xs text-zinc-500">Episode {animeDetails.next_airing_episode} airing soon</div>
                     ) : null}
                   </div>
-                  <ScrollArea className="h-32">
-                    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
-                      {Array.from({ length: animeEpisodeCount }, (_, i) => i + 1).map(n => (
-                        <button key={n} onClick={() => setEpisode(n)}
-                          className={cn('p-2 rounded-md text-left transition-colors text-sm',
-                            episode === n ? 'bg-white/10 text-white' : 'bg-zinc-900/50 hover:bg-zinc-800')}>
-                          <div className="font-medium">Ep {n}</div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                    {Array.from({ length: animeEpisodeCount }, (_, i) => i + 1).map(n => (
+                      <button key={n} onClick={() => setEpisode(n)}
+                        className={cn('p-2 rounded-md text-left transition-colors text-sm',
+                          episode === n ? 'bg-white/10 text-white' : 'bg-zinc-900/50 hover:bg-zinc-800')}>
+                        <div className="font-medium">Ep {n}</div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -774,42 +788,40 @@ const Watch = () => {
                     </div>
                     <div className="text-sm text-zinc-400">{seasonDetails?.episodes?.length || 0} Episodes</div>
                   </div>
-                  <ScrollArea className="h-48 sm:h-56">
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '', still_path: null, air_date: undefined }))).map((ep: any) => (
-                        <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
-                          className={cn('overflow-hidden rounded-md border text-left transition-colors text-sm',
-                            episode === ep.episode_number
-                              ? 'border-white/30 bg-white/10 text-white'
-                              : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800')}>
-                          {ep.still_path ? (
-                            <img
-                              src={getImageUrl(ep.still_path, 'w300') || ''}
-                              alt=""
-                              loading="lazy"
-                              className="aspect-video w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex aspect-video items-center justify-center bg-zinc-900 text-xs text-zinc-500">
-                              No still available
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                    {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '', still_path: null, air_date: undefined }))).map((ep: any) => (
+                      <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
+                        className={cn('overflow-hidden rounded-md border text-left transition-colors text-sm',
+                          episode === ep.episode_number
+                            ? 'border-white/30 bg-white/10 text-white'
+                            : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800')}>
+                        {ep.still_path ? (
+                          <img
+                            src={getImageUrl(ep.still_path, 'w300') || ''}
+                            alt=""
+                            loading="lazy"
+                            className="aspect-video w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex aspect-video items-center justify-center bg-zinc-900 text-xs text-zinc-500">
+                            No still available
+                          </div>
+                        )}
+                        <div className="space-y-1 p-2">
+                          <div className="truncate font-medium" title={ep.name || `Episode ${ep.episode_number}`}>
+                            Ep {ep.episode_number}{ep.name ? ` · ${ep.name}` : ''}
+                          </div>
+                          {ep.air_date && (
+                            <div className="text-xs text-zinc-400">
+                              {new Date(`${ep.air_date}T00:00:00`).toLocaleDateString(undefined, {
+                                year: 'numeric', month: 'short', day: 'numeric',
+                              })}
                             </div>
                           )}
-                          <div className="space-y-1 p-2">
-                            <div className="truncate font-medium" title={ep.name || `Episode ${ep.episode_number}`}>
-                              Ep {ep.episode_number}{ep.name ? ` · ${ep.name}` : ''}
-                            </div>
-                            {ep.air_date && (
-                              <div className="text-xs text-zinc-400">
-                                {new Date(`${ep.air_date}T00:00:00`).toLocaleDateString(undefined, {
-                                  year: 'numeric', month: 'short', day: 'numeric',
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </section>
               )}
               {mediaType === 'movie' && details.belongs_to_collection && (
