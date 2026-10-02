@@ -81,15 +81,6 @@ export interface Logo {
 
 export interface ImagesResponse {
   logos: Logo[];
-  backdrops?: ArtworkImage[];
-  posters?: ArtworkImage[];
-}
-
-export interface ArtworkImage {
-  file_path: string;
-  iso_639_1: string | null;
-  width: number;
-  height: number;
 }
 
 export interface Video {

@@ -9,7 +9,7 @@ import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
   getMovieImages, getTVImages, getLogoUrl,
-  MovieDetails, SeasonDetails, ImagesResponse,
+  MovieDetails, SeasonDetails,
   getImageUrl, getBackdropUrl,
   ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS, ANIME_ID_SERVERS,
 } from '@/lib/tmdb';
@@ -69,7 +69,7 @@ const DownloadMenu = ({ primaryUrl, bunnyUrl }: { primaryUrl: string; bunnyUrl: 
   return (
     <div className="relative inline-block">
       <Button ref={btnRef} variant="outline" size="sm"
-        className="h-9 w-10 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1"
+        className="h-9 w-12 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1"
         onClick={handleToggle} aria-label="Download options" title="Download options">
         <Download className="w-4 h-4" />
         <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
@@ -149,7 +149,7 @@ const SmartAddToList = ({ tmdbId, mediaType, title, posterPath, backdropPath, vo
       <Button
         variant={inWatchlist ? 'default' : 'outline'}
         size="sm"
-        className={cn('h-9 w-10 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1', inWatchlist && 'bg-white text-black hover:bg-gray-200')}
+        className={cn('h-9 w-12 px-0 border-zinc-700 hover:bg-zinc-800 flex items-center justify-center gap-1', inWatchlist && 'bg-white text-black hover:bg-gray-200')}
         onClick={() => setOpen(!open)}
         aria-label={inWatchlist ? 'Manage list' : 'Add to list'}
         title={inWatchlist ? 'Manage list' : 'Add to list'}
@@ -231,7 +231,6 @@ const Watch = () => {
   const [season, setSeason]                 = useState(1);
   const [episode, setEpisode]               = useState(1);
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
-  const [tmdbImages, setTmdbImages]         = useState<ImagesResponse | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('vidstuck');
   const [isDub, setIsDub]                   = useState(false);
   const [serverOpen, setServerOpen]         = useState(false);
@@ -273,7 +272,6 @@ const Watch = () => {
     if (!movieId) { setIsLoading(false); return; }
     setIsLoading(true);
     setLogoUrl(null);
-    setTmdbImages(null);
     const run = async () => {
       try {
         const data = mediaType === 'anime'
@@ -288,7 +286,6 @@ const Watch = () => {
         } else {
           try {
             const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
-            setTmdbImages(images);
             const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
             if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
           } catch { /* logo optional */ }
@@ -558,13 +555,6 @@ const Watch = () => {
   const posterUrl   = getImageUrl(details.poster_path, 'w500');
   const cast        = details.credits?.cast?.slice(0, 10) || [];
   const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
-  const currentArtworkPaths = new Set([details.poster_path, details.backdrop_path].filter((path): path is string => Boolean(path)));
-  const artworkBackdrops = (tmdbImages?.backdrops ?? [])
-    .filter(image => image.file_path && !currentArtworkPaths.has(image.file_path))
-    .slice(0, 8);
-  const artworkPosters = (tmdbImages?.posters ?? [])
-    .filter(image => image.file_path && !currentArtworkPaths.has(image.file_path))
-    .slice(0, 8);
   const dlType      = mediaType === 'movie' ? 'movie' : 'tv'; // download links are TMDB-only (hidden for anime)
   const downloadUrl = getDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
   const bunnyUrl    = getBunnyDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
@@ -918,59 +908,6 @@ const Watch = () => {
               )}
             </div>
           </div>
-          {!isAnime && (artworkBackdrops.length > 0 || artworkPosters.length > 0) && (
-            <section className="mt-10 space-y-6" aria-labelledby="more-artwork-heading">
-              <h2 id="more-artwork-heading" className="text-xl font-bold text-white">More artwork</h2>
-              {artworkBackdrops.length > 0 && (
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-zinc-300">Backdrops</h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {artworkBackdrops.map(image => (
-                      <a
-                        key={image.file_path}
-                        href={getBackdropUrl(image.file_path, 'original') || undefined}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open full-size backdrop for ${title}`}
-                        className="block overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
-                      >
-                        <img
-                          src={getBackdropUrl(image.file_path, 'w780') || ''}
-                          alt={`Backdrop artwork for ${title}`}
-                          loading="lazy"
-                          className="aspect-video w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {artworkPosters.length > 0 && (
-                <div>
-                  <h3 className="mb-3 text-sm font-semibold text-zinc-300">Posters</h3>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-                    {artworkPosters.map(image => (
-                      <a
-                        key={image.file_path}
-                        href={getImageUrl(image.file_path, 'original') || undefined}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open full-size poster for ${title}`}
-                        className="block overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
-                      >
-                        <img
-                          src={getImageUrl(image.file_path, 'w300') || ''}
-                          alt={`Poster artwork for ${title}`}
-                          loading="lazy"
-                          className="aspect-[2/3] w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
-                        />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
           {isAnime ? (
             animeDetails && animeDetails.recommendations.length > 0 && (
               <div className="mt-12 mb-12"><MovieRow title="More like this" movies={animeDetails.recommendations} /></div>

@@ -1,1 +1,2 @@
 - [Node package setup](node-package-setup.md) — ranged installs may upgrade versions, and npm lock-only runs may preserve Replit mirror URLs; verify both.
+- [Watch action button sizing](watch-action-controls.md) — Keep Add to List and Download icon buttons wider than their original 40px compact size.
