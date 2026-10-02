@@ -351,7 +351,12 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
                     <img
                       src={artworkUrl}
                       alt=""
-                      className="h-full w-full object-cover object-top opacity-80"
+                      className={cn(
+                        'h-full w-full object-cover object-top transition-opacity duration-1000 ease-out motion-reduce:transition-none',
+                        videoPlaying && index === currentIndex && !isTransitioning && !trailerOpen && pageVisible
+                          ? 'opacity-0'
+                          : 'opacity-80'
+                      )}
                       loading={index === 0 ? 'eager' : 'lazy'}
                       onError={(event) => {
                         const image = event.currentTarget;

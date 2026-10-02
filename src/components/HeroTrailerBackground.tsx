@@ -66,6 +66,7 @@ const HeroTrailerBackground = ({ videoKey, active, muted, onPlayingChange }: Her
       if (data.event === 'onError') {
         setFailed(true);
         setMounted(false);
+        setPlaying(false);
         return;
       }
 
@@ -77,7 +78,7 @@ const HeroTrailerBackground = ({ videoKey, active, muted, onPlayingChange }: Her
             ? (info as { playerState?: number } | undefined)?.playerState
             : undefined;
 
-      if (state === 1) setPlaying(true);
+      if (state !== undefined) setPlaying(state === 1);
     };
 
     window.addEventListener('message', onMessage);
@@ -118,7 +119,7 @@ const HeroTrailerBackground = ({ videoKey, active, muted, onPlayingChange }: Her
     <div
       className={cn(
         'pointer-events-none absolute inset-0 overflow-hidden transition-opacity duration-1000',
-        playing ? 'opacity-90' : 'opacity-0',
+        playing ? 'opacity-100' : 'opacity-0',
       )}
       style={{ containerType: 'size' }}
       aria-hidden="true"
