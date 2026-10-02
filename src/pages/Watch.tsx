@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Star, Calendar, Clock,
   Users, Film, Server, ChevronDown, Download,
@@ -208,11 +208,16 @@ const SmartAddToList = ({ tmdbId, mediaType, title, posterPath, backdropPath, vo
 const Watch = () => {
   const { type, id } = useParams<{ type?: string; id?: string }>();
   const navigate       = useNavigate();
+  const location       = useLocation();
   const setBackdropUrl = useSetBackdropUrl();
   const { user }       = useAuth();
 
   const parsed    = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
+  const navigationTitle = (location.state as { cardTitle?: unknown } | null)?.cardTitle;
+  const cardTitle = mediaType === 'movie' && typeof navigationTitle === 'string'
+    ? navigationTitle.trim()
+    : '';
   const movieId   = parsed.success ? parsed.data.id   : 0;
   const isAnime     = mediaType === 'anime';
   const isEpisodic  = mediaType !== 'movie';
@@ -516,7 +521,9 @@ const Watch = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
         <div className="space-y-4">
           <div className="aspect-video bg-zinc-900 rounded-lg animate-pulse" />
-          <div className="h-8 w-64 bg-zinc-900 rounded animate-pulse" />
+          {cardTitle
+            ? <h1 className="text-2xl md:text-3xl font-bold text-white">{cardTitle}</h1>
+            : <div className="h-8 w-64 bg-zinc-900 rounded animate-pulse" />}
           <div className="h-4 w-full bg-zinc-900 rounded animate-pulse" />
           <div className="h-4 w-3/4 bg-zinc-900 rounded animate-pulse" />
         </div>
@@ -530,12 +537,13 @@ const Watch = () => {
 
   if (!details) return (
     <div className="p-8 text-center">
+      {cardTitle && <h1 className="text-2xl font-bold text-white mb-2">{cardTitle}</h1>}
       <p className="text-muted-foreground">Content not found</p>
       <Button onClick={() => navigate('/')} className="mt-4">Go Home</Button>
     </div>
   );
 
-  const title       = details.title || details.name || 'Untitled';
+  const title       = details.title?.trim() || details.name?.trim() || cardTitle || 'Untitled';
   const year        = (details.release_date || details.first_air_date)?.split('-')[0] || '';
   const rating      = details.vote_average?.toFixed(1) || 'N/A';
   const runtime     = details.runtime

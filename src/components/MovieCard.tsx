@@ -115,7 +115,7 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
   };
 
   const handlePlay = () => {
-    navigate(`/watch/${mediaType}/${movie.id}`);
+    navigate(`/watch/${mediaType}/${movie.id}`, { state: { cardTitle: title } });
   };
 
   return (
