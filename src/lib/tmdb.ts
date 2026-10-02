@@ -10,7 +10,7 @@ export interface Movie {
   vote_average: number;
   release_date?: string;
   first_air_date?: string;
-  media_type?: 'movie' | 'tv';
+  media_type?: 'movie' | 'tv' | 'anime';
   genre_ids?: number[];
 }
 
@@ -127,13 +127,18 @@ export interface CollectionDetails {
   parts: Movie[];
 }
 
+// AniList (anime) images are already absolute URLs, so pass them through untouched
+const isAbsoluteUrl = (path: string) => /^https?:\/\//i.test(path);
+
 export const getImageUrl = (path: string | null, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500') => {
   if (!path) return null;
+  if (isAbsoluteUrl(path)) return path;
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 };
 
 export const getBackdropUrl = (path: string | null, size: 'w780' | 'w1280' | 'original' = 'w1280') => {
   if (!path) return null;
+  if (isAbsoluteUrl(path)) return path;
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 };
 
@@ -354,6 +359,9 @@ export const ANIME_SERVERS: ServerInfo[] = [
   { id: 'vidzee', name: 'VidZee', supportsMovies: true, supportsTV: true, supportsAnime: true },
 ];
 
+// Servers whose anime embeds use AniList ids (VIDSTUCK only understands TMDB ids)
+export const ANIME_ID_SERVERS: ServerType[] = ['videasy', 'vidnest', 'vidzee', 'vidsrccc'];
+
 // Combined list for backward compatibility
 export const SERVER_LIST: ServerInfo[] = [...ANIME_SERVERS, ...MOVIE_TV_SERVERS];
 
@@ -368,6 +376,9 @@ export const getPlayerUrl = (
   imdbId?: string
 ) => {
   const accent = 'FD105E';
+
+  // Anime ids are AniList ids: fall back to a server that understands them
+  if (type === 'anime' && !ANIME_ID_SERVERS.includes(server)) server = 'videasy';
 
   // VIDSTUCK — primary server for movies, TV, and anime titles using TMDB IDs.
   if (server === 'vidstuck') {

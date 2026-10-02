@@ -11,8 +11,9 @@ import {
   getMovieImages, getTVImages, getLogoUrl,
   MovieDetails, SeasonDetails,
   getImageUrl, getBackdropUrl,
-  ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS,
+  ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS, ANIME_ID_SERVERS,
 } from '@/lib/tmdb';
+import { getAnimeDetails, AnimeDetails } from '@/lib/anilist';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -20,6 +21,7 @@ import { getWatchProgress, saveWatchProgress, getProgressPercentage } from '@/li
 import { getShowStatus, setShowStatus } from '@/lib/showStatus';
 import VideoPlayer from '@/components/VideoPlayer';
 import RecommendedContent from '@/components/RecommendedContent';
+import MovieRow from '@/components/MovieRow';
 import CollectionInfo from '@/components/CollectionInfo';
 import TMDBReviews from '@/components/TMDBReviews';
 import { Button } from '@/components/ui/button';
@@ -32,7 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const watchParamsSchema = z.object({
-  type: z.enum(['movie', 'tv']),
+  type: z.enum(['movie', 'tv', 'anime']),
   id: z.coerce.number().int().positive(),
 });
 
@@ -210,8 +212,11 @@ const Watch = () => {
   const parsed    = useMemo(() => watchParamsSchema.safeParse({ type, id }), [type, id]);
   const mediaType = parsed.success ? parsed.data.type : 'movie';
   const movieId   = parsed.success ? parsed.data.id   : 0;
+  const isAnime     = mediaType === 'anime';
+  const isEpisodic  = mediaType !== 'movie';
+  const wlType      = mediaType as 'movie' | 'tv'; // anime reuses the watchlist helpers
 
-  const [details, setDetails]               = useState<MovieDetails | null>(null);
+  const [details, setDetails]               = useState<MovieDetails | AnimeDetails | null>(null);
   const [seasonDetails, setSeasonDetails]   = useState<SeasonDetails | null>(null);
   const [isLoading, setIsLoading]           = useState(true);
   const [inWatchlist, setInWatchlist]       = useState(false);
@@ -219,6 +224,7 @@ const Watch = () => {
   const [episode, setEpisode]               = useState(1);
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('vidstuck');
+  const [isDub, setIsDub]                   = useState(false);
   const [serverOpen, setServerOpen]         = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const toggleTheater = useCallback(() => {
@@ -259,23 +265,40 @@ const Watch = () => {
     setIsLoading(true);
     const run = async () => {
       try {
-        const data = mediaType === 'movie'
-          ? await getMovieDetails(movieId)
-          : await getTVDetails(movieId);
+        const data = mediaType === 'anime'
+          ? await getAnimeDetails(movieId)
+          : mediaType === 'movie'
+            ? await getMovieDetails(movieId)
+            : await getTVDetails(movieId);
         setDetails(data);
         if (data.backdrop_path) setBackdropUrl(getBackdropUrl(data.backdrop_path, 'original'));
-        try {
-          const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
-          const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
-          if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
-        } catch { /* logo optional */ }
-        setInWatchlist(user ? await isInWatchlistDb(movieId, mediaType) : isInWatchlist(movieId, mediaType));
+        if (mediaType === 'anime') {
+          setLogoUrl(null);
+        } else {
+          try {
+            const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
+            const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
+            if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
+          } catch { /* logo optional */ }
+        }
+        let listed = user ? await isInWatchlistDb(movieId, wlType) : isInWatchlist(movieId, wlType);
+        if (!listed && mediaType === 'anime') listed = isInWatchlist(movieId, wlType);
+        setInWatchlist(listed);
       } catch (e) { console.error('fetchDetails failed:', e); }
       finally { setIsLoading(false); }
     };
     run();
     return () => { setBackdropUrl(null); };
   }, [movieId, mediaType, setBackdropUrl, user]);
+
+  // Anime ids are AniList ids: start at episode 1 on a server that understands them
+  useEffect(() => {
+    if (mediaType !== 'anime') return;
+    setSeason(1);
+    setEpisode(1);
+    setIsDub(false);
+    setSelectedServer(s => (ANIME_ID_SERVERS.includes(s) && s !== 'vidsrccc' ? s : 'videasy'));
+  }, [movieId, mediaType]);
 
   const savedHistoryKey = useRef('');
   useEffect(() => {
@@ -288,10 +311,10 @@ const Watch = () => {
       mediaId: movieId, mediaType,
       mediaTitle: d.title || d.name || 'Unknown',
       posterPath: d.poster_path ?? null,
-      season:  mediaType === 'tv' ? season  : undefined,
-      episode: mediaType === 'tv' ? episode : undefined,
+      season:  isEpisodic ? season  : undefined,
+      episode: isEpisodic ? episode : undefined,
     });
-  }, [movieId, mediaType, season, episode]);
+  }, [movieId, mediaType, season, episode, isEpisodic]);
 
   useEffect(() => {
     if (mediaType !== 'tv' || !movieId) return;
@@ -305,8 +328,8 @@ const Watch = () => {
     const run = async () => {
       try {
         const p = await getWatchProgress(movieId, mediaType,
-          mediaType === 'tv' ? season  : undefined,
-          mediaType === 'tv' ? episode : undefined,
+          isEpisodic ? season  : undefined,
+          isEpisodic ? episode : undefined,
           selectedServerRef.current);
         if (cancelled) return;
         if (p && p.progress_time > 0) {
@@ -316,7 +339,7 @@ const Watch = () => {
     };
     run();
     return () => { cancelled = true; };
-  }, [movieId, mediaType, season, episode, user, selectedServer]);
+  }, [movieId, mediaType, season, episode, user, selectedServer, isEpisodic]);
 
   const userId = user?.id;
   useEffect(() => {
@@ -358,14 +381,14 @@ const Watch = () => {
 
         await saveWatchProgress(
           mid, mt, currentTime, duration, srv,
-          mt === 'tv' ? s  : undefined,
-          mt === 'tv' ? ep : undefined,
+          mt !== 'movie' ? s  : undefined,
+          mt !== 'movie' ? ep : undefined,
           d?.title || d?.name,
           d?.poster_path ?? null, d?.backdrop_path ?? null,
           d?.overview ?? null, d?.vote_average ?? null,
         );
 
-        if (d && userRef.current) {
+        if (d && userRef.current && mt !== 'anime') {
           try {
             const existing = await getShowStatus(mid, mt);
             if (existing) {
@@ -429,17 +452,30 @@ const Watch = () => {
     };
     try {
       if (inWatchlist) {
-        user ? await removeFromWatchlistDb(movieId, mediaType) : removeFromWatchlist(movieId, mediaType);
+        if (user) {
+          try { await removeFromWatchlistDb(movieId, wlType); } catch (e) { if (!isAnime) throw e; }
+        } else {
+          removeFromWatchlist(movieId, wlType);
+        }
+        if (isAnime) removeFromWatchlist(movieId, wlType);
         setInWatchlist(false);
       } else {
-        user ? await addToWatchlistDb(item) : addToWatchlist(item);
+        if (user) {
+          try { await addToWatchlistDb(item); } catch (e) { if (!isAnime) throw e; addToWatchlist(item); }
+        } else {
+          addToWatchlist(item);
+        }
         setInWatchlist(true);
       }
     } catch (e) { console.error('Watchlist toggle failed:', e); }
   };
 
-  const animeServers   = ANIME_SERVERS.filter(s => mediaType === 'tv' ? s.supportsTV : s.supportsMovies);
-  const movieTvServers = MOVIE_TV_SERVERS.filter(s => mediaType === 'tv' ? s.supportsTV : s.supportsMovies);
+  const animeServers   = isAnime
+    ? ANIME_SERVERS.filter(s => ANIME_ID_SERVERS.includes(s.id) && s.id !== 'vidsrccc')
+    : ANIME_SERVERS.filter(s => mediaType === 'tv' ? s.supportsTV : s.supportsMovies);
+  const movieTvServers = isAnime
+    ? []
+    : MOVIE_TV_SERVERS.filter(s => mediaType === 'tv' ? s.supportsTV : s.supportsMovies);
   const allServers     = [...animeServers, ...movieTvServers];
   const currentServerNumber = (allServers.findIndex(s => s.id === selectedServer) + 1) || 1;
 
@@ -478,13 +514,19 @@ const Watch = () => {
   const title       = details.title || details.name || 'Untitled';
   const year        = (details.release_date || details.first_air_date)?.split('-')[0] || '';
   const rating      = details.vote_average?.toFixed(1) || 'N/A';
-  const runtime     = details.runtime ? `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m` : null;
+  const runtime     = details.runtime
+    ? (details.runtime >= 60 ? `${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m` : `${details.runtime}m`)
+    : null;
   const seasons     = details.number_of_seasons || 0;
   const posterUrl   = getImageUrl(details.poster_path, 'w500');
   const cast        = details.credits?.cast?.slice(0, 10) || [];
   const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
-  const downloadUrl = getDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
-  const bunnyUrl    = getBunnyDownloadUrl(movieId, mediaType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
+  const dlType      = mediaType === 'movie' ? 'movie' : 'tv'; // download links are TMDB-only (hidden for anime)
+  const downloadUrl = getDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
+  const bunnyUrl    = getBunnyDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
+  const animeDetails      = isAnime ? (details as AnimeDetails) : null;
+  const animeEpisodeCount = animeDetails?.anime_episodes ?? 0;
+  const typeLabel         = mediaType === 'tv' ? 'TV Series' : isAnime ? 'Anime' : 'Movie';
 
   return (
     <div className={cn('min-h-screen text-white bg-transparent', theaterMode && 'watch-theater-mode')}>
@@ -495,6 +537,43 @@ const Watch = () => {
             theaterMode ? 'lg:grid-cols-1' : 'lg:grid-cols-[1fr,320px]'
           )}>
             <div className="flex flex-col gap-4">
+
+              {isAnime && animeEpisodeCount > 0 && (
+                <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
+                  <div className="flex flex-wrap items-center gap-4 mb-4">
+                    <div className="text-sm text-zinc-400">{animeEpisodeCount} Episodes</div>
+                    <div className="flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-900 p-0.5">
+                      {[false, true].map(dub => (
+                        <button
+                          key={String(dub)}
+                          onClick={() => setIsDub(dub)}
+                          title={dub ? 'Dub (depends on the server)' : 'Sub'}
+                          className={cn(
+                            'rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors',
+                            isDub === dub ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'
+                          )}
+                        >
+                          {dub ? 'Dub' : 'Sub'}
+                        </button>
+                      ))}
+                    </div>
+                    {animeDetails?.next_airing_episode ? (
+                      <div className="text-xs text-zinc-500">Episode {animeDetails.next_airing_episode} airing soon</div>
+                    ) : null}
+                  </div>
+                  <ScrollArea className="h-32">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                      {Array.from({ length: animeEpisodeCount }, (_, i) => i + 1).map(n => (
+                        <button key={n} onClick={() => setEpisode(n)}
+                          className={cn('p-2 rounded-md text-left transition-colors text-sm',
+                            episode === n ? 'bg-white/10 text-white' : 'bg-zinc-900/50 hover:bg-zinc-800')}>
+                          <div className="font-medium">Ep {n}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
 
               {mediaType === 'tv' && seasons > 0 && (
                 <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
@@ -543,7 +622,8 @@ const Watch = () => {
                     id={movieId} type={mediaType} title={title}
                     poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
                     season={mediaType === 'tv' ? season   : undefined}
-                    episode={mediaType === 'tv' ? episode : undefined}
+                    episode={isEpisodic ? episode : undefined}
+                    isDub={isDub}
                     server={selectedServer}
                     progressSeconds={watchProgress?.currentTime}
                     imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
@@ -577,7 +657,7 @@ const Watch = () => {
                     onWatchlistToggle={handleWatchlistToggle}
                   />
 
-                  <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />
+                  {!isAnime && <DownloadMenu primaryUrl={downloadUrl} bunnyUrl={bunnyUrl} />}
 
                   <div className="relative inline-block">
                     <Button ref={serverButtonRef} variant="outline" size="sm"
@@ -600,7 +680,7 @@ const Watch = () => {
                           <div className="p-3 border-b border-zinc-800">
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">Anime + Movies + TV</span>
+                              <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wide">{isAnime ? 'Anime servers' : 'Anime + Movies + TV'}</span>
                             </div>
                             <div className="grid grid-cols-3 gap-1.5">
                               {animeServers.map((srv, i) => {
@@ -624,7 +704,7 @@ const Watch = () => {
                               })}
                             </div>
                           </div>
-                          <div className="p-3">
+                          <div className={cn('p-3', movieTvServers.length === 0 && 'hidden')}>
                             <div className="flex items-center gap-2 mb-2.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                               <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wide">Movies + TV Only</span>
@@ -662,7 +742,7 @@ const Watch = () => {
                 <div className="flex items-center gap-1"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" /><span className="font-medium">{rating}</span></div>
                 {year    && <div className="flex items-center gap-1"><Calendar className="w-4 h-4 text-zinc-400" /><span>{year}</span></div>}
                 {runtime && <div className="flex items-center gap-1"><Clock    className="w-4 h-4 text-zinc-400" /><span>{runtime}</span></div>}
-                <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{mediaType === 'tv' ? 'TV Series' : 'Movie'}</span>
+                <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{typeLabel}</span>
               </div>
               <p className="text-zinc-400 text-sm leading-relaxed">{details.overview || 'No overview available.'}</p>
               {mediaType === 'movie' && details.belongs_to_collection && (
@@ -688,7 +768,7 @@ const Watch = () => {
                     </div>
                     {year    && <div className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-zinc-400" /><span>{year}</span></div>}
                     {runtime && <div className="flex items-center gap-1"><Clock    className="w-3.5 h-3.5 text-zinc-400" /><span>{runtime}</span></div>}
-                    <span className="inline-block bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{mediaType === 'tv' ? 'TV Series' : 'Movie'}</span>
+                    <span className="inline-block bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{typeLabel}</span>
                   </div>
                 </div>
               </div>
@@ -697,6 +777,9 @@ const Watch = () => {
                 {details.tagline && <div><span className="text-zinc-500 block">Tagline</span><p className="italic">"{details.tagline}"</p></div>}
                 <div><span className="text-zinc-500 block">Release</span><p>{details.release_date || details.first_air_date || 'Unknown'}</p></div>
                 <div><span className="text-zinc-500 block">Status</span><p>{details.status}</p></div>
+                {isAnime && (
+                  <div><span className="text-zinc-500 block">Episodes</span><p>{animeEpisodeCount}</p></div>
+                )}
                 {mediaType === 'tv' && (
                   <>
                     <div><span className="text-zinc-500 block">Seasons</span><p>{details.number_of_seasons}</p></div>
@@ -757,8 +840,16 @@ const Watch = () => {
               )}
             </div>
           </div>
-          <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} openInNewTab /></div>
-          <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
+          {isAnime ? (
+            animeDetails && animeDetails.recommendations.length > 0 && (
+              <div className="mt-12 mb-12"><MovieRow title="More like this" movies={animeDetails.recommendations} /></div>
+            )
+          ) : (
+            <>
+              <div className="mt-12"><RecommendedContent mediaId={movieId} mediaType={mediaType} openInNewTab /></div>
+              <div className="mt-8 mb-12"><TMDBReviews mediaId={movieId} mediaType={mediaType} /></div>
+            </>
+          )}
         </div>
       </div>
     </div>

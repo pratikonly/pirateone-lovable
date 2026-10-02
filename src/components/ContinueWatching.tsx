@@ -11,7 +11,7 @@ const ContinueWatching = ({ progress }: ContinueWatchingProps) => {
   const navigate = useNavigate();
 
   const handleClick = (item: WatchProgressEntry) => {
-    const type = item.media_type === 'movie' ? 'movie' : 'tv';
+    const type = item.media_type === 'anime' ? 'anime' : item.media_type === 'movie' ? 'movie' : 'tv';
     const params: Record<string, string | number> = {};
     if (item.season) params.s = item.season;
     if (item.episode) params.e = item.episode;

@@ -13,6 +13,30 @@ import {
   HoverCardTrigger,
 } from './ui/hover-card';
 
+// Anime is saved to the account watchlist when possible, and falls back to this device's list
+const addToList = async (item: Movie, signedIn: boolean) => {
+  if (signedIn) {
+    try {
+      await addToWatchlistDb(item);
+      return;
+    } catch (error) {
+      if (item.media_type !== 'anime') throw error;
+    }
+  }
+  addToWatchlist(item);
+};
+
+const removeFromList = async (id: number, type: 'movie' | 'tv' | 'anime', signedIn: boolean) => {
+  if (signedIn) {
+    try {
+      await removeFromWatchlistDb(id, type as 'movie' | 'tv');
+    } catch (error) {
+      if (type !== 'anime') throw error;
+    }
+  }
+  if (!signedIn || type === 'anime') removeFromWatchlist(id, type as 'movie' | 'tv');
+};
+
 interface MovieCardProps {
   movie: Movie;
   index?: number;
@@ -35,16 +59,24 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
   const year = (movie.release_date || movie.first_air_date)?.split('-')[0] || '';
   const releaseDate = movie.release_date || movie.first_air_date || '';
   const mediaType = movie.media_type || 'movie';
+  const wlType = mediaType as 'movie' | 'tv';
+  const mediaLabel = mediaType === 'tv' ? 'TV' : mediaType === 'anime' ? 'Anime' : 'Movie';
+  const mediaLabelLong = mediaType === 'tv' ? 'TV Series' : mediaType === 'anime' ? 'Anime' : 'Movie';
   const overview = movie.overview || 'No description available.';
 
   useEffect(() => {
     const loadWatchlistState = async () => {
       if (user) {
-        const inDb = await isInWatchlistDb(movie.id, mediaType);
-        setInWatchlist(inDb);
+        let inList = false;
+        try {
+          inList = await isInWatchlistDb(movie.id, wlType);
+        } catch {
+          inList = false;
+        }
+        setInWatchlist(inList || (mediaType === 'anime' && isInWatchlist(movie.id, wlType)));
         return;
       }
-      setInWatchlist(isInWatchlist(movie.id, mediaType));
+      setInWatchlist(isInWatchlist(movie.id, wlType));
     };
 
     loadWatchlistState();
@@ -64,20 +96,12 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
     e.stopPropagation();
 
     if (inWatchlist) {
-      if (user) {
-        await removeFromWatchlistDb(movie.id, mediaType);
-      } else {
-        removeFromWatchlist(movie.id, mediaType);
-      }
+      await removeFromList(movie.id, mediaType, Boolean(user));
       setInWatchlist(false);
       return;
     }
 
-    if (user) {
-      await addToWatchlistDb({ ...movie, media_type: mediaType });
-    } else {
-      addToWatchlist({ ...movie, media_type: mediaType });
-    }
+    await addToList({ ...movie, media_type: mediaType }, Boolean(user));
     setInWatchlist(true);
   };
 
@@ -140,7 +164,7 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
             {/* Media Type (left) and Year (right) */}
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
               <span className="uppercase font-medium text-primary">
-                {mediaType === 'tv' ? 'TV' : 'Movie'}
+                {mediaLabel}
               </span>
               <span>{year || 'TBA'}</span>
             </div>
@@ -187,7 +211,7 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
           
           {/* Media Type */}
           <div className="absolute top-2 left-2 bg-primary/90 text-primary-foreground text-xs font-medium px-2 py-0.5 rounded uppercase">
-            {mediaType === 'tv' ? 'TV Series' : 'Movie'}
+            {mediaLabelLong}
           </div>
         </div>
         
@@ -240,4 +264,3 @@ const MovieCard = ({ movie, index = 0, className, animateFromBelow = false }: Mo
 };
 
 export default MovieCard;
-

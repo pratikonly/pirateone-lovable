@@ -1,11 +1,18 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { searchMultiPaginated, getBackdropUrl, Movie } from '@/lib/tmdb';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { getAnimeList, searchAnime, AnimeSort } from '@/lib/anilist';
+import { getBackdropUrl, Movie } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
 import { useSetBackdropUrl } from '@/contexts/BackdropContext';
-import { Loader2 } from 'lucide-react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { cn } from '@/lib/utils';
 
-const ANIME_QUERIES = ['anime', 'one piece', 'naruto', 'demon slayer', 'attack on titan', 'jujutsu kaisen'];
+const SORTS: { id: AnimeSort; label: string }[] = [
+  { id: 'TRENDING_DESC', label: 'Trending' },
+  { id: 'POPULARITY_DESC', label: 'Popular' },
+  { id: 'SCORE_DESC', label: 'Top Rated' },
+];
 
 const getUniqueAnime = (items: Movie[]) => {
   const seenIds = new Set<number>();
@@ -14,18 +21,6 @@ const getUniqueAnime = (items: Movie[]) => {
     seenIds.add(item.id);
     return true;
   });
-};
-
-const getInitialAnime = async () => {
-  const [pageOneSearches, pageTwoSearches] = await Promise.all([
-    Promise.all(ANIME_QUERIES.map(query => searchMultiPaginated(query, 1))),
-    Promise.all(ANIME_QUERIES.map(query => searchMultiPaginated(query, 2))),
-  ]);
-
-  return getUniqueAnime([
-    ...pageOneSearches.flatMap(search => search.results),
-    ...pageTwoSearches.flatMap(search => search.results),
-  ]);
 };
 
 const SkeletonGrid = () => (
@@ -41,34 +36,44 @@ const SkeletonGrid = () => (
 );
 
 const Anime = () => {
+  const [sort, setSort] = useState<AnimeSort>('TRENDING_DESC');
+  const [searchInput, setSearchInput] = useState('');
+  const searchTerm = useDebounce(searchInput.trim(), 400);
+
   const {
-    data: initialAnime = [],
+    data,
     isLoading,
     isError,
     error,
-  } = useQuery({
-    queryKey: ['catalog', 'anime'],
-    queryFn: getInitialAnime,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['catalog', 'anime', searchTerm ? 'search' : sort, searchTerm],
+    queryFn: ({ pageParam }) =>
+      searchTerm ? searchAnime(searchTerm, pageParam) : getAnimeList(sort, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => (lastPage.hasNextPage ? allPages.length + 1 : undefined),
   });
-  const [extraAnime, setExtraAnime] = useState<Movie[]>([]);
-  const [currentPage,   setCurrentPage]   = useState(2);
-  const [hasMore,       setHasMore]       = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  const observerRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(0);
-  const observerRef     = useRef<HTMLDivElement>(null);
-  const setBackdropUrl  = useSetBackdropUrl();
+  const setBackdropUrl = useSetBackdropUrl();
+
   const animeList = useMemo(
-    () => getUniqueAnime([...initialAnime, ...extraAnime]),
-    [extraAnime, initialAnime],
+    () => getUniqueAnime((data?.pages ?? []).flatMap(page => page.results)),
+    [data],
   );
 
   useEffect(() => {
     if (isError) console.error('Failed to load anime catalog:', error);
   }, [error, isError]);
 
+  // Rotate the page backdrop through the first few results
+  const backdropKey = animeList.slice(0, 10).map(a => a.id).join(',');
   useEffect(() => {
     if (animeList.length === 0) return;
+    currentIndexRef.current = 0;
     const update = () => {
       const a = animeList[currentIndexRef.current];
       if (a?.backdrop_path) setBackdropUrl(getBackdropUrl(a.backdrop_path, 'original'));
@@ -77,56 +82,76 @@ const Anime = () => {
     update();
     const iv = setInterval(update, 8000);
     return () => clearInterval(iv);
-  }, [animeList.length, setBackdropUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backdropKey, setBackdropUrl]);
   useEffect(() => () => setBackdropUrl(null), [setBackdropUrl]);
 
-  const loadMore = useCallback(async () => {
-    if (isLoadingMore || isLoading || !hasMore) return;
-    setIsLoadingMore(true);
-    try {
-      const next = currentPage + 1;
-      const searches = await Promise.all(ANIME_QUERIES.map(q => searchMultiPaginated(q, next)));
-      const newItems = searches.flatMap(s => s.results);
-      const existingIds = new Set(animeList.map(item => item.id));
-      const uniqueNewItems = newItems.filter(item => {
-        if (existingIds.has(item.id)) return false;
-        existingIds.add(item.id);
-        return true;
-      });
-      if (uniqueNewItems.length === 0) setHasMore(false);
-      setExtraAnime(previous => [...previous, ...uniqueNewItems]);
-      setCurrentPage(next);
-    } catch (e) { console.error(e); } finally { setIsLoadingMore(false); }
-  }, [animeList, currentPage, hasMore, isLoading, isLoadingMore]);
-
+  // Infinite scroll
   useEffect(() => {
     const el = observerRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) loadMore(); },
-      { rootMargin: '400px' }
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+      },
+      { rootMargin: '400px' },
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [loadMore]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return (
     <div className="p-4 lg:p-6 pt-4 lg:pt-6 pb-0">
       <h1 className="font-display text-3xl lg:text-4xl mb-2">Anime</h1>
-      <p className="text-muted-foreground text-sm mb-6">Popular anime series and movies</p>
+      <p className="text-muted-foreground text-sm mb-4">Popular anime series and movies</p>
 
-      {isLoading ? <SkeletonGrid /> : (
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        {SORTS.map(option => (
+          <button
+            key={option.id}
+            onClick={() => {
+              setSearchInput('');
+              setSort(option.id);
+            }}
+            className={cn(
+              'rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors',
+              !searchTerm && sort === option.id
+                ? 'border-white bg-white text-black'
+                : 'border-white/20 bg-white/[0.06] text-white/80 hover:bg-white/15',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+        <input
+          value={searchInput}
+          onChange={event => setSearchInput(event.target.value)}
+          placeholder="Search anime..."
+          aria-label="Search anime"
+          className="h-8 w-full max-w-xs rounded-full border border-white/20 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-muted-foreground focus:border-white/50 sm:ml-2"
+        />
+      </div>
+
+      {isLoading ? (
+        <SkeletonGrid />
+      ) : isError ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          Couldn't load anime right now. Please try again in a moment.
+        </p>
+      ) : animeList.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">No anime found.</p>
+      ) : (
         <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' }}>
           {animeList.map((a, i) => (
-            <MovieCard key={`${a.id}-${i}`} movie={a} index={i} className="w-full" />
+            <MovieCard key={a.id} movie={a} index={i} className="w-full" />
           ))}
         </div>
       )}
 
       {/* Infinite scroll sentinel */}
       <div ref={observerRef} className="py-6 flex justify-center">
-        {isLoadingMore && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
-        {!isLoading && !isLoadingMore && !hasMore && animeList.length > 0 && (
+        {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
+        {!isLoading && !isFetchingNextPage && !hasNextPage && animeList.length > 0 && (
           <p className="text-muted-foreground text-sm">You've reached the end</p>
         )}
       </div>

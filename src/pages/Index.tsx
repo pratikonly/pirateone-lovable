@@ -7,8 +7,8 @@ import {
   getNowPlayingMovies,
   getPopularTV,
   getTopRatedTV,
-  searchMulti,
 } from '@/lib/tmdb';
+import { getTrendingAnime } from '@/lib/anilist';
 import { getAllWatchProgress, getProgressPercentage } from '@/lib/watchProgress';
 import HeroBanner from '@/components/HeroBanner';
 import MovieRow from '@/components/MovieRow';
@@ -25,25 +25,16 @@ const getHomeCatalog = async () => {
     nowPlayingData,
     popularTVData,
     topRatedTVData,
-    animeSearches,
+    animeResults,
   ] = await Promise.all([
     getPopularMovies(),
     getTopRatedMovies(),
     getNowPlayingMovies(),
     getPopularTV(),
     getTopRatedTV(),
-    Promise.all([
-      searchMulti('demon slayer'),
-      searchMulti('jujutsu kaisen'),
-      searchMulti('one piece anime'),
-      searchMulti('attack on titan'),
-    ]),
+    // AniList failing should never break the rest of the home page
+    getTrendingAnime(1).then(page => page.results).catch(() => []),
   ]);
-
-  const allAnime = animeSearches.flat();
-  const uniqueAnime = allAnime.filter((item, index, self) =>
-    index === self.findIndex(candidate => candidate.id === item.id)
-  );
 
   return {
     popularMovies: popularMoviesData.results,
@@ -51,7 +42,7 @@ const getHomeCatalog = async () => {
     nowPlaying: nowPlayingData.results,
     popularTV: popularTVData.results,
     topRatedTV: topRatedTVData.results,
-    anime: uniqueAnime.slice(0, 20),
+    anime: animeResults.slice(0, 20),
   };
 };
 

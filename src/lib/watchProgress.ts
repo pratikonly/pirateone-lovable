@@ -4,7 +4,7 @@ export interface WatchProgressEntry {
   id: string;
   user_id: string;
   tmdb_id: number;
-  media_type: 'movie' | 'tv';
+  media_type: 'movie' | 'tv' | 'anime';
   title: string;
   poster_path: string | null;
   backdrop_path: string | null;
@@ -27,7 +27,7 @@ const getUserId = async (): Promise<string | null> => {
 
 export const saveWatchProgress = async (
   tmdbId: number,
-  mediaType: 'movie' | 'tv',
+  mediaType: 'movie' | 'tv' | 'anime',
   currentTime: number,
   duration: number,
   server: string,
@@ -43,8 +43,11 @@ export const saveWatchProgress = async (
   if (!userId) return;
 
   const completed  = duration > 0 && currentTime >= duration * 0.9;
-  const seasonVal  = (mediaType === 'tv' && season  != null && season  > 0) ? season  : -1;
-  const episodeVal = (mediaType === 'tv' && episode != null && episode > 0) ? episode : -1;
+  // Anime has no seasons: it is stored as season 1 + absolute episode number
+  const seasonVal  = mediaType === 'anime'
+    ? 1
+    : ((mediaType === 'tv' && season != null && season > 0) ? season : -1);
+  const episodeVal = (mediaType !== 'movie' && episode != null && episode > 0) ? episode : -1;
 
   const { error } = await supabase.from('watch_progress').upsert(
     {
@@ -63,7 +66,7 @@ export const saveWatchProgress = async (
 
 export const getWatchProgress = async (
   tmdbId: number,
-  mediaType: 'movie' | 'tv',
+  mediaType: 'movie' | 'tv' | 'anime',
   season?: number,
   episode?: number,
   server?: string,
@@ -71,8 +74,10 @@ export const getWatchProgress = async (
   const userId = await getUserId();
   if (!userId) return null;
 
-  const seasonVal  = (mediaType === 'tv' && season  != null) ? season  : -1;
-  const episodeVal = (mediaType === 'tv' && episode != null) ? episode : -1;
+  const seasonVal  = mediaType === 'anime'
+    ? 1
+    : ((mediaType === 'tv' && season != null) ? season : -1);
+  const episodeVal = (mediaType !== 'movie' && episode != null) ? episode : -1;
 
   // If server is specified, try to get progress for that specific server first
   if (server) {
@@ -109,7 +114,7 @@ export const getAllWatchProgress = async (): Promise<WatchProgressEntry[]> => {
   return (data || []) as WatchProgressEntry[];
 };
 
-export const deleteWatchProgress = async (tmdbId: number, mediaType: 'movie' | 'tv'): Promise<void> => {
+export const deleteWatchProgress = async (tmdbId: number, mediaType: 'movie' | 'tv' | 'anime'): Promise<void> => {
   const userId = await getUserId();
   if (!userId) return;
   const { error } = await supabase.from('watch_progress').delete()
