@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Boxes, CircleHelp, Trophy, type LucideIcon } from 'lucide-react';
+import { Bookmark, Boxes, CircleHelp, type LucideIcon } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import sportsMark from '@/assets/sports-icon.svg';
 
-const quickActions: { label: string; to: string; Icon: LucideIcon }[] = [
-  { label: 'Sports', to: '/sports', Icon: Trophy },
+const quickActions: { label: string; to: string; Icon: LucideIcon | null; sportsMark?: boolean }[] = [
+  { label: 'Sports', to: '/sports', Icon: null, sportsMark: true },
   { label: 'Watchlist', to: '/watchlist', Icon: Bookmark },
   { label: 'Help', to: '/help', Icon: CircleHelp },
 ];
@@ -49,7 +50,7 @@ const FloatingQuickActions = () => {
           className="flex flex-col items-center gap-3"
           aria-label="Quick links"
         >
-          {quickActions.map(({ label, to, Icon }, index) => (
+          {quickActions.map(({ label, to, Icon, sportsMark: isSportsMark }, index) => (
             <Link
               key={to}
               to={to}
@@ -59,7 +60,11 @@ const FloatingQuickActions = () => {
               style={{ animationDelay: `${(quickActions.length - index - 1) * 45}ms` }}
               className="group relative flex h-12 w-12 animate-in fade-in-0 slide-in-from-bottom-2 items-center justify-center rounded-full border border-white/15 bg-zinc-950/90 text-zinc-100 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-200 hover:scale-110 hover:border-white/35 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 motion-reduce:animate-none"
             >
-              <Icon className="h-5 w-5" aria-hidden="true" />
+              {isSportsMark ? (
+                <img src={sportsMark} alt="" className="h-5 w-5 brightness-0 invert" aria-hidden="true" />
+              ) : (
+                Icon && <Icon className="h-5 w-5" aria-hidden="true" />
+              )}
               <span className="pointer-events-none absolute right-[calc(100%+0.75rem)] whitespace-nowrap rounded-lg border border-white/10 bg-zinc-950/95 px-3 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                 {label}
               </span>
