@@ -9,7 +9,7 @@ import { z } from 'zod';
 import {
   getMovieDetails, getTVDetails, getSeasonDetails,
   getMovieImages, getTVImages, getLogoUrl,
-  MovieDetails, SeasonDetails,
+  MovieDetails, SeasonDetails, ImagesResponse,
   getImageUrl, getBackdropUrl,
   ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS, ANIME_ID_SERVERS,
 } from '@/lib/tmdb';
@@ -231,6 +231,7 @@ const Watch = () => {
   const [season, setSeason]                 = useState(1);
   const [episode, setEpisode]               = useState(1);
   const [logoUrl, setLogoUrl]               = useState<string | null>(null);
+  const [tmdbImages, setTmdbImages]         = useState<ImagesResponse | null>(null);
   const [selectedServer, setSelectedServer] = useState<ServerType>('vidstuck');
   const [isDub, setIsDub]                   = useState(false);
   const [serverOpen, setServerOpen]         = useState(false);
@@ -271,6 +272,8 @@ const Watch = () => {
   useEffect(() => {
     if (!movieId) { setIsLoading(false); return; }
     setIsLoading(true);
+    setLogoUrl(null);
+    setTmdbImages(null);
     const run = async () => {
       try {
         const data = mediaType === 'anime'
@@ -285,6 +288,7 @@ const Watch = () => {
         } else {
           try {
             const images = mediaType === 'movie' ? await getMovieImages(movieId) : await getTVImages(movieId);
+            setTmdbImages(images);
             const logo = images.logos?.find((l: any) => l.iso_639_1 === 'en') ?? images.logos?.[0];
             if (logo) setLogoUrl(getLogoUrl(logo.file_path, 'w500'));
           } catch { /* logo optional */ }
@@ -554,6 +558,13 @@ const Watch = () => {
   const posterUrl   = getImageUrl(details.poster_path, 'w500');
   const cast        = details.credits?.cast?.slice(0, 10) || [];
   const director    = details.credits?.crew?.find((c: any) => c.job === 'Director');
+  const currentArtworkPaths = new Set([details.poster_path, details.backdrop_path].filter((path): path is string => Boolean(path)));
+  const artworkBackdrops = (tmdbImages?.backdrops ?? [])
+    .filter(image => image.file_path && !currentArtworkPaths.has(image.file_path))
+    .slice(0, 8);
+  const artworkPosters = (tmdbImages?.posters ?? [])
+    .filter(image => image.file_path && !currentArtworkPaths.has(image.file_path))
+    .slice(0, 8);
   const dlType      = mediaType === 'movie' ? 'movie' : 'tv'; // download links are TMDB-only (hidden for anime)
   const downloadUrl = getDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
   const bunnyUrl    = getBunnyDownloadUrl(movieId, dlType, mediaType === 'tv' ? season : undefined, mediaType === 'tv' ? episode : undefined);
@@ -626,14 +637,38 @@ const Watch = () => {
                     </div>
                     <div className="text-sm text-zinc-400">{seasonDetails?.episodes?.length || 0} Episodes</div>
                   </div>
-                  <ScrollArea className="h-32">
+                  <ScrollArea className="h-48 sm:h-56">
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '' }))).map((ep: any) => (
+                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '', still_path: null, air_date: undefined }))).map((ep: any) => (
                         <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
-                          className={cn('p-2 rounded-md text-left transition-colors text-sm',
-                            episode === ep.episode_number ? 'bg-white/10 text-white' : 'bg-zinc-900/50 hover:bg-zinc-800')}>
-                          <div className="font-medium">Ep {ep.episode_number}</div>
-                          {ep.name && <div className="text-xs truncate opacity-70">{ep.name}</div>}
+                          className={cn('overflow-hidden rounded-md border text-left transition-colors text-sm',
+                            episode === ep.episode_number
+                              ? 'border-white/30 bg-white/10 text-white'
+                              : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800')}>
+                          {ep.still_path ? (
+                            <img
+                              src={getImageUrl(ep.still_path, 'w300') || ''}
+                              alt=""
+                              loading="lazy"
+                              className="aspect-video w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex aspect-video items-center justify-center bg-zinc-900 text-xs text-zinc-500">
+                              No still available
+                            </div>
+                          )}
+                          <div className="space-y-1 p-2">
+                            <div className="truncate font-medium" title={ep.name || `Episode ${ep.episode_number}`}>
+                              Ep {ep.episode_number}{ep.name ? ` · ${ep.name}` : ''}
+                            </div>
+                            {ep.air_date && (
+                              <div className="text-xs text-zinc-400">
+                                {new Date(`${ep.air_date}T00:00:00`).toLocaleDateString(undefined, {
+                                  year: 'numeric', month: 'short', day: 'numeric',
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -883,6 +918,59 @@ const Watch = () => {
               )}
             </div>
           </div>
+          {!isAnime && (artworkBackdrops.length > 0 || artworkPosters.length > 0) && (
+            <section className="mt-10 space-y-6" aria-labelledby="more-artwork-heading">
+              <h2 id="more-artwork-heading" className="text-xl font-bold text-white">More artwork</h2>
+              {artworkBackdrops.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-zinc-300">Backdrops</h3>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {artworkBackdrops.map(image => (
+                      <a
+                        key={image.file_path}
+                        href={getBackdropUrl(image.file_path, 'original') || undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open full-size backdrop for ${title}`}
+                        className="block overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
+                      >
+                        <img
+                          src={getBackdropUrl(image.file_path, 'w780') || ''}
+                          alt={`Backdrop artwork for ${title}`}
+                          loading="lazy"
+                          className="aspect-video w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {artworkPosters.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-zinc-300">Posters</h3>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
+                    {artworkPosters.map(image => (
+                      <a
+                        key={image.file_path}
+                        href={getImageUrl(image.file_path, 'original') || undefined}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Open full-size poster for ${title}`}
+                        className="block overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
+                      >
+                        <img
+                          src={getImageUrl(image.file_path, 'w300') || ''}
+                          alt={`Poster artwork for ${title}`}
+                          loading="lazy"
+                          className="aspect-[2/3] w-full object-cover transition-transform duration-300 hover:scale-[1.03]"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
           {isAnime ? (
             animeDetails && animeDetails.recommendations.length > 0 && (
               <div className="mt-12 mb-12"><MovieRow title="More like this" movies={animeDetails.recommendations} /></div>
