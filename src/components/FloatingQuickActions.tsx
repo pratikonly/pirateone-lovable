@@ -39,6 +39,8 @@ const FloatingQuickActions = () => {
     };
   }, [isOpen]);
 
+  if (location.pathname === '/auth') return null;
+
   return (
     <div
       ref={menuRef}
