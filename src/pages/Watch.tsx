@@ -641,6 +641,7 @@ const Watch = () => {
                     <ArrowLeft className="w-4 h-4 mr-2" />Back
                   </Button>
                 </div>
+                <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                 <div className="relative isolate">
                   {isReleaseLocked && releaseWindow ? (
                     <ReleaseCountdown
@@ -677,7 +678,6 @@ const Watch = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
                 <div className="flex items-center gap-2 flex-wrap">
                   <SmartAddToList
                     tmdbId={movieId}
