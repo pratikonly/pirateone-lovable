@@ -63,7 +63,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange, compact = fals
   const isLogoReady = !currentMovie || logos[logoKey] !== undefined;
   const currentTrailer = trailers[logoKey];
   const heroHeight = compact
-    ? 'h-[56svh] min-h-[400px] max-h-[560px] sm:h-[68svh] sm:min-h-[460px] sm:max-h-[720px]'
+    ? 'h-[68svh] min-h-[460px] max-h-[680px] sm:h-[82svh] sm:min-h-[540px] sm:max-h-[880px]'
     : 'h-[62svh] min-h-[430px] max-h-[620px] sm:h-[85svh] sm:min-h-[500px] sm:max-h-none';
   const currentArtworkUrl = currentMovie
     ? getBackdropUrl(currentMovie.backdrop_path, 'original') ||
