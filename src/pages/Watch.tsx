@@ -554,7 +554,7 @@ const Watch = () => {
 
   return (
     <div className={cn('min-h-screen text-white bg-transparent', theaterMode && 'watch-theater-mode')}>
-      <div className={cn('p-4 md:p-8', theaterMode ? 'pt-4 md:pt-6' : 'pt-4 md:pt-8')}>
+      <div className={cn('p-4 md:p-8', theaterMode ? 'pt-2 md:pt-4' : 'pt-2 md:pt-6')}>
         <div className="max-w-7xl mx-auto">
           <div className={cn(
             'grid grid-cols-1 gap-6 lg:items-stretch',

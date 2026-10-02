@@ -32,7 +32,7 @@ const ReleaseCountdown = ({ unlockAt, title, backdropUrl, serverLabel, onUnlock 
   const hours = Math.floor(secondsLeft / 3600);
   const minutes = Math.floor((secondsLeft % 3600) / 60);
   const seconds = secondsLeft % 60;
-  const unlockLabel = unlockAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const unlockLabel = unlockAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
     <div className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black">
