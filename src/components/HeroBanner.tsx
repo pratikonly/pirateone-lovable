@@ -24,9 +24,10 @@ const preloadImage = (src: string | null) => {
 interface HeroBannerProps {
   movies: Movie[];
   isLoading?: boolean;
+  onArtworkChange?: (artworkUrl: string | null) => void;
 }
 
-const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
+const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerProps) => {
   const navigate = useNavigate();
   const setBackdropUrl = useSetBackdropUrl();
   const { user } = useAuth();
@@ -49,6 +50,16 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   const logoUrl = logoPath ? getLogoUrl(logoPath, 'w500') : null;
   const isLogoReady = !currentMovie || logos[logoKey] !== undefined;
   const currentTrailer = trailers[logoKey];
+  const currentArtworkUrl = currentMovie
+    ? getBackdropUrl(currentMovie.backdrop_path, 'original') ||
+      (currentMovie.poster_path ? getImageUrl(currentMovie.poster_path, 'w780') : null)
+    : null;
+
+  useEffect(() => {
+    onArtworkChange?.(currentArtworkUrl);
+
+    return () => onArtworkChange?.(null);
+  }, [currentArtworkUrl, onArtworkChange]);
 
   useEffect(() => {
     if (currentMovie?.backdrop_path) {
@@ -180,14 +191,15 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
   if (isLoading || !currentMovie || !isLogoReady) {
     return (
       <div
-        className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-background"
+        className="hero-banner relative mb-8 h-[62svh] min-h-[430px] max-h-[620px] overflow-hidden bg-background sm:h-[85svh] sm:min-h-[500px] sm:max-h-none"
+        style={{ '--hero-navbar-clearance': '5.75rem' } as React.CSSProperties}
         role="status"
         aria-label="Loading featured titles"
       >
         <div className="absolute inset-0 bg-muted/40 animate-pulse" />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-background/50" />
-        <div className="absolute inset-0 flex items-center">
+        <div className="absolute inset-0 flex items-center pt-[var(--hero-navbar-clearance)] sm:pt-0">
           <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
             <div className="max-w-3xl space-y-5">
               <div className="flex items-center gap-3">
@@ -240,7 +252,8 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
 
   return (
     <div
-      className="hero-banner relative h-[34svh] min-h-[220px] sm:h-[85svh] sm:min-h-[500px] mb-8 overflow-hidden bg-background"
+      className="hero-banner relative mb-8 h-[62svh] min-h-[430px] max-h-[620px] overflow-hidden sm:h-[85svh] sm:min-h-[500px] sm:max-h-none"
+      style={{ '--hero-navbar-clearance': '5.75rem' } as React.CSSProperties}
       aria-roledescription="carousel"
       aria-label="Featured titles"
     >
@@ -263,15 +276,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
               )}
             >
               {artworkUrl && (
-                <>
-                  <img
-                    src={artworkUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 h-full w-full scale-110 object-cover object-top opacity-55 blur-2xl"
-                    loading={index === 0 ? 'eager' : 'lazy'}
-                  />
-                  <div className="absolute inset-x-0 bottom-0 top-16 overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_86%,transparent_100%)]">
+                  <div className="absolute inset-x-0 bottom-0 top-[var(--hero-navbar-clearance)] overflow-hidden sm:top-20 [mask-image:linear-gradient(to_bottom,transparent_0%,black_12%,black_86%,transparent_100%)]">
                     <img
                       src={artworkUrl}
                       alt=""
@@ -288,7 +293,6 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
                       }}
                     />
                   </div>
-                </>
               )}
             </div>
           );
@@ -298,15 +302,7 @@ const HeroBanner = ({ movies, isLoading = false }: HeroBannerProps) => {
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-black/5" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-transparent" />
       <div className="absolute inset-0 shadow-[inset_0_0_100px_20px_rgba(0,0,0,0.25)]" />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%]"
-        style={{
-          background:
-            'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background)) 8%, hsl(var(--background) / 0.85) 38%, hsl(var(--background) / 0.4) 72%, transparent 100%)',
-        }}
-      />
-
-      <div className="relative z-10 flex h-full items-center">
+      <div className="relative z-10 flex h-full items-center pt-[var(--hero-navbar-clearance)] sm:pt-0">
         <div className="container mx-auto w-full px-5 py-8 sm:px-8 sm:py-24 lg:px-10">
             <div className={cn(
               'max-w-3xl min-w-0 transition-all duration-500',
