@@ -21,6 +21,10 @@ const preloadImage = (src: string | null) => {
   });
 };
 
+// Module-level caches so logos/trailers survive page changes (no skeleton flash on return)
+const logoCache: Record<string, string | null> = {};
+const trailerCache: Record<string, Video | null> = {};
+
 interface HeroBannerProps {
   movies: Movie[];
   isLoading?: boolean;
@@ -35,8 +39,8 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideDirection, setSlideDirection] = useState<'next' | 'previous'>('next');
   const [inWatchlist, setInWatchlist] = useState(false);
-  const [logos, setLogos] = useState<Record<string, string | null>>({});
-  const [trailers, setTrailers] = useState<Record<string, Video | null>>({});
+  const [logos, setLogos] = useState<Record<string, string | null>>(() => ({ ...logoCache }));
+  const [trailers, setTrailers] = useState<Record<string, Video | null>>(() => ({ ...trailerCache }));
   const [trailerOpen, setTrailerOpen] = useState(false);
   const requestedLogoKeys = useRef(new Set<string>());
   const requestedTrailerKeys = useRef(new Set<string>());
@@ -75,7 +79,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
     const fetchLogos = async () => {
       const logoPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
-        if (requestedLogoKeys.current.has(key)) return;
+        if (requestedLogoKeys.current.has(key) || key in logoCache) return;
         requestedLogoKeys.current.add(key);
 
         try {
@@ -90,8 +94,10 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
 
           const logoPath = englishLogos[0]?.file_path || null;
           await preloadImage(logoPath ? getLogoUrl(logoPath, 'w500') : null);
+          logoCache[key] = logoPath;
           setLogos(prev => ({ ...prev, [key]: logoPath }));
         } catch {
+          logoCache[key] = null;
           setLogos(prev => ({ ...prev, [key]: null }));
         }
       });
@@ -108,7 +114,7 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
     const fetchTrailers = async () => {
       const trailerPromises = featuredMovies.map(async (movie) => {
         const key = `${movie.media_type || 'movie'}-${movie.id}`;
-        if (requestedTrailerKeys.current.has(key)) return;
+        if (requestedTrailerKeys.current.has(key) || key in trailerCache) return;
         requestedTrailerKeys.current.add(key);
 
         try {
@@ -125,8 +131,10 @@ const HeroBanner = ({ movies, isLoading = false, onArtworkChange }: HeroBannerPr
             v => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip')
           );
 
+          trailerCache[key] = trailer || null;
           setTrailers(prev => ({ ...prev, [key]: trailer || null }));
         } catch {
+          trailerCache[key] = null;
           setTrailers(prev => ({ ...prev, [key]: null }));
         }
       });

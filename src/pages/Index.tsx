@@ -71,7 +71,6 @@ const Index = () => {
     queryKey: ['home', 'trending'],
     queryFn: () => getTrending('all', 'week'),
     staleTime: HOME_STALE_TIME,
-    refetchOnMount: 'always',
   });
   const {
     data: catalog,
@@ -82,7 +81,6 @@ const Index = () => {
     queryKey: ['home', 'catalog'],
     queryFn: getHomeCatalog,
     staleTime: HOME_STALE_TIME,
-    refetchOnMount: 'always',
   });
   const {
     data: watchProgress = [],
@@ -99,7 +97,6 @@ const Index = () => {
         .slice(0, 10);
     },
     staleTime: HOME_STALE_TIME,
-    refetchOnMount: 'always',
   });
 
   useEffect(() => {
