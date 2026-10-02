@@ -74,24 +74,66 @@ const MEDIA_FIELDS = `
   trailer { id site }
 `;
 
-const LIST_QUERY = `
-  query ($page: Int, $perPage: Int, $sort: [MediaSort], $search: String, $minPopularity: Int, $genre: String) {
-    Page(page: $page, perPage: $perPage) {
-      pageInfo { hasNextPage }
-      media(
-        type: ANIME
-        sort: $sort
-        search: $search
-        genre: $genre
-        isAdult: false
-        popularity_greater: $minPopularity
-        format_in: [TV, TV_SHORT, MOVIE, ONA, OVA]
-      ) {
-        ${MEDIA_FIELDS}
+interface ListOptions {
+  sort: string;
+  page: number;
+  perPage: number;
+  search?: string | null;
+  genre?: string | null;
+  minPopularity?: number | null;
+}
+
+type ListResponse = {
+  Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] };
+};
+
+/**
+ * Builds the list query with ONLY the filters that are actually set.
+ * (Sending explicit null filters can make AniList reject or empty the request.)
+ */
+const fetchAnimeList = (options: ListOptions) => {
+  const defs = ['$page: Int', '$perPage: Int', '$sort: [MediaSort]'];
+  const args = [
+    'type: ANIME',
+    'sort: $sort',
+    'isAdult: false',
+    'format_in: [TV, TV_SHORT, MOVIE, ONA, OVA]',
+  ];
+  const variables: Record<string, unknown> = {
+    page: options.page,
+    perPage: options.perPage,
+    sort: [options.sort],
+  };
+
+  if (options.search) {
+    defs.push('$search: String');
+    args.push('search: $search');
+    variables.search = options.search;
+  }
+  if (options.genre) {
+    defs.push('$genre: String');
+    args.push('genre: $genre');
+    variables.genre = options.genre;
+  }
+  if (options.minPopularity) {
+    defs.push('$minPopularity: Int');
+    args.push('popularity_greater: $minPopularity');
+    variables.minPopularity = options.minPopularity;
+  }
+
+  const query = `
+    query (${defs.join(', ')}) {
+      Page(page: $page, perPage: $perPage) {
+        pageInfo { hasNextPage }
+        media(${args.join(' ')}) {
+          ${MEDIA_FIELDS}
+        }
       }
     }
-  }
-`;
+  `;
+
+  return anilistRequest<ListResponse>(query, variables);
+};
 
 const DETAILS_QUERY = `
   query ($id: Int) {
@@ -202,13 +244,10 @@ export const getAnimeList = async (
   perPage = DEFAULT_PER_PAGE,
   genre: string | null = null,
 ): Promise<AnimePage> => {
-  const data = await anilistRequest<{
-    Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] };
-  }>(LIST_QUERY, {
+  const data = await fetchAnimeList({
+    sort,
     page,
     perPage,
-    sort: [sort],
-    search: null,
     genre,
     // Top-rated list ignores obscure titles with only a handful of votes
     minPopularity: sort === 'SCORE_DESC' ? 30000 : null,
@@ -226,15 +265,11 @@ export const getPopularAnime = (page = 1) => getAnimeList('POPULARITY_DESC', pag
 export const getTopRatedAnime = (page = 1) => getAnimeList('SCORE_DESC', page);
 
 export const searchAnime = async (query: string, page = 1): Promise<AnimePage> => {
-  const data = await anilistRequest<{
-    Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] };
-  }>(LIST_QUERY, {
+  const data = await fetchAnimeList({
+    sort: 'SEARCH_MATCH',
     page,
     perPage: DEFAULT_PER_PAGE,
-    sort: ['SEARCH_MATCH'],
     search: query,
-    genre: null,
-    minPopularity: null,
   });
 
   return {
@@ -298,16 +333,7 @@ const findTmdbMatch = async (media: AniListMedia): Promise<Movie | null> => {
 
 /** Top trending anime for the hero slider (prefers titles that have widescreen art). */
 export const getAnimeSpotlights = async (limit = 5): Promise<Movie[]> => {
-  const data = await anilistRequest<{
-    Page: { pageInfo: { hasNextPage: boolean }; media: AniListMedia[] };
-  }>(LIST_QUERY, {
-    page: 1,
-    perPage: 15,
-    sort: ['TRENDING_DESC'],
-    search: null,
-    genre: null,
-    minPopularity: null,
-  });
+  const data = await fetchAnimeList({ sort: 'TRENDING_DESC', page: 1, perPage: 15 });
 
   const withBanner = data.Page.media.filter(media => media.bannerImage);
   const picks = (withBanner.length >= limit ? withBanner : data.Page.media).slice(0, limit);

@@ -229,6 +229,9 @@ const CatalogPage = ({
           ) : isError && items.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               Couldn't load this list right now. Please try again in a moment.
+              {error instanceof Error && (
+                <span className="mt-1 block text-xs opacity-60">{error.message}</span>
+              )}
             </p>
           ) : items.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Nothing found.</p>
