@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTrending,
@@ -58,6 +58,10 @@ const getHomeCatalog = async () => {
 const Index = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [heroArtworkUrl, setHeroArtworkUrl] = useState<string | null>(null);
+  const handleHeroArtworkChange = useCallback((artworkUrl: string | null) => {
+    setHeroArtworkUrl(artworkUrl);
+  }, []);
   const {
     data: trending = [],
     isLoading: isHeroLoading,
@@ -125,59 +129,82 @@ const Index = () => {
   }, [isWatchProgressError, watchProgressError]);
 
   return (
-    <div>
-      <HeroBanner movies={trending} isLoading={isHeroLoading} />
-
-      {/* Continue Watching Section */}
-      {user && watchProgress.length > 0 && (
-        <div className="px-4 lg:px-6">
-          <ContinueWatching progress={watchProgress} />
+    <div className="relative isolate overflow-hidden bg-background">
+      {heroArtworkUrl && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[170svh] max-h-[1400px] overflow-hidden" aria-hidden="true">
+          <img
+            src={heroArtworkUrl}
+            alt=""
+            className="h-full w-full scale-110 object-cover object-top opacity-35 blur-3xl"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 0%, hsl(var(--background) / 0.08) 35%, hsl(var(--background) / 0.55) 68%, hsl(var(--background)) 96%, hsl(var(--background)) 100%)',
+            }}
+          />
         </div>
       )}
 
-      <div className="px-4 lg:px-6 space-y-2">
-        <MovieRow 
-          title="Trending Now" 
-          movies={trending} 
-          isLoading={isHeroLoading} 
-          animateCards
+      <div className="relative z-10">
+        <HeroBanner
+          movies={trending}
+          isLoading={isHeroLoading}
+          onArtworkChange={handleHeroArtworkChange}
         />
-        <MovieRow 
-          title="Now Playing" 
-          movies={catalog?.nowPlaying ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
-        <MovieRow 
-          title="Top Rated Movies" 
-          movies={catalog?.topRatedMovies ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
-        <MovieRow 
-          title="Popular TV Shows" 
-          movies={catalog?.popularTV ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
-        <MovieRow 
-          title="Top Rated TV Shows" 
-          movies={catalog?.topRatedTV ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
-        <MovieRow 
-          title="Anime" 
-          movies={catalog?.anime ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
-        <MovieRow 
-          title="Popular Movies" 
-          movies={catalog?.popularMovies ?? []}
-          isLoading={isLoading} 
-          animateCards
-        />
+
+        {/* Continue Watching Section */}
+        {user && watchProgress.length > 0 && (
+          <div className="px-4 lg:px-6">
+            <ContinueWatching progress={watchProgress} />
+          </div>
+        )}
+
+        <div className="space-y-2 px-4 lg:px-6">
+          <MovieRow 
+            title="Trending Now" 
+            movies={trending} 
+            isLoading={isHeroLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Now Playing" 
+            movies={catalog?.nowPlaying ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Top Rated Movies" 
+            movies={catalog?.topRatedMovies ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Popular TV Shows" 
+            movies={catalog?.popularTV ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Top Rated TV Shows" 
+            movies={catalog?.topRatedTV ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Anime" 
+            movies={catalog?.anime ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+          <MovieRow 
+            title="Popular Movies" 
+            movies={catalog?.popularMovies ?? []}
+            isLoading={isLoading} 
+            animateCards
+          />
+        </div>
       </div>
     </div>
   );
