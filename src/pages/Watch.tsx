@@ -14,6 +14,8 @@ import {
   ServerType, ANIME_SERVERS, MOVIE_TV_SERVERS, ANIME_ID_SERVERS,
 } from '@/lib/tmdb';
 import { getAnimeDetails, AnimeDetails } from '@/lib/anilist';
+import { getReleaseWindow, NEW_RELEASE_SERVER_NUMBER } from '@/lib/releaseWindow';
+import ReleaseCountdown from '@/components/ReleaseCountdown';
 import { addToWatchlist, isInWatchlist, removeFromWatchlist } from '@/lib/watchlist';
 import { addToWatchlistDb, isInWatchlistDb, removeFromWatchlistDb } from '@/lib/watchlistDb';
 import { saveWatchHistory } from '@/lib/watchHistory';
@@ -235,7 +237,7 @@ const Watch = () => {
     });
   }, []);
   const [openDirection, setOpenDirection]   = useState<'up' | 'down'>('down');
-  
+
   const serverButtonRef = useRef<HTMLButtonElement>(null);
 
   const [watchProgress, setWatchProgress] = useState<{
@@ -479,6 +481,28 @@ const Watch = () => {
   const allServers     = [...animeServers, ...movieTvServers];
   const currentServerNumber = (allServers.findIndex(s => s.id === selectedServer) + 1) || 1;
 
+  // New releases (movies, 0 to 30 days old): "Server 6" is selected by default
+  const releaseWindow = useMemo(
+    () => (mediaType === 'movie' ? getReleaseWindow(details?.release_date) : null),
+    [mediaType, details?.release_date],
+  );
+  const newReleaseServer = allServers[NEW_RELEASE_SERVER_NUMBER - 1]?.id;
+  const autoServerForRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!releaseWindow || !newReleaseServer || autoServerForRef.current === movieId) return;
+    autoServerForRef.current = movieId;
+    setSelectedServer(newReleaseServer);
+  }, [releaseWindow, newReleaseServer, movieId]);
+
+  // Release day: the player is replaced by a countdown until 8 PM (local time)
+  const [countdownDone, setCountdownDone] = useState(false);
+  useEffect(() => { setCountdownDone(false); }, [movieId]);
+  const handleCountdownUnlock = useCallback(() => setCountdownDone(true), []);
+  const isReleaseLocked =
+    Boolean(releaseWindow?.isReleaseDay) &&
+    !countdownDone &&
+    Date.now() < (releaseWindow?.unlockAt.getTime() ?? 0);
+
   const handleServerToggle = () => {
     if (!serverOpen && serverButtonRef.current) {
       const r = serverButtonRef.current.getBoundingClientRect();
@@ -618,16 +642,26 @@ const Watch = () => {
                   </Button>
                 </div>
                 <div className="relative isolate">
-                  <VideoPlayer
-                    id={movieId} type={mediaType} title={title}
-                    poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
-                    season={mediaType === 'tv' ? season   : undefined}
-                    episode={isEpisodic ? episode : undefined}
-                    isDub={isDub}
-                    server={selectedServer}
-                    progressSeconds={watchProgress?.currentTime}
-                    imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
-                  />
+                  {isReleaseLocked && releaseWindow ? (
+                    <ReleaseCountdown
+                      unlockAt={releaseWindow.unlockAt}
+                      title={title}
+                      backdropUrl={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
+                      serverLabel={`Server ${NEW_RELEASE_SERVER_NUMBER}`}
+                      onUnlock={handleCountdownUnlock}
+                    />
+                  ) : (
+                    <VideoPlayer
+                      id={movieId} type={mediaType} title={title}
+                      poster={details?.backdrop_path ? getBackdropUrl(details.backdrop_path, 'w1280') : (details?.poster_path ? getImageUrl(details.poster_path, 'w780') : null)}
+                      season={mediaType === 'tv' ? season   : undefined}
+                      episode={isEpisodic ? episode : undefined}
+                      isDub={isDub}
+                      server={selectedServer}
+                      progressSeconds={watchProgress?.currentTime}
+                      imdbId={details?.imdb_id || details?.external_ids?.imdb_id || undefined}
+                    />
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

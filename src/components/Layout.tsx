@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import BackdropLayer from './BackdropLayer';
+import PageBackground from './PageBackground';
 import DisclaimerFooter from './DisclaimerFooter';
 
 const PageLoadingFallback = () => (
@@ -60,12 +61,15 @@ const Layout = () => {
     '/live',
     '/sports',
   ].includes(pathname) || /^\/(watch\/[^/]+\/[^/]+|live\/[^/]+)$/.test(pathname);
+  const isWatchPage = /^\/watch\/[^/]+\/[^/]+$/.test(pathname);
+  const hasOwnBackground = pathname === '/help'; // Help already renders this background itself
   const showDisclaimerFooter = ['/', '/movies', '/series', '/anime'].includes(pathname);
   const footerSpacing = isHome ? 'pb-6' : 'pb-4 lg:pb-6';
 
   return (
     <div className={`relative overflow-x-hidden ${hasSharedPageLayout ? 'min-h-screen bg-background' : ''}`}>
-      {hasSharedPageLayout && <BackdropLayer />}
+      {hasSharedPageLayout && isWatchPage && <BackdropLayer />}
+      {hasSharedPageLayout && !isWatchPage && !hasOwnBackground && <PageBackground />}
 
       <main className={`relative z-10 ${hasSharedPageLayout ? `min-h-screen ${hasHero ? 'pt-0' : 'pt-6 sm:pt-8'}` : ''}`}>
         <Suspense fallback={<PageLoadingFallback />}>

@@ -49,10 +49,6 @@ const getHomeCatalog = async () => {
 const Index = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [heroArtworkUrl, setHeroArtworkUrl] = useState<string | null>(null);
-  const handleHeroArtworkChange = useCallback((artworkUrl: string | null) => {
-    setHeroArtworkUrl(artworkUrl);
-  }, []);
   const {
     data: trending = [],
     isLoading: isHeroLoading,
@@ -117,29 +113,11 @@ const Index = () => {
   }, [isWatchProgressError, watchProgressError]);
 
   return (
-    <div className="relative isolate overflow-hidden bg-background">
-      {heroArtworkUrl && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[170svh] max-h-[1400px] overflow-hidden" aria-hidden="true">
-          <img
-            src={heroArtworkUrl}
-            alt=""
-            className="h-full w-full scale-110 object-cover object-top opacity-35 blur-3xl"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 0%, hsl(var(--background) / 0.08) 35%, hsl(var(--background) / 0.55) 68%, hsl(var(--background)) 96%, hsl(var(--background)) 100%)',
-            }}
-          />
-        </div>
-      )}
-
+    <div className="relative isolate overflow-hidden">
       <div className="relative z-10">
         <HeroBanner
           movies={trending}
           isLoading={isHeroLoading}
-          onArtworkChange={handleHeroArtworkChange}
         />
 
         {/* Soft shadow straddling the hero/content joint to hide any seam (net layout height 0) */}

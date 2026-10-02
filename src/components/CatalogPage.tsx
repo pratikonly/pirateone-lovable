@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import HeroBanner from '@/components/HeroBanner';
@@ -74,8 +74,6 @@ const CatalogPage = ({
   });
   const [searchInput, setSearchInput] = useState('');
   const searchTerm = useDebounce(searchInput.trim(), 400);
-  const [heroArtworkUrl, setHeroArtworkUrl] = useState<string | null>(null);
-  const handleHeroArtworkChange = useCallback((url: string | null) => setHeroArtworkUrl(url), []);
 
   const activeTab = tabs.find(tab => tab.id === activeTabId) ?? tabs[0];
   const isSearching = Boolean(search && searchTerm);
@@ -144,35 +142,13 @@ const CatalogPage = ({
   const showHero = hero.isLoading || heroMovies.length > 0;
 
   return (
-    <div className="relative isolate overflow-hidden bg-background">
-      {/* Page-level blurred backdrop that follows the hero artwork and fades down the page */}
-      {heroArtworkUrl && (
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[170svh] max-h-[1400px] overflow-hidden"
-          aria-hidden="true"
-        >
-          <img
-            src={heroArtworkUrl}
-            alt=""
-            className="h-full w-full scale-110 object-cover object-top opacity-35 blur-3xl"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 0%, hsl(var(--background) / 0.08) 35%, hsl(var(--background) / 0.55) 68%, hsl(var(--background)) 96%, hsl(var(--background)) 100%)',
-            }}
-          />
-        </div>
-      )}
-
+    <div className="relative isolate overflow-hidden">
       <div className="relative z-10">
         {showHero ? (
           <>
             <HeroBanner
               movies={heroMovies}
               isLoading={hero.isLoading}
-              onArtworkChange={handleHeroArtworkChange}
               compact
             />
 
