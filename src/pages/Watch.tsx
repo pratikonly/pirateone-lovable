@@ -609,63 +609,6 @@ const Watch = () => {
                 </div>
               )}
 
-              {mediaType === 'tv' && seasons > 0 && (
-                <div className="bg-zinc-950/70 backdrop-blur-sm rounded-lg p-4 border border-zinc-800">
-                  <div className="flex flex-wrap items-center gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-zinc-400">Season:</span>
-                      <Select value={String(season)} onValueChange={v => { setSeason(parseInt(v)); setEpisode(1); }}>
-                        <SelectTrigger className="w-32 bg-zinc-900 border-zinc-700 text-white"><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
-                          {details.seasons?.filter((s: any) => s.season_number > 0).map((s: any) => (
-                            <SelectItem key={s.season_number} value={String(s.season_number)}>Season {s.season_number}</SelectItem>
-                          )) || [...Array(seasons)].map((_, i) => (
-                            <SelectItem key={i + 1} value={String(i + 1)}>Season {i + 1}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="text-sm text-zinc-400">{seasonDetails?.episodes?.length || 0} Episodes</div>
-                  </div>
-                  <ScrollArea className="h-48 sm:h-56">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '', still_path: null, air_date: undefined }))).map((ep: any) => (
-                        <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
-                          className={cn('overflow-hidden rounded-md border text-left transition-colors text-sm',
-                            episode === ep.episode_number
-                              ? 'border-white/30 bg-white/10 text-white'
-                              : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800')}>
-                          {ep.still_path ? (
-                            <img
-                              src={getImageUrl(ep.still_path, 'w300') || ''}
-                              alt=""
-                              loading="lazy"
-                              className="aspect-video w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex aspect-video items-center justify-center bg-zinc-900 text-xs text-zinc-500">
-                              No still available
-                            </div>
-                          )}
-                          <div className="space-y-1 p-2">
-                            <div className="truncate font-medium" title={ep.name || `Episode ${ep.episode_number}`}>
-                              Ep {ep.episode_number}{ep.name ? ` · ${ep.name}` : ''}
-                            </div>
-                            {ep.air_date && (
-                              <div className="text-xs text-zinc-400">
-                                {new Date(`${ep.air_date}T00:00:00`).toLocaleDateString(undefined, {
-                                  year: 'numeric', month: 'short', day: 'numeric',
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
-              )}
-
               <div className={cn(
                 'w-full mx-auto flex flex-col gap-3',
                 theaterMode ? 'max-w-none' : 'max-w-4xl'
@@ -813,6 +756,62 @@ const Watch = () => {
                 <span className="bg-zinc-800 px-2 py-0.5 rounded text-xs font-medium uppercase">{typeLabel}</span>
               </div>
               <p className="text-zinc-400 text-sm leading-relaxed">{details.overview || 'No overview available.'}</p>
+              {mediaType === 'tv' && seasons > 0 && (
+                <section className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-zinc-400">Season:</span>
+                      <Select value={String(season)} onValueChange={v => { setSeason(parseInt(v)); setEpisode(1); }}>
+                        <SelectTrigger className="w-32 bg-zinc-900 border-zinc-700 text-white"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-zinc-950 border-zinc-800 text-white">
+                          {details.seasons?.filter((s: any) => s.season_number > 0).map((s: any) => (
+                            <SelectItem key={s.season_number} value={String(s.season_number)}>Season {s.season_number}</SelectItem>
+                          )) || [...Array(seasons)].map((_, i) => (
+                            <SelectItem key={i + 1} value={String(i + 1)}>Season {i + 1}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="text-sm text-zinc-400">{seasonDetails?.episodes?.length || 0} Episodes</div>
+                  </div>
+                  <ScrollArea className="h-48 sm:h-56">
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                      {(seasonDetails?.episodes ?? [...Array(20)].map((_, i) => ({ id: i, episode_number: i + 1, name: '', still_path: null, air_date: undefined }))).map((ep: any) => (
+                        <button key={ep.id} onClick={() => setEpisode(ep.episode_number)}
+                          className={cn('overflow-hidden rounded-md border text-left transition-colors text-sm',
+                            episode === ep.episode_number
+                              ? 'border-white/30 bg-white/10 text-white'
+                              : 'border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800')}>
+                          {ep.still_path ? (
+                            <img
+                              src={getImageUrl(ep.still_path, 'w300') || ''}
+                              alt=""
+                              loading="lazy"
+                              className="aspect-video w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex aspect-video items-center justify-center bg-zinc-900 text-xs text-zinc-500">
+                              No still available
+                            </div>
+                          )}
+                          <div className="space-y-1 p-2">
+                            <div className="truncate font-medium" title={ep.name || `Episode ${ep.episode_number}`}>
+                              Ep {ep.episode_number}{ep.name ? ` · ${ep.name}` : ''}
+                            </div>
+                            {ep.air_date && (
+                              <div className="text-xs text-zinc-400">
+                                {new Date(`${ep.air_date}T00:00:00`).toLocaleDateString(undefined, {
+                                  year: 'numeric', month: 'short', day: 'numeric',
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </section>
+              )}
               {mediaType === 'movie' && details.belongs_to_collection && (
                 <div className="flex-1 min-h-[180px]">
                   <CollectionInfo collectionId={details.belongs_to_collection.id} currentMovieId={movieId} />
