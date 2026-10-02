@@ -722,7 +722,7 @@ const Watch = () => {
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h1 className="min-w-0 flex-1 truncate text-xl md:text-2xl font-bold">{title}</h1>
-                <div className="flex items-center gap-2 flex-wrap sm:justify-end">
+                <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto">
                   <SmartAddToList
                     tmdbId={movieId}
                     mediaType={mediaType}
