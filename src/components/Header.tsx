@@ -246,7 +246,8 @@ const Header = () => {
           )}
         </div>
       </header>
-      {location.pathname !== '/' && (
+      {/* Pages that open with a hero slider sit directly under the floating navbar, so no spacer */}
+      {!['/', '/movies', '/series', '/anime'].includes(location.pathname) && (
         <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />
       )}
 
