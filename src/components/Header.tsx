@@ -1,4 +1,4 @@
-import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound, Home, Clapperboard, Tv, Radio } from 'lucide-react';
+import { Settings, RefreshCw, LogOut, Search, X, Loader2, UserRound, Home, Clapperboard, Tv, Radio, Trophy } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
@@ -119,6 +119,7 @@ const Header = () => {
     { label: 'Movies', path: '/movies', Icon: Clapperboard },
     { label: 'Series', path: '/series', Icon: Tv },
     { label: 'Anime', path: '/anime', Icon: AnimeNavIcon },
+    { label: 'Sports', path: '/sports', Icon: Trophy },
   ];
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
