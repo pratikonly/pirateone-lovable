@@ -1,86 +1,235 @@
-import { ExternalLink } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
+import {
+  badgeUrl, fetchLiveMatches, fetchSports, fetchStreams, posterUrl, SportMatch,
+} from '@/lib/streamedApi';
+import { cn } from '@/lib/utils';
 
-const features = [
-  'Live Streaming with auto-advancing carousel & HD quality',
-  'Live Now & Scheduled match browsing',
-  'Multi-Sport: Football, Cricket, Basketball, Hockey, MotoSports & more',
-  'Real-Time Search by title, team, or category',
-  'Match Stats Panel with live scores, badges & venue info',
-  'Smart Multi-Layer Proxy System for reliable streams',
-  'Related Matches shown below the player',
-  'Built-in Feedback System with star ratings',
-  'Ad-Free, distraction-free interface',
-  'Dark Cyber Theme with cyan accents & smooth animations',
-];
+const TeamBadge = ({ badge, name }: { badge?: string; name?: string }) => {
+  const url = badgeUrl(badge);
+  return url ? (
+    <img src={url} alt={name ?? ''} loading="lazy" className="h-10 w-10 object-contain drop-shadow" />
+  ) : (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+      {name?.slice(0, 2).toUpperCase() ?? '?'}
+    </div>
+  );
+};
+
+const MatchCard = ({ match, sportName, onSelect }: { match: SportMatch; sportName: string; onSelect: () => void }) => {
+  const poster = posterUrl(match);
+  const { home, away } = match.teams ?? {};
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="group relative overflow-hidden rounded-xl border border-border bg-card text-left transition-all duration-300 hover:-translate-y-1 hover:border-primary/60 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <div className="relative aspect-video overflow-hidden bg-muted">
+        {poster ? (
+          <img src={poster} alt={match.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        ) : (
+          <div className="flex h-full items-center justify-center gap-4">
+            <TeamBadge badge={home?.badge} name={home?.name} />
+            <span className="text-sm font-bold text-muted-foreground">VS</span>
+            <TeamBadge badge={away?.badge} name={away?.name} />
+          </div>
+        )}
+        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive-foreground" /> Live
+        </span>
+        <span className="absolute right-2 top-2 rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-foreground backdrop-blur">
+          {sportName}
+        </span>
+      </div>
+      <div className="p-3">
+        <p className="line-clamp-2 text-sm font-semibold text-foreground">{match.title}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {match.sources.length} source{match.sources.length === 1 ? '' : 's'}
+          {match.popular && ' · Popular'}
+        </p>
+      </div>
+    </button>
+  );
+};
+
+const MatchPlayer = ({ match, onBack }: { match: SportMatch; onBack: () => void }) => {
+  const [sourceIdx, setSourceIdx] = useState(0);
+  const [streamIdx, setStreamIdx] = useState(0);
+  const src = match.sources[sourceIdx];
+
+  const { data: streams, isLoading, isError, refetch } = useQuery({
+    queryKey: ['streamed-streams', src?.source, src?.id],
+    queryFn: ({ signal }) => fetchStreams(src.source, src.id, signal),
+    enabled: !!src,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => { setStreamIdx(0); }, [sourceIdx]);
+  const stream = streams?.[streamIdx];
+
+  return (
+    <div className="space-y-4">
+      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> All live matches
+      </button>
+      <h1 className="text-xl font-bold text-foreground md:text-2xl">{match.title}</h1>
+
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-card">
+        {stream ? (
+          <iframe
+            key={stream.embedUrl}
+            src={stream.embedUrl}
+            title={match.title}
+            className="absolute inset-0 h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen *"
+            allowFullScreen
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+            {isLoading ? (
+              <><RefreshCw className="h-6 w-6 animate-spin" /> Loading stream…</>
+            ) : isError || (streams && streams.length === 0) ? (
+              <>
+                No stream available from this source right now.
+                <button onClick={() => refetch()} className="rounded-full bg-primary px-4 py-1.5 text-primary-foreground">Retry</button>
+              </>
+            ) : null}
+          </div>
+        )}
+      </div>
+
+      {match.sources.length > 1 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
+          <div className="flex flex-wrap gap-2">
+            {match.sources.map((s, i) => (
+              <button key={`${s.source}-${s.id}`} onClick={() => setSourceIdx(i)}
+                className={cn('rounded-lg border px-3 py-1.5 text-sm capitalize transition-colors',
+                  i === sourceIdx ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/60')}>
+                {i + 1}. {s.source}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {streams && streams.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stream</p>
+          <div className="flex flex-wrap gap-2">
+            {streams.map((s, i) => (
+              <button key={s.embedUrl} onClick={() => setStreamIdx(i)}
+                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                  i === streamIdx ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/60')}>
+                Stream {s.streamNo} {s.hd && <span className="ml-1 text-[10px] font-bold">HD</span>}
+                {s.language && <span className="ml-1 text-xs opacity-70">· {s.language}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">If the player shows an ad or redirects, close it and come back here.</p>
+    </div>
+  );
+};
 
 const Sports = () => {
+  const [category, setCategory] = useState('all');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<SportMatch | null>(null);
+
+  const { data: sports } = useQuery({ queryKey: ['streamed-sports'], queryFn: ({ signal }) => fetchSports(signal), staleTime: 60 * 60_000 });
+  const { data: matches, isLoading, isError, refetch, isFetching } = useQuery({
+    queryKey: ['streamed-live'],
+    queryFn: ({ signal }) => fetchLiveMatches(signal),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+
+  const sportName = useMemo(() => new Map((sports ?? []).map(s => [s.id, s.name])), [sports]);
+  const counts = useMemo(() => {
+    const c = new Map<string, number>();
+    (matches ?? []).forEach(m => c.set(m.category, (c.get(m.category) ?? 0) + 1));
+    return c;
+  }, [matches]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (matches ?? [])
+      .filter(m => m.sources?.length)
+      .filter(m => category === 'all' || m.category === category)
+      .filter(m => !q || m.title.toLowerCase().includes(q) || m.category.includes(q))
+      .sort((a, b) => Number(!!b.popular) - Number(!!a.popular));
+  }, [matches, category, query]);
+
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [selected]);
+
   return (
-    <div className="min-h-screen px-4 md:px-8 py-6 pb-16">
-      {/* Centered Header */}
-      <div className="flex flex-col items-center text-center mb-10">
-        <div className="w-14 h-14 rounded-xl bg-[#00e5ff]/10 border border-[#00e5ff]/30 flex items-center justify-center mb-3">
-          <svg className="w-8 h-8 text-[#00e5ff]" viewBox="0 0 512 512" fill="currentColor">
-            <path d="M41.78 21.78c-4.997-.165-10.197 1.67-14.655 6.126-15.113 11.567-8.733 29.44 5.906 34.438-11.887 26.758 18.28 38.818 32.69 22.78 1.77 6.353 5.607 11.64 10.53 15.75-6.834 17.716-.453 35.182 10.47 46 17.075 16.914 34.658 11.5 53.78 3.064 5.01 7.768 11.952 14.45 19.844 19.28-8.644 2.492-15.876 8.443-19.844 16.345-12.357-12.712-32.463-4.77-34.28 8.562-2.857 20.933 23.414 31.447 33.093 17.72 4.16 10.35 13.758 17.576 25.125 19.28-20.317 15.863-18.628 46.463-.97 66 18.947 20.96 43.435 16.498 61.688 2.906 1.916 8.895 6.22 16.504 11.688 23.376-18.523 22.26-.477 54.163 22.78 54.875l8.876-6.06c-11.923-16.82-21.032-35.764-21.03-55.533 0-14.22 2.558-27.89 7.25-40.625l18.218 4.688c-4.375 11.248-6.782 23.355-6.782 35.938 0 14.232 7.458 30.79 18.625 46.187 9.12 12.572 20.516 24.252 31.158 33.563 2.31-15.783 2.148-32.015-2.438-49.563l18.094-4.72c10.652 40.76.39 75.718-10.844 108.126l42.094-26.06.406 45.717c.177.064.354.125.53.188l34.345-31.47 4.313 40.845.28.03c.01.002.022 0 .032 0L431.47 441l17.78 31.406c2.94-7.53 10.04-26.205 18.313-52.656 4.41-14.107 8.78-29.58 12.375-44.875h-.282c-17.53 0-31.75-14.193-31.75-31.72 0-17.525 14.22-31.75 31.75-31.75 2.998 0 5.877.443 8.625 1.22-2.127-53.22-45.973-97.026-102.655-100.78l.656-18.657c34.642 2.17 65.52 17.385 87.376 40.53 35.083-17.25 5.977-66.633-23.625-44.062 2.46-48.01-46.01-78.18-81.186-63.062-8.016-38.908-78.668-34.988-90.53-4.688l-25.127-8.75c-1.872-32.22-28.622-57.812-61.312-57.812-21.19 0-39.78 11.107-50.813 27.437l-12.25-7c-.32-17.463-14.582-31.53-32.125-31.53-11.532 0-21.208 6.03-26.874 15.156l-9.907-8.75c6.058-15.098-5.352-28.45-18.125-28.875zm236.44 37.032c-8.926 0-16.158 7.232-16.158 16.157 0 8.923 7.232 16.155 16.157 16.155 8.923 0 16.155-7.232 16.155-16.156 0-8.926-7.232-16.157-16.156-16.157zM45.114 103.196c-6.348 0-11.494 5.146-11.494 11.494 0 6.347 5.147 11.494 11.495 11.494 6.348 0 11.494-5.147 11.494-11.495 0-6.35-5.147-11.495-11.495-11.495zm298.197 94.15l2.063 18.75c-18.395 5.263-34.75 14.895-47.75 27.56L285.78 229.22c15.764-14.956 35.505-26.105 57.533-31.876zm39.563 92.53c20.235 0 36.625 16.425 36.625 36.656 0 20.233-16.39 36.626-36.625 36.626s-36.656-16.393-36.656-36.625c0-20.23 16.42-36.655 36.655-36.655zm-193.906 43.22c-11.435 0-20.69 9.253-20.69 20.686 0 11.435 9.255 20.72 20.69 20.72 11.432 0 20.718-9.285 20.718-20.72 0-11.432-9.286-20.686-20.72-20.686zm244.093 20.624l11.687 62.936-41.813-4.437 30.125-58.5z"/>
-          </svg>
-        </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-wider mb-1">STRIKE</h1>
-        <p className="text-[#00e5ff] text-sm mb-5">Live Sports Streaming</p>
-        <a
-          href="https://strike-main.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-7 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 hover:scale-105"
-          style={{
-            background: 'linear-gradient(135deg, #00e5ff, #00b8d4)',
-            color: '#0d0d0d',
-            boxShadow: '0 0 24px rgba(0,229,255,0.35)',
-          }}
-        >
-          <ExternalLink className="w-4 h-4" />
-          Visit Strike
-        </a>
-      </div>
-
-      <p className="text-muted-foreground text-sm max-w-2xl mx-auto text-center mb-10 leading-relaxed">
-        Watch live football, cricket, basketball, motorsports, and more — all free, all in one sleek dark interface.
-      </p>
-
-      {/* Features */}
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Features</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {features.map((f, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2.5 rounded-lg px-4 py-3 border border-[#1a1a1a] text-sm text-muted-foreground"
-              style={{ background: '#141414' }}
-            >
-              <span className="text-[#00e5ff] mt-0.5 shrink-0">•</span>
-              {f}
+    <div className="min-h-screen px-4 pb-16 pt-24 md:px-8">
+      {selected ? (
+        <MatchPlayer match={selected} onBack={() => setSelected(null)} />
+      ) : (
+        <>
+          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl">
+                <Trophy className="h-7 w-7 text-primary" /> Live Sports
+              </h1>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Radio className="h-4 w-4 text-destructive" />
+                {matches ? `${filtered.length} live now` : 'Loading live matches…'} · updates every minute
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 md:w-64">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search team or match…"
+                  className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+              </div>
+              <button onClick={() => refetch()} aria-label="Refresh" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground hover:border-primary/60">
+                <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
+              </button>
+            </div>
+          </div>
 
-      {/* CTA */}
-      <div className="text-center py-8 rounded-xl border border-[#1a1a1a]" style={{ background: '#141414' }}>
-        <h2 className="text-xl font-bold text-foreground mb-2">Ready to Watch?</h2>
-        <p className="text-sm text-muted-foreground mb-5">Stream live sports for free — no account needed.</p>
-        <a
-          href="https://strike-main.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-200"
-          style={{
-            background: 'linear-gradient(135deg, #00e5ff, #00b8d4)',
-            color: '#0d0d0d',
-            boxShadow: '0 0 24px rgba(0,229,255,0.35)',
-          }}
-        >
-          <ExternalLink className="w-4 h-4" />
-          Go to Strike
-        </a>
-      </div>
+          <div className="scrollbar-hide -mx-4 mb-6 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
+            {[{ id: 'all', name: 'All' }, ...(sports ?? []).filter(s => counts.has(s.id))].map(s => (
+              <button key={s.id} onClick={() => setCategory(s.id)}
+                className={cn('shrink-0 rounded-full border px-4 py-1.5 text-sm transition-colors',
+                  category === s.id ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/60')}>
+                {s.name}
+                <span className="ml-1.5 text-xs opacity-70">{s.id === 'all' ? matches?.length ?? 0 : counts.get(s.id)}</span>
+              </button>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="aspect-video animate-pulse bg-muted" />
+                  <div className="space-y-2 p-3"><div className="h-4 w-3/4 animate-pulse rounded bg-muted" /><div className="h-3 w-1/3 animate-pulse rounded bg-muted" /></div>
+                </div>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Couldn't load live matches.{' '}
+              <button onClick={() => refetch()} className="font-semibold text-primary">Try again</button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">No live matches right now. Check back soon.</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map(m => (
+                <MatchCard key={m.id} match={m} sportName={sportName.get(m.category) ?? m.category} onSelect={() => setSelected(m)} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

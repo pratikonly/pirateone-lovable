@@ -119,6 +119,7 @@ const Header = () => {
     { label: 'Movies', path: '/movies', Icon: Clapperboard },
     { label: 'Series', path: '/series', Icon: Tv },
     { label: 'Anime', path: '/anime', Icon: AnimeNavIcon },
+    { label: 'Sports', path: '/sports', Icon: Trophy },
   ];
 
   const displayName = profileName || identity?.name || 'Guest Pirate';
