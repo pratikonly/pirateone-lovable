@@ -1,4 +1,5 @@
-const STREAMED_IMAGE_BASE = 'https://streamed.pk';
+const imageProxyUrl = (kind: 'poster' | 'badge', id: string) =>
+  `/api/streamed-image?kind=${kind}&id=${encodeURIComponent(id)}`;
 
 export interface SportCategory { id: string; name: string }
 export interface MatchTeam { name: string; badge?: string }
@@ -45,5 +46,10 @@ export const fetchLiveMatches = (signal?: AbortSignal) => get<SportMatch[]>({ re
 export const fetchStreams = (source: string, id: string, signal?: AbortSignal) =>
   get<MatchStream[]>({ resource: 'streams', source, id }, signal);
 
-export const posterUrl = (m: SportMatch) => (m.poster ? `${STREAMED_IMAGE_BASE}${m.poster}` : null);
-export const badgeUrl = (badge?: string) => (badge ? `${STREAMED_IMAGE_BASE}/api/images/badge/${badge}.webp` : null);
+export const posterUrl = (m: SportMatch) => {
+  const match = m.poster?.match(/^\/api\/images\/proxy\/([A-Za-z0-9+-]{1,180})\.webp$/);
+  return match ? imageProxyUrl('poster', match[1]) : null;
+};
+
+export const badgeUrl = (badge?: string) =>
+  badge && /^[A-Za-z0-9+-]{1,180}$/.test(badge) ? imageProxyUrl('badge', badge) : null;
