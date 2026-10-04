@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Play, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
 import {
   badgeUrl, fetchLiveMatches, fetchSports, fetchStreams, posterUrl, SportMatch,
 } from '@/lib/streamedApi';
