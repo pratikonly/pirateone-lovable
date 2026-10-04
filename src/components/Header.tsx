@@ -248,13 +248,13 @@ const Header = () => {
         </div>
       </header>
       {/* Pages that open with a hero slider sit directly under the floating navbar, so no spacer */}
-      {!['/', '/movies', '/series', '/anime'].includes(location.pathname) && (
+      {!['/', '/movies', '/series', '/anime', '/sports'].includes(location.pathname) && (
         <div className="site-header-spacer h-20 sm:h-[92px]" aria-hidden="true" />
       )}
 
       <nav
         aria-label="Mobile main navigation"
-        className="mobile-bottom-nav fixed inset-x-3 bottom-3 z-[65] mx-auto grid max-w-md grid-cols-5 gap-1 rounded-full border border-white/15 bg-zinc-950/95 p-1.5 text-zinc-300 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-300 md:hidden"
+        className="mobile-bottom-nav fixed inset-x-2 bottom-2 z-[65] mx-auto grid max-w-md grid-cols-6 gap-0.5 rounded-full border border-white/15 bg-zinc-950/95 p-1 text-zinc-300 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-2xl transition-all duration-300 md:hidden"
       >
         {navItems.map(({ label, path, Icon }) => {
           const isActive = path === '/'
@@ -266,13 +266,13 @@ const Header = () => {
               to={path}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                 'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
+                 'flex min-w-0 flex-col items-center justify-center gap-0 rounded-full py-1.5 text-[8px] font-semibold uppercase tracking-[0.02em] transition-colors',
                 isActive
                    ? 'bg-white text-zinc-950 shadow-sm'
                    : 'text-zinc-400 hover:bg-white/[0.08] hover:text-white'
               )}
             >
-              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+              <Icon className="h-4 w-4" aria-hidden="true" />
               <span>{label}</span>
             </NavLink>
           );
@@ -282,13 +282,13 @@ const Header = () => {
           aria-label="Live"
           aria-current={isLiveActive ? 'page' : undefined}
           className={cn(
-            'flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-full py-1.5 text-[9px] font-semibold uppercase tracking-[0.06em] transition-colors',
+            'flex min-w-0 flex-col items-center justify-center gap-0 rounded-full py-1.5 text-[8px] font-semibold uppercase tracking-[0.02em] transition-colors',
             isLiveActive
               ? 'bg-white text-zinc-950 shadow-sm'
               : 'text-zinc-400 hover:bg-white/[0.08] hover:text-white'
           )}
         >
-          <Radio className="h-[18px] w-[18px] text-red-500" aria-hidden="true" />
+          <Radio className="h-4 w-4 text-red-500" aria-hidden="true" />
           <span>Live</span>
         </NavLink>
       </nav>
