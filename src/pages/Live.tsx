@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import LivePlayer from '@/components/LivePlayer';
+import LiveEmbedPlayer from '@/components/LiveEmbedPlayer';
 import { useDebounce } from '@/hooks/useDebounce';
 import { fetchLiveChannels, getLiveApiErrorMessage, LiveChannel } from '@/lib/liveApi';
 
@@ -290,7 +290,7 @@ const Live = () => {
       </section>
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.7fr)_minmax(19rem,0.9fr)]">
-        <LivePlayer channelId={channelId ?? null} channelName={selectedChannel?.name} />
+        <LiveEmbedPlayer channelId={channelId ?? null} channelName={selectedChannel?.name} />
 
         <aside className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/55 p-3.5 sm:p-4" aria-label="Channel list">
           <div className="mb-3 flex items-center justify-between gap-3">
