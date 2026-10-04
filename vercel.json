@@ -1,8 +1,10 @@
 {
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/e/:path*", "destination": "https://embed.st/embed/:path*" },
-    { "source": "/fetch", "destination": "https://embed.st/fetch" },
+    { "source": "/e/:path*", "destination": "/api/embed/embed/:path*" },
+    { "source": "/ep/:path*", "destination": "/api/embed/root/:path*" },
+    { "source": "/fetch", "destination": "/api/embed/root/fetch" },
+    { "source": "/ad.html", "destination": "/api/embed/local/ad.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [

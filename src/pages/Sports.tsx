@@ -216,6 +216,7 @@ const MatchPlayer = ({
                 src={sportsEmbedSrc(stream.embedUrl)}
                 title={match.title}
                 className="absolute inset-0 h-full w-full"
+                sandbox="allow-scripts allow-forms allow-presentation"
                 allow="autoplay; encrypted-media; picture-in-picture; fullscreen *"
                 allowFullScreen
               />
