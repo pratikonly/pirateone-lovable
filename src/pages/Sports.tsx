@@ -277,6 +277,11 @@ const Sports = () => {
         <MatchPlayer match={selected} onBack={() => setSelected(null)} />
       ) : (
         <>
+          {isLoading ? (
+            <div className="mb-8 h-[300px] animate-pulse rounded-2xl border border-border bg-muted sm:h-[380px] md:h-[440px]" />
+          ) : (
+            <SportsHero matches={matches ?? []} sportName={sportName} onSelect={setSelected} />
+          )}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl">
