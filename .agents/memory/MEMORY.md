@@ -2,3 +2,4 @@
 - [Watch action button sizing](watch-action-controls.md) — Keep Add to List and Download icon buttons wider than their original 40px compact size.
 - [Edit approval rule](edit-approval.md) — Discuss code changes first; edit only after the user explicitly commands it.
 - [Vercel proxy preview](vercel-proxy-preview.md) — Replit's Vite preview does not execute Vercel `api/` functions; verify those routes on Vercel.
+- [Sports embed relay permission](sports-embed-relay-permission.md) — The user confirms the sports embed provider permits relaying embeds through their Vercel domain.
