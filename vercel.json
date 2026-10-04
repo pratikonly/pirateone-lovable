@@ -1,10 +1,9 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/e/:path*", "destination": "/api/embed/embed/:path*" },
-    { "source": "/ep/:path*", "destination": "/api/embed/root/:path*" },
-    { "source": "/fetch", "destination": "/api/embed/root/fetch" },
-    { "source": "/ad.html", "destination": "/api/embed/local/ad.html" },
+    { "source": "/e/:proxyPath*", "destination": "/api/embed-proxy?proxyMode=embed" },
+    { "source": "/ep/:proxyPath*", "destination": "/api/embed-proxy?proxyMode=root" },
+    { "source": "/fetch", "destination": "/api/embed-proxy?proxyMode=root&proxyPath=fetch" },
+    { "source": "/ad.html", "destination": "/api/embed-proxy?proxyMode=local&proxyPath=ad.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [

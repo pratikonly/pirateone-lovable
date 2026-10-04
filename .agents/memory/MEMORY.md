@@ -4,3 +4,4 @@
 - [Vercel proxy preview](vercel-proxy-preview.md) — Replit's Vite preview does not execute Vercel `api/` functions; verify those routes on Vercel.
 - [Sports embed relay permission](sports-embed-relay-permission.md) — The user confirms the sports embed provider permits relaying embeds through their Vercel domain.
 - [Sports embed isolation](sports-embed-isolation.md) — Keep the hidden provider ad frame inert and proxied content sandboxed from the app origin.
+- [Vercel proxy routing](vercel-proxy-routing.md) — Target a fixed API function from rewrites and pass captured route parameters as query values.
