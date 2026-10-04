@@ -272,7 +272,7 @@ const Sports = () => {
   useEffect(() => { window.scrollTo({ top: 0 }); }, [selected]);
 
   return (
-    <div className="min-h-screen px-4 pb-16 pt-24 md:px-8">
+    <div className="min-h-screen px-4 pb-16 pt-[76px] sm:pt-24 md:px-8">
       {selected ? (
         <MatchPlayer match={selected} onBack={() => setSelected(null)} />
       ) : (
