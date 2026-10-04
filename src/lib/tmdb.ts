@@ -146,8 +146,6 @@ export const getBackdropUrl = (path: string | null, size: 'w780' | 'w1280' | 'or
   return `${TMDB_IMAGE_BASE}/${size}${path}`;
 };
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_CACHE_TTL = 5 * 60 * 1000;
 
 type CacheEntry = {
@@ -159,14 +157,7 @@ const responseCache = new Map<string, CacheEntry>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
 const fetchTMDB = async <T>(endpoint: string, params: Record<string, string> = {}): Promise<T> => {
-  const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
-  url.searchParams.set('api_key', TMDB_API_KEY);
-
-  Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.set(key, value);
-  });
-
-  const cacheKey = url.toString();
+  const cacheKey = JSON.stringify([endpoint, Object.entries(params).sort(([a], [b]) => a.localeCompare(b))]);
   const cached = responseCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.data as T;
@@ -176,10 +167,15 @@ const fetchTMDB = async <T>(endpoint: string, params: Record<string, string> = {
   const inFlight = inFlightRequests.get(cacheKey);
   if (inFlight) return inFlight as Promise<T>;
 
-  const request = fetch(cacheKey)
-    .then(response => {
+  const request = fetch('/api/tmdb-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint, params }),
+  })
+    .then(async response => {
       if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.status}`);
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error ?? `TMDB API error: ${response.status}`);
       }
       return response.json() as Promise<T>;
     })

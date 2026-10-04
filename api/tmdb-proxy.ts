@@ -7,7 +7,8 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const ALLOWED_ENDPOINTS = [
   /^\/trending\/(movie|tv|all)\/(day|week)$/,
   /^\/movie\/(popular|top_rated|now_playing)$/,
-  /^\/tv\/(popular|top_rated)$/,
+  /^\/tv\/(popular|top_rated|on_the_air)$/,
+  /^\/discover\/(movie|tv)$/,
   /^\/movie\/\d+$/,
   /^\/tv\/\d+$/,
   /^\/tv\/\d+\/season\/\d+$/,
@@ -27,6 +28,10 @@ const ALLOWED_ENDPOINTS = [
 
 function isAllowedEndpoint(endpoint: string): boolean {
   return ALLOWED_ENDPOINTS.some(pattern => pattern.test(endpoint));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -52,7 +57,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { endpoint, params = {} } = req.body;
+    const body = req.body;
+    if (!isRecord(body)) {
+      return res.status(400).json({ error: 'Invalid request body' });
+    }
+
+    const { endpoint, params = {} } = body;
 
     if (!endpoint || typeof endpoint !== 'string') {
       return res.status(400).json({ error: 'Missing endpoint parameter' });
@@ -63,33 +73,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(403).json({ error: 'Endpoint not allowed' });
     }
 
+    if (!isRecord(params) || Object.keys(params).length > 50) {
+      return res.status(400).json({ error: 'Invalid query parameters' });
+    }
+
     // Build URL with params
     const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
     url.searchParams.set('api_key', TMDB_API_KEY);
     
     // Add additional params
     Object.entries(params).forEach(([key, value]) => {
-      if (typeof value === 'string') {
-        url.searchParams.set(key, value);
+      if (!/^[a-zA-Z0-9_.-]{1,80}$/.test(key) || typeof value !== 'string' || value.length > 500) {
+        throw new Error('Invalid query parameter');
       }
+      if (key !== 'api_key') url.searchParams.set(key, value);
     });
 
     // Fetch from TMDB
-    const response = await fetch(url.toString());
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('TMDB API error:', response.status, errorText);
-      return res.status(response.status).json({ 
-        error: `TMDB API error: ${response.status}` 
-      });
-    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12_000);
+    try {
+      const response = await fetch(url.toString(), { signal: controller.signal });
 
-    const data = await response.json();
-    return res.status(200).json(data);
-    
+      if (!response.ok) {
+        console.error('TMDB API error:', response.status);
+        return res.status(response.status).json({
+          error: `TMDB API error: ${response.status}`,
+        });
+      }
+
+      const data = await response.json();
+      return res.status(200).json(data);
+    } finally {
+      clearTimeout(timeout);
+    }
   } catch (error) {
     console.error('TMDB proxy error:', error);
+    if (error instanceof Error && error.name === 'AbortError') {
+      return res.status(504).json({ error: 'TMDB request timed out' });
+    }
+    if (error instanceof Error && error.message === 'Invalid query parameter') {
+      return res.status(400).json({ error: error.message });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
