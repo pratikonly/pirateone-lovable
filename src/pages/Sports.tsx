@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Play, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
 import {
   badgeUrl, fetchLiveMatches, fetchSports, fetchStreams, posterUrl, SportMatch,
 } from '@/lib/streamedApi';
@@ -51,6 +51,111 @@ const MatchCard = ({ match, sportName, onSelect }: { match: SportMatch; sportNam
         </p>
       </div>
     </button>
+  );
+};
+
+const SportsHero = ({ matches, sportName, onSelect }: { matches: SportMatch[]; sportName: Map<string, string>; onSelect: (m: SportMatch) => void }) => {
+  const slides = useMemo(() => matches.filter(m => posterUrl(m)).slice(0, 6), [matches]);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const t = setInterval(() => setIndex(i => (i + 1) % slides.length), 6000);
+    return () => clearInterval(t);
+  }, [slides.length]);
+
+  useEffect(() => { if (index >= slides.length) setIndex(0); }, [slides.length, index]);
+
+  if (slides.length === 0) return null;
+  const current = slides[Math.min(index, slides.length - 1)];
+  const poster = posterUrl(current)!;
+  const { home, away } = current.teams ?? {};
+
+  return (
+    <div className="relative mb-8 overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="relative h-[300px] sm:h-[380px] md:h-[440px]">
+        {slides.map((m, i) => (
+          <img
+            key={m.id}
+            src={posterUrl(m)!}
+            alt=""
+            aria-hidden={i !== index}
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover transition-opacity duration-700',
+              i === index ? 'opacity-100' : 'opacity-0'
+            )}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent" />
+
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 sm:p-8">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-destructive-foreground">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive-foreground" /> Live
+            </span>
+            <span className="rounded-full bg-background/70 px-2.5 py-1 text-[10px] font-medium text-foreground backdrop-blur">
+              {sportName.get(current.category) ?? current.category}
+            </span>
+            {current.popular && (
+              <span className="rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold text-primary-foreground">Popular</span>
+            )}
+          </div>
+
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-2 flex items-center gap-3">
+                <TeamBadge badge={home?.badge} name={home?.name} />
+                <span className="text-xs font-bold text-muted-foreground">VS</span>
+                <TeamBadge badge={away?.badge} name={away?.name} />
+              </div>
+              <h2 className="line-clamp-2 max-w-xl text-xl font-bold text-foreground sm:text-2xl md:text-3xl">{current.title}</h2>
+              <button
+                onClick={() => onSelect(current)}
+                className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105"
+              >
+                <Play className="h-4 w-4 fill-current" /> Watch Live
+              </button>
+            </div>
+
+            {slides.length > 1 && (
+              <div className="hidden shrink-0 items-center gap-2 sm:flex">
+                <button
+                  onClick={() => setIndex(i => (i - 1 + slides.length) % slides.length)}
+                  aria-label="Previous match"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/60 text-foreground backdrop-blur transition-colors hover:border-primary/60"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setIndex(i => (i + 1) % slides.length)}
+                  aria-label="Next match"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background/60 text-foreground backdrop-blur transition-colors hover:border-primary/60"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {slides.length > 1 && (
+            <div className="flex gap-1.5">
+              {slides.map((m, i) => (
+                <button
+                  key={m.id}
+                  onClick={() => setIndex(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  className={cn(
+                    'h-1.5 rounded-full transition-all duration-300',
+                    i === index ? 'w-6 bg-primary' : 'w-1.5 bg-foreground/30 hover:bg-foreground/50'
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -172,6 +277,11 @@ const Sports = () => {
         <MatchPlayer match={selected} onBack={() => setSelected(null)} />
       ) : (
         <>
+          {isLoading ? (
+            <div className="mb-8 h-[300px] animate-pulse rounded-2xl border border-border bg-muted sm:h-[380px] md:h-[440px]" />
+          ) : (
+            <SportsHero matches={matches ?? []} sportName={sportName} onSelect={setSelected} />
+          )}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground md:text-3xl">
