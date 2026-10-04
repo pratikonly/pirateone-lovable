@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ChevronLeft, ChevronRight, Play, Radio, RefreshCw, Search, Trophy } from 'lucide-react';
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, CircleDot, Languages, Monitor, Play, Radio, RefreshCw, Search, Signal, Trophy } from 'lucide-react';
 import {
   badgeUrl, fetchLiveMatches, fetchSports, fetchStreams, posterUrl, SportMatch,
 } from '@/lib/streamedApi';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const TeamBadge = ({ badge, name }: { badge?: string; name?: string }) => {
@@ -159,10 +160,23 @@ const SportsHero = ({ matches, sportName, onSelect }: { matches: SportMatch[]; s
   );
 };
 
-const MatchPlayer = ({ match, onBack }: { match: SportMatch; onBack: () => void }) => {
+const MatchPlayer = ({
+  match,
+  sportName,
+  related,
+  onBack,
+  onSelect,
+}: {
+  match: SportMatch;
+  sportName: string;
+  related: SportMatch[];
+  onBack: () => void;
+  onSelect: (match: SportMatch) => void;
+}) => {
   const [sourceIdx, setSourceIdx] = useState(0);
   const [streamIdx, setStreamIdx] = useState(0);
   const src = match.sources[sourceIdx];
+  const { home, away } = match.teams ?? {};
 
   const { data: streams, isLoading, isError, refetch } = useQuery({
     queryKey: ['streamed-streams', src?.source, src?.id],
@@ -175,67 +189,142 @@ const MatchPlayer = ({ match, onBack }: { match: SportMatch; onBack: () => void 
   const stream = streams?.[streamIdx];
 
   return (
-    <div className="space-y-4">
-      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+    <div className="mx-auto max-w-[1500px]">
+      <Button variant="ghost" size="sm" onClick={onBack} className="mb-3 -ml-2 text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> All live matches
-      </button>
-      <h1 className="text-xl font-bold text-foreground md:text-2xl">{match.title}</h1>
+      </Button>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-card">
-        {stream ? (
-          <iframe
-            key={stream.embedUrl}
-            src={stream.embedUrl}
-            title={match.title}
-            className="absolute inset-0 h-full w-full"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen *"
-            allowFullScreen
-          />
-        ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-            {isLoading ? (
-              <><RefreshCw className="h-6 w-6 animate-spin" /> Loading stream…</>
-            ) : isError || (streams && streams.length === 0) ? (
-              <>
-                No stream available from this source right now.
-                <button onClick={() => refetch()} className="rounded-full bg-primary px-4 py-1.5 text-primary-foreground">Retry</button>
-              </>
-            ) : null}
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <main className="min-w-0">
+          <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-background shadow-card">
+            {stream ? (
+              <iframe
+                key={stream.embedUrl}
+                src={stream.embedUrl}
+                title={match.title}
+                className="absolute inset-0 h-full w-full"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen *"
+                allowFullScreen
+              />
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-5 text-center text-sm text-muted-foreground">
+                {isLoading ? (
+                  <><RefreshCw className="h-7 w-7 animate-spin" /> Loading stream…</>
+                ) : isError || (streams && streams.length === 0) ? (
+                  <>
+                    No stream available from this provider right now.
+                    <Button size="sm" onClick={() => refetch()}>Retry</Button>
+                  </>
+                ) : null}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <h1 className="mr-1 text-lg font-bold text-foreground sm:text-xl">{match.title}</h1>
+            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/20 px-2 py-1 text-[10px] font-bold uppercase text-destructive">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-destructive" /> Live
+            </span>
+            <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase text-primary">{sportName}</span>
+          </div>
+
+          <div className="scrollbar-hide mt-3 flex gap-2 overflow-x-auto pb-1">
+            {(streams ?? []).map((item, i) => (
+              <Button
+                key={item.embedUrl}
+                variant={i === streamIdx ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStreamIdx(i)}
+                className="h-9 shrink-0 gap-1.5 px-3"
+              >
+                <Monitor className="h-3.5 w-3.5" /> Stream {item.streamNo}
+                {item.hd && <span className="rounded bg-primary/15 px-1 text-[9px] font-bold text-primary">HD</span>}
+                {item.language && <span className="inline-flex items-center gap-1 text-[10px] opacity-70"><Languages className="h-3 w-3" />{item.language}</span>}
+              </Button>
+            ))}
+          </div>
+
+          <p className="mt-3 text-xs text-muted-foreground">If the player shows an ad or redirects, close it and come back here.</p>
+
+          {related.length > 0 && (
+            <section className="mt-5">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                <h2 className="text-xs font-bold uppercase text-muted-foreground">More {sportName} matches</h2>
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">{related.length}</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {related.map(item => {
+                  const itemHome = item.teams?.home;
+                  const itemAway = item.teams?.away;
+                  return (
+                    <Button
+                      key={item.id}
+                      variant="outline"
+                      onClick={() => onSelect(item)}
+                      className="h-14 justify-start overflow-hidden px-2 text-left"
+                    >
+                      <span className="flex shrink-0 -space-x-2">
+                        <TeamBadge badge={itemHome?.badge} name={itemHome?.name} />
+                        <TeamBadge badge={itemAway?.badge} name={itemAway?.name} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold text-foreground">{item.title}</span>
+                        <span className="mt-0.5 block text-[10px] font-bold uppercase text-destructive">• Live · {item.sources.length} source{item.sources.length === 1 ? '' : 's'}</span>
+                      </span>
+                    </Button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </main>
+
+        <aside className="space-y-3 xl:sticky xl:top-24">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-foreground"><Activity className="h-4 w-4 text-primary" /> Match Info</h2>
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+                <TeamBadge badge={home?.badge} name={home?.name} />
+                <span className="line-clamp-2 text-xs font-bold text-foreground">{home?.name ?? match.title.split(' vs ')[0]}</span>
+              </div>
+              <div className="shrink-0 text-center">
+                <span className="block text-xs font-black text-muted-foreground">VS</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold uppercase text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-destructive" /> Live</span>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+                <TeamBadge badge={away?.badge} name={away?.name} />
+                <span className="line-clamp-2 text-xs font-bold text-foreground">{away?.name ?? match.title.split(' vs ')[1] ?? 'Opponent'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-border bg-card p-3"><span className="text-[9px] font-semibold uppercase text-muted-foreground">Sources</span><strong className="mt-1 block text-sm text-foreground">{match.sources.length}</strong></div>
+            <div className="rounded-lg border border-border bg-card p-3"><span className="text-[9px] font-semibold uppercase text-muted-foreground">Category</span><strong className="mt-1 block truncate text-sm capitalize text-foreground">{sportName}</strong></div>
+            <div className="rounded-lg border border-border bg-card p-3"><span className="text-[9px] font-semibold uppercase text-muted-foreground">Status</span><strong className="mt-1 block text-sm text-destructive">Live</strong></div>
+            <div className="rounded-lg border border-border bg-card p-3"><span className="text-[9px] font-semibold uppercase text-muted-foreground">Streams</span><strong className="mt-1 block text-sm text-foreground">{streams?.length ?? 0}{streams?.some(item => item.hd) ? ' HD' : ''}</strong></div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[9px] font-semibold uppercase text-muted-foreground">Providers</p>
+            <div className="space-y-1.5">
+              {match.sources.map((source, i) => (
+                <Button
+                  key={`${source.source}-${source.id}`}
+                  variant={i === sourceIdx ? 'secondary' : 'outline'}
+                  size="sm"
+                  onClick={() => setSourceIdx(i)}
+                  className="w-full justify-between capitalize"
+                >
+                  <span>{source.source}</span><span className="text-[10px] text-muted-foreground">#{i + 1}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
-
-      {match.sources.length > 1 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Source</p>
-          <div className="flex flex-wrap gap-2">
-            {match.sources.map((s, i) => (
-              <button key={`${s.source}-${s.id}`} onClick={() => setSourceIdx(i)}
-                className={cn('rounded-lg border px-3 py-1.5 text-sm capitalize transition-colors',
-                  i === sourceIdx ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/60')}>
-                {i + 1}. {s.source}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {streams && streams.length > 0 && (
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Stream</p>
-          <div className="flex flex-wrap gap-2">
-            {streams.map((s, i) => (
-              <button key={s.embedUrl} onClick={() => setStreamIdx(i)}
-                className={cn('rounded-lg border px-3 py-1.5 text-sm transition-colors',
-                  i === streamIdx ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/60')}>
-                Stream {s.streamNo} {s.hd && <span className="ml-1 text-[10px] font-bold">HD</span>}
-                {s.language && <span className="ml-1 text-xs opacity-70">· {s.language}</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">If the player shows an ad or redirects, close it and come back here.</p>
     </div>
   );
 };
@@ -274,7 +363,14 @@ const Sports = () => {
   return (
     <div className="min-h-screen px-4 pb-16 pt-[76px] sm:pt-24 md:px-8">
       {selected ? (
-        <MatchPlayer match={selected} onBack={() => setSelected(null)} />
+        <MatchPlayer
+          key={selected.id}
+          match={selected}
+          sportName={sportName.get(selected.category) ?? selected.category}
+          related={(matches ?? []).filter(match => match.category === selected.category && match.id !== selected.id).slice(0, 10)}
+          onBack={() => setSelected(null)}
+          onSelect={setSelected}
+        />
       ) : (
         <>
           {isLoading ? (
