@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/e/:path*", "destination": "https://embed.st/embed/:path*" },
+    { "source": "/fetch", "destination": "https://embed.st/fetch" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
