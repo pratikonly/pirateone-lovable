@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Activity, ArrowLeft, ChevronLeft, ChevronRight, CircleDot, Languages, Monitor, Play, Radio, RefreshCw, Search, Signal, Trophy } from 'lucide-react';
 import {
   badgeUrl, fetchLiveMatches, fetchSports, fetchStreams, posterUrl, SportMatch,
@@ -330,9 +331,10 @@ const MatchPlayer = ({
 };
 
 const Sports = () => {
+  const navigate = useNavigate();
+  const { matchId } = useParams<{ matchId: string }>();
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<SportMatch | null>(null);
 
   const { data: sports } = useQuery({ queryKey: ['streamed-sports'], queryFn: ({ signal }) => fetchSports(signal), staleTime: 60 * 60_000 });
   const { data: matches, isLoading, isError, refetch, isFetching } = useQuery({
@@ -343,6 +345,11 @@ const Sports = () => {
   });
 
   const sportName = useMemo(() => new Map((sports ?? []).map(s => [s.id, s.name])), [sports]);
+  const selected = useMemo(
+    () => matchId ? (matches ?? []).find(match => match.id === matchId) ?? null : null,
+    [matchId, matches],
+  );
+  const selectMatch = (match: SportMatch) => navigate(`/sports/${encodeURIComponent(match.id)}`);
   const counts = useMemo(() => {
     const c = new Map<string, number>();
     (matches ?? []).forEach(m => c.set(m.category, (c.get(m.category) ?? 0) + 1));
@@ -358,7 +365,11 @@ const Sports = () => {
       .sort((a, b) => Number(!!b.popular) - Number(!!a.popular));
   }, [matches, category, query]);
 
-  useEffect(() => { window.scrollTo({ top: 0 }); }, [selected]);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [matchId]);
+
+  useEffect(() => {
+    if (matchId && matches && !selected) navigate('/sports', { replace: true });
+  }, [matchId, matches, navigate, selected]);
 
   return (
     <div className="min-h-screen px-4 pb-16 pt-[76px] sm:pt-24 md:px-8">
@@ -368,15 +379,15 @@ const Sports = () => {
           match={selected}
           sportName={sportName.get(selected.category) ?? selected.category}
           related={(matches ?? []).filter(match => match.category === selected.category && match.id !== selected.id).slice(0, 10)}
-          onBack={() => setSelected(null)}
-          onSelect={setSelected}
+          onBack={() => navigate('/sports')}
+          onSelect={selectMatch}
         />
       ) : (
         <>
           {isLoading ? (
             <div className="mb-8 h-[300px] animate-pulse rounded-2xl border border-border bg-muted sm:h-[380px] md:h-[440px]" />
           ) : (
-            <SportsHero matches={matches ?? []} sportName={sportName} onSelect={setSelected} />
+            <SportsHero matches={matches ?? []} sportName={sportName} onSelect={selectMatch} />
           )}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -430,7 +441,7 @@ const Sports = () => {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map(m => (
-                <MatchCard key={m.id} match={m} sportName={sportName.get(m.category) ?? m.category} onSelect={() => setSelected(m)} />
+                <MatchCard key={m.id} match={m} sportName={sportName.get(m.category) ?? m.category} onSelect={() => selectMatch(m)} />
               ))}
             </div>
           )}
