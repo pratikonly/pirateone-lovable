@@ -7,19 +7,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-const sportsEmbedSrc = (embedUrl: string) => {
-  try {
-    const url = new URL(embedUrl);
-    if (url.protocol !== 'https:' || url.hostname !== 'embed.st' || !url.pathname.startsWith('/embed/')) {
-      return embedUrl;
-    }
-
-    return `/e/${url.pathname.slice('/embed/'.length)}${url.search}${url.hash}`;
-  } catch {
-    return embedUrl;
-  }
-};
-
 const TeamBadge = ({ badge, name }: { badge?: string; name?: string }) => {
   const url = badgeUrl(badge);
   return url ? (
@@ -213,7 +200,7 @@ const MatchPlayer = ({
             {stream ? (
               <iframe
                 key={stream.embedUrl}
-                src={sportsEmbedSrc(stream.embedUrl)}
+                src={stream.embedUrl}
                 title={match.title}
                 className="absolute inset-0 h-full w-full"
                 sandbox="allow-scripts allow-forms allow-presentation"
