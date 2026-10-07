@@ -39,7 +39,7 @@ const GRID_CLASSES = 'grid grid-cols-3 gap-2 sm:[grid-template-columns:repeat(au
 const lastTabBySlug = new Map<string, string>();
 
 const SkeletonGrid = () => (
-  <div className="grid gap-2" style={GRID_STYLE}>
+  <div className={GRID_CLASSES}>
     {[...Array(24)].map((_, i) => (
       <div key={i} className="space-y-2">
         <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
@@ -213,7 +213,7 @@ const CatalogPage = ({
           ) : items.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">Nothing found.</p>
           ) : (
-            <div className="grid gap-2" style={GRID_STYLE}>
+            <div className={GRID_CLASSES}>
               {items.map((movie, i) => (
                 <MovieCard
                   key={`${movie.media_type || 'movie'}-${movie.id}`}
