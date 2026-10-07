@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon, Film, Tv, Loader2, Hash, X, ChevronDown } from 'lucide-react';
 import { searchMulti, getBackdropUrl, getTrending, Movie, getMovieDetails, getTVDetails, discoverMovies, discoverTV } from '@/lib/tmdb';
 import MovieCard from '@/components/MovieCard';
@@ -28,7 +29,9 @@ function parseTmdbId(raw: string): { id: number; type: 'movie' | 'tv' | 'both' }
 }
 
 const Search = () => {
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const routeQuery = searchParams.get('q') ?? '';
+  const [query, setQuery] = useState(routeQuery);
   const [results, setResults] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
@@ -44,6 +47,10 @@ const Search = () => {
   const currentIndexRef = useRef(0);
   const setBackdropUrl = useSetBackdropUrl();
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setQuery(routeQuery);
+  }, [routeQuery]);
 
   const debouncedQuery = useDebounce(query.trim(), 300);
   const debouncedId = useDebounce(idInput.trim(), 500);

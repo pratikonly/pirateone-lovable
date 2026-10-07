@@ -300,9 +300,18 @@ const Header = () => {
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={closeSearch} />
 
           {/* Search panel */}
-          <div className="relative w-full max-w-2xl mx-4 animate-in fade-in-0 zoom-in-95 duration-200">
+          <div className="relative w-[calc(100%-2.5rem)] max-w-2xl animate-in fade-in-0 zoom-in-95 duration-200 sm:w-full sm:mx-4">
             {/* Input row */}
-            <div className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 shadow-2xl ring-1 ring-primary/30">
+            <form
+              onSubmit={event => {
+                event.preventDefault();
+                const term = searchQuery.trim();
+                if (term.length < 2) return;
+                navigate(`/search?q=${encodeURIComponent(term)}`);
+                closeSearch();
+              }}
+              className="flex items-center gap-3 bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-3 shadow-2xl ring-1 ring-primary/30"
+            >
               {searchLoading
                 ? <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
                 : <Search className="w-5 h-5 text-zinc-400 shrink-0" />}
@@ -314,16 +323,17 @@ const Header = () => {
                 onChange={e => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent text-base text-white placeholder:text-zinc-500 outline-none"
               />
+              <button type="submit" className="sr-only">Show all search results</button>
               {searchQuery && (
-                <button onClick={() => { setSearchQuery(''); setSearchResults([]); searchInputRef.current?.focus(); }}
+                <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); searchInputRef.current?.focus(); }}
                   className="text-zinc-500 hover:text-white transition-colors shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               )}
-              <button onClick={closeSearch} className="text-zinc-500 hover:text-white transition-colors shrink-0 ml-1">
+              <button type="button" onClick={closeSearch} className="text-zinc-500 hover:text-white transition-colors shrink-0 ml-1">
                 <span className="text-xs font-medium px-1.5 py-0.5 bg-zinc-800 rounded border border-zinc-600">Esc</span>
               </button>
-            </div>
+            </form>
 
             {/* Hint */}
             {!searchQuery && (
