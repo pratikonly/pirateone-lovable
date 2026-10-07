@@ -32,7 +32,8 @@ interface CatalogPageProps {
 }
 
 const STALE_TIME = 10 * 60 * 1000;
-const GRID_STYLE = { gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))' };
+// 3 posters across on phones; auto-fill density on larger screens
+const GRID_CLASSES = 'grid grid-cols-3 gap-2 sm:[grid-template-columns:repeat(auto-fill,minmax(130px,1fr))]';
 
 // Remember which tab was open so coming back to a page feels instant
 const lastTabBySlug = new Map<string, string>();

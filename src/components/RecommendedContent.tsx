@@ -56,7 +56,7 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
     return (
       <div className="space-y-4">
         <div className="h-8 w-48 bg-muted rounded animate-pulse" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
           ))}
@@ -102,7 +102,7 @@ const RecommendedContent = ({ mediaId, mediaType, openInNewTab }: RecommendedCon
       {currentList.length === 0 ? (
         <p className="text-muted-foreground">No {activeTab} content found.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {currentList.slice(0, 12).map((item) => {
             const posterUrl = getImageUrl(item.poster_path, 'w300');
             const title = item.title || item.name || 'Untitled';
