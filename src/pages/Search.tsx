@@ -13,7 +13,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 /* Fluid poster grid: column count follows viewport width (zoom out = more per row, zoom in = fewer).
    Keep the minmax values identical to the grid in CatalogPage so Search matches Movies/Series. */
 const POSTER_GRID =
-  'grid gap-1 lg:gap-1.5 grid-cols-[repeat(auto-fill,minmax(105px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(125px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]';
+  'grid gap-1 lg:gap-1.5 grid-cols-[repeat(auto-fill,minmax(105px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(125px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(130px,1fr))]';
 
 /* ─── Detect if the query looks like a TMDB ID ─── */
 // Formats accepted:
