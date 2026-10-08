@@ -10,6 +10,11 @@ import { useSetBackdropUrl } from '@/contexts/BackdropContext';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { useDebounce } from '@/hooks/useDebounce';
 
+/* Fluid poster grid: column count follows viewport width (zoom out = more per row, zoom in = fewer).
+   Keep the minmax values identical to the grid in CatalogPage so Search matches Movies/Series. */
+const POSTER_GRID =
+  'grid gap-1 lg:gap-1.5 grid-cols-[repeat(auto-fill,minmax(105px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(125px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(150px,1fr))]';
+
 /* ─── Detect if the query looks like a TMDB ID ─── */
 // Formats accepted:
 //   123456          → ambiguous, we'll search both movie + tv
@@ -182,7 +187,7 @@ const Search = () => {
   const isQueryTooShort = query.trim().length > 0 && query.trim().length < 2;
 
   const MovieGrid = ({ items }: { items: Movie[] }) => (
-    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5">
+    <div className={POSTER_GRID}>
       {items.map((movie, index) => (
         <MovieCard key={movie.id} movie={movie} index={index} />
       ))}
@@ -190,7 +195,7 @@ const Search = () => {
   );
 
   const LoadingSkeleton = () => (
-    <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5">
+    <div className={POSTER_GRID}>
       {[...Array(12)].map((_, i) => (
         <div key={i} className="space-y-2">
           <div className="aspect-[2/3] bg-muted rounded-lg animate-pulse" />
@@ -358,7 +363,7 @@ const Search = () => {
                 {idResult.media_type === 'movie' ? 'Movie' : 'TV Show'} · ID {idInput}
               </span>
             </div>
-            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-1 lg:gap-1.5">
+            <div className={POSTER_GRID}>
               <MovieCard movie={idResult} index={0} />
             </div>
           </div>
